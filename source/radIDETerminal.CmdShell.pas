@@ -21,6 +21,7 @@ type
     constructor Create;
     destructor Destroy; override;
     class function EncodingForShell(const AShellExe: string): TEncoding;
+    class function BuildEnvironmentBlock: TBytes;
     procedure Start(const AShellExe: string; const AWorkDir: string = '');
     procedure SendCommand(const ACommand: string);
     procedure Terminate;
@@ -117,6 +118,29 @@ begin
     Result := TEncoding.GetEncoding(GetOEMCP);
 end;
 
+class function TCmdShellProcess.BuildEnvironmentBlock: TBytes;
+var
+  EnvStrings: PChar;
+  P: PChar;
+  Block: string;
+begin
+  EnvStrings := GetEnvironmentStrings;
+  try
+    Block := '';
+    P := EnvStrings;
+    while P^ <> #0 do
+    begin
+      Block := Block + P + #0;
+      Inc(P, StrLen(P) + 1);
+    end;
+    Block := Block + 'NO_COLOR=1' + #0;
+    Block := Block + #0;
+    Result := TEncoding.Unicode.GetBytes(Block);
+  finally
+    FreeEnvironmentStrings(EnvStrings);
+  end;
+end;
+
 procedure TCmdShellProcess.Start(const AShellExe: string; const AWorkDir: string);
 var
   SA: TSecurityAttributes;
@@ -124,6 +148,7 @@ var
   StartInfo: TStartupInfo;
   CmdLine: string;
   WorkDir: PChar;
+  EnvBlock: TBytes;
 begin
   if FRunning then
     Exit;
@@ -163,7 +188,9 @@ begin
   else
     WorkDir := nil;
 
-  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NO_WINDOW, nil, WorkDir, StartInfo, FProcessInfo) then
+  EnvBlock := BuildEnvironmentBlock;
+
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NO_WINDOW or CREATE_UNICODE_ENVIRONMENT, @EnvBlock[0], WorkDir, StartInfo, FProcessInfo) then
   begin
     CloseHandle(FStdOutRead);
     CloseHandle(StdOutWrite);

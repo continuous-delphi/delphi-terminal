@@ -78,4 +78,55 @@ Acceptance criteria:
 - [ ] Unit tests cover powershell.exe variant
 
 ---
+Title: ANSI escape code rendering in terminal output
+Issue: #4
+Labels: enhancement
+Body:
+pwsh and other modern CLI tools emit VT100/ANSI escape sequences for colored
+output. Currently these render as raw text (e.g. `[31;1m...`). The terminal
+output control should interpret ANSI CSI sequences and render colored text.
+
+Implementation notes:
+- Replace TMemo with a control capable of colored text (TRichEdit or a
+  dedicated terminal control)
+- Parse ANSI CSI sequences (SGR codes: bold, foreground/background colors,
+  reset) and apply corresponding formatting
+- Consider existing Delphi ANSI terminal libraries before building from
+  scratch
+- As a simpler interim step, stripping ANSI codes (regex `\x1B\[[0-9;]*[a-zA-Z]`)
+  would give clean plaintext output
+
+Acceptance criteria:
+- [ ] ANSI color codes from pwsh render as colored text (not raw escape sequences)
+- [ ] Basic SGR codes supported: reset, bold, foreground colors, background colors
+- [ ] Non-color ANSI sequences (cursor movement, etc.) are stripped gracefully
+- [ ] CMD tab output is unaffected
+
+---
+Title: Suppress ANSI escape codes via NO_COLOR environment variable
+Issue: #5
+Status: closed
+Labels: enhancement
+Body:
+As an interim workaround until ANSI rendering is implemented (#4), pass
+`NO_COLOR=1` in the process environment block when launching shell processes.
+This tells pwsh and other tools to suppress ANSI escape sequences at the
+source, avoiding raw escape codes in the output without risk of stripping
+valid content.
+
+Implementation notes:
+- Build a custom environment block for CreateProcess that includes
+  `NO_COLOR=1` alongside the inherited parent environment
+- Apply to all shell types (cmd, pwsh, powershell) -- the variable is
+  harmless for shells that do not recognize it
+- When #4 (ANSI rendering) is implemented, remove NO_COLOR so colored
+  output flows through
+
+Acceptance criteria:
+- [ ] pwsh output no longer contains raw ANSI escape sequences
+- [ ] Existing CMD and PowerShell functionality unaffected
+- [ ] Environment block correctly inherits parent environment variables
+- [ ] Unit test verifies ANSI-free output from pwsh
+
+---
 

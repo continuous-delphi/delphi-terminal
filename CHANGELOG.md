@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radIDETerminal
 
 ---
 
+## v0.2.4.0
+- Suppress ANSI escape codes via NO_COLOR=1 in process environment block (workaround until #4)
+[#5](https://github.com/radprogrammer/radIDETerminal/issues/5)
+
 ## v0.1.2.0
 - Demo VCL app with tabbed CMD shell: process pipe management, shared frame, and DUnitX tests
 [#1](https://github.com/radprogrammer/radIDETerminal/issues/1)

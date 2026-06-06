@@ -31,6 +31,7 @@ type
     [Test] procedure PwshShouldProduceOutputFromEcho;
     [Test] procedure PwshShouldPersistSessionState;
     [Test] procedure PwshShouldTerminateCleanly;
+    [Test] procedure PwshOutputShouldBeAnsiFreeDueToNoColor;
 
     [Test] procedure LegacyPSShouldStartAndReportRunning;
     [Test] procedure LegacyPSShouldProduceOutput;
@@ -153,6 +154,15 @@ begin
   Assert.IsTrue(FShell.Running, 'Should be running before Terminate');
   FShell.Terminate;
   Assert.IsFalse(FShell.Running, 'Should not be running after Terminate');
+end;
+
+procedure TTestCmdShellProcess.PwshOutputShouldBeAnsiFreeDueToNoColor;
+begin
+  FShell.Start('pwsh.exe', GetEnvironmentVariable('TEMP'));
+  FOutput := '';
+  FShell.SendCommand('Write-Output "NOCOLOR_CHECK"');
+  DrainQueueUntil('NOCOLOR_CHECK');
+  Assert.IsFalse(FOutput.Contains(#27'['), 'Output should not contain ANSI escape sequences (ESC[)');
 end;
 
 { Legacy PowerShell (powershell.exe) tests }
