@@ -39,6 +39,13 @@ type
   to the console subsystem directly, not through ANSI escape codes. Since we're using pipe redirection (no real
   console), that color information is lost. Same with `Get-ChildItem` output (directories vs files)
 
+
+  pwsh command to view each color:
+
+   @(30..37 + 90..97) | ForEach-Object { Write-Output "`e[$($_)m  Code $_ : The quick brown fox `e[0m" }; Write-Output
+  "`e[1m  Bold`e[0m  `e[4mUnderline`e[0m  `e[1;4mBold+Underline`e[0m"; @(40..47 + 100..107) | ForEach-Object {
+  Write-Output "`e[$($_)m  BG Code $_ `e[0m" }
+
   *)
   TAnsiParser = class
   private
