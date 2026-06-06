@@ -156,6 +156,7 @@ Acceptance criteria:
 ---
 Title: Detect shell process exit and handle gracefully
 Issue: #7
+Status: closed
 Labels: enhancement
 Body:
 When the shell process exits (e.g. user types `exit`), the UI should

@@ -14,9 +14,12 @@ type
   private
     FShell: TCmdShellProcess;
     FOutput: string;
+    FProcessExited: Boolean;
     procedure HandleOutput(Sender: TObject; const AText: string);
+    procedure HandleProcessExit(Sender: TObject);
     procedure DrainQueue(ATimeoutMs: Integer);
     procedure DrainQueueUntil(const AMarker: string; ATimeoutMs: Integer = 5000);
+    procedure DrainQueueUntilExited(ATimeoutMs: Integer = 5000);
   public
 
     [Setup] procedure Setup;
@@ -26,6 +29,7 @@ type
     [Test] procedure CmdShouldProduceOutputFromEcho;
     [Test] procedure CmdShouldPersistSessionState;
     [Test] procedure CmdShouldTerminateCleanly;
+    [Test] procedure CmdShouldFireOnProcessExitWhenShellExits;
 
     [Test] procedure PwshShouldStartAndReportRunning;
     [Test] procedure PwshShouldProduceOutputFromEcho;
@@ -46,8 +50,10 @@ uses
 procedure TTestCmdShellProcess.Setup;
 begin
   FOutput := '';
+  FProcessExited := False;
   FShell := TCmdShellProcess.Create;
   FShell.OnOutput := HandleOutput;
+  FShell.OnProcessExit := HandleProcessExit;
 end;
 
 procedure TTestCmdShellProcess.TearDown;
@@ -58,6 +64,11 @@ end;
 procedure TTestCmdShellProcess.HandleOutput(Sender: TObject; const AText: string);
 begin
   FOutput := FOutput + AText;
+end;
+
+procedure TTestCmdShellProcess.HandleProcessExit(Sender: TObject);
+begin
+  FProcessExited := True;
 end;
 
 procedure TTestCmdShellProcess.DrainQueue(ATimeoutMs: Integer);
@@ -118,6 +129,27 @@ begin
   Assert.IsTrue(FShell.Running, 'Should be running before Terminate');
   FShell.Terminate;
   Assert.IsFalse(FShell.Running, 'Should not be running after Terminate');
+end;
+
+procedure TTestCmdShellProcess.DrainQueueUntilExited(ATimeoutMs: Integer);
+var
+  Start: Cardinal;
+begin
+  Start := GetTickCount;
+  while not FProcessExited and (GetTickCount - Start < Cardinal(ATimeoutMs)) do
+  begin
+    CheckSynchronize(10);
+    Sleep(10);
+  end;
+end;
+
+procedure TTestCmdShellProcess.CmdShouldFireOnProcessExitWhenShellExits;
+begin
+  FShell.Start('cmd.exe', GetEnvironmentVariable('TEMP'));
+  FShell.SendCommand('exit');
+  DrainQueueUntilExited;
+  Assert.IsTrue(FProcessExited, 'OnProcessExit should have fired');
+  Assert.IsFalse(FShell.Running, 'Running should be False after natural exit');
 end;
 
 { PowerShell tests }

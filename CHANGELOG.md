@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radIDETerminal
 
 ---
 
+## v0.2.6.0
+- Detect shell process exit gracefully; show restart prompt on Enter
+[#7](https://github.com/radprogrammer/radIDETerminal/issues/7)
+
 ## v0.2.5.0
 - Command history with up/down arrow keys in the terminal input
 [#6](https://github.com/radprogrammer/radIDETerminal/issues/6)

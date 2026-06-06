@@ -15,7 +15,10 @@ type
     FEditInput: TEdit;
     FCmdShell: TCmdShellProcess;
     FHistory: TCommandHistory;
+    FShellExe: string;
+    FWorkDir: string;
     procedure HandleOutput(Sender: TObject; const AText: string);
+    procedure HandleProcessExit(Sender: TObject);
     procedure HandleInputKeyPress(Sender: TObject; var Key: Char);
     procedure HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure BuildControls;
@@ -37,6 +40,7 @@ begin
   FHistory := TCommandHistory.Create;
   FCmdShell := TCmdShellProcess.Create;
   FCmdShell.OnOutput := HandleOutput;
+  FCmdShell.OnProcessExit := HandleProcessExit;
 end;
 
 destructor TframeCmdShell.Destroy;
@@ -89,11 +93,27 @@ begin
   FMemoOutput.Perform(EM_SCROLLCARET, 0, 0);
 end;
 
+procedure TframeCmdShell.HandleProcessExit(Sender: TObject);
+begin
+  HandleOutput(Self, #13#10'[Process exited. Press Enter to restart]'#13#10);
+  FEditInput.ReadOnly := True;
+  FEditInput.Text := '';
+  FEditInput.TextHint := 'Press Enter to restart';
+end;
+
 procedure TframeCmdShell.HandleInputKeyPress(Sender: TObject; var Key: Char);
 begin
   if Key = #13 then
   begin
     Key := #0;
+    if not FCmdShell.Running then
+    begin
+      FEditInput.ReadOnly := False;
+      FEditInput.TextHint := '';
+      FMemoOutput.Text := '';
+      StartShell(FShellExe, FWorkDir);
+      Exit;
+    end;
     FHistory.Add(FEditInput.Text);
     FHistory.ResetPosition;
     FCmdShell.SendCommand(FEditInput.Text);
@@ -119,6 +139,8 @@ end;
 
 procedure TframeCmdShell.StartShell(const AShellExe: string; const AWorkDir: string);
 begin
+  FShellExe := AShellExe;
+  FWorkDir := AWorkDir;
   FCmdShell.Start(AShellExe, AWorkDir);
 end;
 

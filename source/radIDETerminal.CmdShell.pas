@@ -15,8 +15,11 @@ type
     FProcessInfo: TProcessInformation;
     FReaderThread: TThread;
     FRunning: Boolean;
+    FTerminating: Boolean;
     FOnOutput: TOutputEvent;
+    FOnProcessExit: TNotifyEvent;
     FEncoding: TEncoding;
+    procedure HandleNaturalExit;
   public
     constructor Create;
     destructor Destroy; override;
@@ -27,6 +30,7 @@ type
     procedure Terminate;
     property Running: Boolean read FRunning;
     property OnOutput: TOutputEvent read FOnOutput write FOnOutput;
+    property OnProcessExit: TNotifyEvent read FOnProcessExit write FOnProcessExit;
   end;
 
 implementation
@@ -38,6 +42,7 @@ type
     FOwner: TCmdShellProcess;
     FEncoding: TEncoding;
     procedure NotifyOutput(const AText: string);
+    procedure NotifyExit;
   protected
     procedure Execute; override;
   public
@@ -70,6 +75,18 @@ begin
     end);
 end;
 
+procedure TPipeReaderThread.NotifyExit;
+var
+  LOwner: TCmdShellProcess;
+begin
+  LOwner := FOwner;
+  TThread.Queue(nil,
+    procedure
+    begin
+      LOwner.HandleNaturalExit;
+    end);
+end;
+
 procedure TPipeReaderThread.Execute;
 var
   Buffer: array[0..4095] of Byte;
@@ -87,6 +104,8 @@ begin
       NotifyOutput(FEncoding.GetString(Bytes));
     end;
   end;
+  if not FOwner.FTerminating then
+    NotifyExit;
 end;
 
 { TCmdShellProcess }
@@ -219,10 +238,48 @@ begin
   WriteFile(FStdInWrite, Bytes[0], Length(Bytes), Written, nil);
 end;
 
+procedure TCmdShellProcess.HandleNaturalExit;
+begin
+  if FTerminating or not FRunning then
+    Exit;
+  FRunning := False;
+
+  if FReaderThread <> nil then
+  begin
+    FReaderThread.WaitFor;
+    FreeAndNil(FReaderThread);
+  end;
+
+  if FStdInWrite <> INVALID_HANDLE_VALUE then
+  begin
+    CloseHandle(FStdInWrite);
+    FStdInWrite := INVALID_HANDLE_VALUE;
+  end;
+  if FStdOutRead <> INVALID_HANDLE_VALUE then
+  begin
+    CloseHandle(FStdOutRead);
+    FStdOutRead := INVALID_HANDLE_VALUE;
+  end;
+  if FProcessInfo.hProcess <> 0 then
+  begin
+    CloseHandle(FProcessInfo.hProcess);
+    FProcessInfo.hProcess := 0;
+  end;
+  if FProcessInfo.hThread <> 0 then
+  begin
+    CloseHandle(FProcessInfo.hThread);
+    FProcessInfo.hThread := 0;
+  end;
+
+  if Assigned(FOnProcessExit) then
+    FOnProcessExit(Self);
+end;
+
 procedure TCmdShellProcess.Terminate;
 begin
   if not FRunning then
     Exit;
+  FTerminating := True;
   FRunning := False;
 
   if FStdInWrite <> INVALID_HANDLE_VALUE then
@@ -256,6 +313,8 @@ begin
     CloseHandle(FStdOutRead);
     FStdOutRead := INVALID_HANDLE_VALUE;
   end;
+
+  FTerminating := False;
 end;
 
 end.
