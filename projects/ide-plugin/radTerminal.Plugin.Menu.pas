@@ -1,3 +1,15 @@
+(*
+
+  radTerminal
+  https://github.com/radprogrammer/radTerminal
+
+  Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
+  ANSI color rendering, and command history
+
+  License: MIT
+  Copyright (c) 2026 Darian Miller
+
+*)
 unit radTerminal.Plugin.Menu;
 
 // Adds a "radTerminal" item to the IDE View menu and wires it to the

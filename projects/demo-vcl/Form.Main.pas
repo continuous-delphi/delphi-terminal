@@ -1,3 +1,15 @@
+(*
+
+  radTerminal
+  https://github.com/radprogrammer/radTerminal
+
+  Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
+  ANSI color rendering, and command history
+
+  License: MIT
+  Copyright (c) 2026 Darian Miller
+
+*)
 unit Form.Main;
 
 interface
@@ -7,6 +19,8 @@ uses
   radTerminal.Frame.CmdShell;
 
 type
+
+  // Mainly for initial dev and ongoing debug purposes
   TfrmMain = class(TForm)
     PageControl1: TPageControl;
     tabCmdShell: TTabSheet;
