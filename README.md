@@ -59,9 +59,11 @@ and command history.
 
 ## Requirements
 
-- A recent version of RAD Studio
-- Cascadia Mono font (ships with Windows Terminal)
-- PowerShell 7+ (`pwsh.exe`) for the pwsh tab (optional)
+- A relatively recent version of RAD Studio
+
+Optional
+- Defaults to `Cascadia Mono` font (ships with Windows Terminal)
+- PowerShell 7+ (`pwsh.exe`) for the pwsh tab
 
 ## Installation
 

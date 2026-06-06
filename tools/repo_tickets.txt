@@ -336,6 +336,7 @@ Acceptance criteria:
 ---
 Title: Auto-cd on active project switch
 Issue: #14
+Status: closed
 Labels: enhancement
 Body:
 When the user switches the active project in the IDE, automatically change

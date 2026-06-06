@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radTerminal
 
 ---
 
+## v0.8.8.0
+- Auto-cd on active project switch with configurable scope (active tab / all tabs)
+[#14](https://github.com/radprogrammer/radTerminal/issues/14)
+
 ## v0.7.8.0
 - Tools > Options > Third Party > radTerminal configuration screen with registry persistence
 [#15](https://github.com/radprogrammer/radTerminal/issues/15)

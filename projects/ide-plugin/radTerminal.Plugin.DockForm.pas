@@ -27,6 +27,9 @@ type
     FFrameCmd: TframeCmdShell;
     FFramePwsh: TframeCmdShell;
     FFramePowerShell: TframeCmdShell;
+    FNotifierIndex: Integer;
+    FGroupOpening: Boolean;
+    FLastProjectDir: string;
     procedure CreateTerminalTab(const ACaption, AShellExe: string; var AFrame: TframeCmdShell);
     procedure HandleRequestProjectDir(Sender: TObject; var APath: string);
     procedure HandleRequestFileDir(Sender: TObject; var APath: string);
@@ -35,6 +38,9 @@ type
     function GetInitialWorkDir: string;
     procedure HandleFormClose(Sender: TObject; var Action: TCloseAction);
     procedure FocusActiveFrame;
+    procedure RegisterIDENotifier;
+    procedure UnregisterIDENotifier;
+    procedure HandleActiveProjectChanged;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -46,6 +52,51 @@ implementation
 
 uses
   Winapi.Windows, ToolsAPI, radTerminal.Settings;
+
+type
+  TradTerminalIDENotifier = class(TNotifierObject, IOTAIDENotifier)
+  private
+    FOwner: TfrmradTerminalDock;
+  public
+    constructor Create(AOwner: TfrmradTerminalDock);
+    procedure FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
+    procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean); overload;
+    procedure AfterCompile(Succeeded: Boolean); overload;
+  end;
+
+{ TradTerminalIDENotifier }
+
+constructor TradTerminalIDENotifier.Create(AOwner: TfrmradTerminalDock);
+begin
+  inherited Create;
+  FOwner := AOwner;
+end;
+
+procedure TradTerminalIDENotifier.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
+begin
+  case NotifyCode of
+    ofnBeginProjectGroupOpen:
+      FOwner.FGroupOpening := True;
+    ofnEndProjectGroupOpen:
+    begin
+      FOwner.FGroupOpening := False;
+      FOwner.HandleActiveProjectChanged;
+    end;
+    ofnActiveProjectChanged:
+      if not FOwner.FGroupOpening then
+        FOwner.HandleActiveProjectChanged;
+  end;
+end;
+
+procedure TradTerminalIDENotifier.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
+begin
+  // Not used
+end;
+
+procedure TradTerminalIDENotifier.AfterCompile(Succeeded: Boolean);
+begin
+  // Not used
+end;
 
 var
   FInstance: TfrmradTerminalDock;
@@ -118,10 +169,14 @@ begin
   end;
   if (DefaultIdx >= 0) and (DefaultIdx < FPageControl.PageCount) then
     FPageControl.ActivePageIndex := DefaultIdx;
+
+  FLastProjectDir := WorkDir;
+  RegisterIDENotifier;
 end;
 
 destructor TfrmradTerminalDock.Destroy;
 begin
+  UnregisterIDENotifier;
   if FInstance = Self then
     FInstance := nil;
   if FFramePowerShell <> nil then
@@ -205,6 +260,54 @@ begin
       TframeCmdShell(FPageControl.ActivePage.Controls[I]).FocusInput;
       Exit;
     end;
+end;
+
+procedure TfrmradTerminalDock.RegisterIDENotifier;
+var
+  Services: IOTAServices;
+begin
+  FNotifierIndex := -1;
+  if Supports(BorlandIDEServices, IOTAServices, Services) then
+    FNotifierIndex := Services.AddNotifier(TradTerminalIDENotifier.Create(Self));
+end;
+
+procedure TfrmradTerminalDock.UnregisterIDENotifier;
+var
+  Services: IOTAServices;
+begin
+  if FNotifierIndex >= 0 then
+  begin
+    if Supports(BorlandIDEServices, IOTAServices, Services) then
+      Services.RemoveNotifier(FNotifierIndex);
+    FNotifierIndex := -1;
+  end;
+end;
+
+procedure TfrmradTerminalDock.HandleActiveProjectChanged;
+var
+  ProjectDir: string;
+  I: Integer;
+begin
+  ProjectDir := GetActiveProjectDir;
+  if (ProjectDir = '') or SameText(ProjectDir, FLastProjectDir) then
+    Exit;
+  FLastProjectDir := ProjectDir;
+
+  if TerminalSettings.AutoCdMode = 1 then
+  begin
+    // All tabs
+    for I := 0 to FPageControl.PageCount - 1 do
+      if FPageControl.Pages[I].ControlCount > 0 then
+        if FPageControl.Pages[I].Controls[0] is TframeCmdShell then
+          TframeCmdShell(FPageControl.Pages[I].Controls[0]).SetWorkingDirectory(ProjectDir);
+  end
+  else
+  begin
+    // Active tab only
+    if (FPageControl.ActivePage <> nil) and (FPageControl.ActivePage.ControlCount > 0) then
+      if FPageControl.ActivePage.Controls[0] is TframeCmdShell then
+        TframeCmdShell(FPageControl.ActivePage.Controls[0]).SetWorkingDirectory(ProjectDir);
+  end;
 end;
 
 procedure TfrmradTerminalDock.HandleFormClose(Sender: TObject; var Action: TCloseAction);
