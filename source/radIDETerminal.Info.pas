@@ -3,7 +3,7 @@ unit radIDETerminal.Info;
 interface
 
 const
-  Version = '0.1.1.0';
+  Version = '0.1.2.0';
 
 implementation
 

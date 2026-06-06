@@ -4,4 +4,32 @@
 # dev-automation-tooling script & document reference1: C:\code\dev-automation-tooling
 
 ---
+Title: Demo VCL app with tabbed CMD shell
+Issue: #1
+Status: closed
+Labels: enhancement
+Body:
+Create the standalone demo VCL application (`projects/demo-vcl/`) with a
+main form containing a TPageControl. The first tab page is named "CMD Shell"
+and hosts an interactive CMD session.
+
+Implementation notes:
+- Create the demo VCL project (.dpr, .dproj, main form)
+- Main form has a TPageControl docked to fill the client area
+- First tab: "CMD Shell"
+- Launch `cmd.exe` with working directory set to the .exe's folder
+- Redirect stdin/stdout/stderr via pipes
+- Display console output in a scrollable control (TMemo or TRichEdit)
+- Provide an input mechanism for typing commands
+- The CMD process should stay alive across commands (persistent session)
+
+Acceptance criteria:
+- [ ] Demo VCL app builds and runs standalone
+- [ ] Main form displays a tab control with a "CMD Shell" tab
+- [ ] CMD shell starts automatically in the .exe's directory
+- [ ] User can type commands and see output
+- [ ] Session persists across commands (e.g. `cd ..` changes the working directory for subsequent commands)
+- [ ] Core functionality is unit-tested where possible
+
+---
 
