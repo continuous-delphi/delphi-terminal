@@ -32,4 +32,50 @@ Acceptance criteria:
 - [ ] Core functionality is unit-tested where possible
 
 ---
+Title: Add PowerShell tab to demo VCL app
+Issue: #2
+Status: closed
+Labels: enhancement
+Body:
+Add a second tab to the demo VCL application for an interactive PowerShell
+session, reusing the existing `TCmdShellProcess` and `TframeCmdShell`
+infrastructure.
+
+Implementation notes:
+- Add a "PowerShell" tab to the TPageControl in the main form
+- Launch `pwsh.exe` (or `powershell.exe` fallback) instead of `cmd.exe`
+- Refactor `TCmdShellProcess` or `TframeCmdShell` as needed to accept a
+  configurable shell executable
+- PowerShell session should start in the .exe's directory
+- Persistent session across commands, same as CMD tab
+
+Acceptance criteria:
+- [ ] Second tab labeled "PowerShell" appears in the demo app
+- [ ] PowerShell starts automatically and displays its banner
+- [ ] User can type PowerShell commands and see output
+- [ ] Session persists across commands
+- [ ] CMD tab continues to work as before
+- [ ] Unit tests cover PowerShell shell variant
+
+---
+Title: Add legacy PowerShell (powershell.exe) tab to demo VCL app
+Issue: #3
+Status: closed
+Labels: enhancement
+Body:
+Add a third tab to the demo VCL application for a legacy Windows PowerShell
+(powershell.exe) session, alongside the existing CMD and pwsh tabs.
+
+Implementation notes:
+- Add a "PowerShell" tab launching `powershell.exe`
+- Distinct from the "pwsh" tab which launches PowerShell 7+
+- Reuses the same TCmdShellProcess/TframeCmdShell infrastructure
+
+Acceptance criteria:
+- [ ] Third tab labeled "PowerShell" appears in the demo app
+- [ ] Legacy Windows PowerShell starts and displays its banner
+- [ ] User can type commands and see output
+- [ ] Unit tests cover powershell.exe variant
+
+---
 
