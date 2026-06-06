@@ -1,4 +1,15 @@
-# radTerminal
+<p align="left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)"  srcset="assets/radterminal-logo-reversed.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/radterminal-logo.svg">
+    <img alt="radTerminal" src="docs/radterminal-logo.svg" width="420">
+  </picture>
+</p>
+
+[![Delphi](https://img.shields.io/badge/delphi-red)](https://www.embarcadero.com/products/delphi)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/continuous-delphi/delphi-lexer)
+[![RAD Programmer](https://img.shields.io/badge/org-radProgrammer-red)](https://github.com/radprogrammer)
 
 Dockable terminal panel for **RAD Studio**. Run CMD, PowerShell 7 (pwsh),
 and legacy PowerShell sessions directly inside the IDE.
