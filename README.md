@@ -70,3 +70,24 @@ and command history.
 1. Open `projects/ide-plugin/radTerminalPlugin.dpr` in RAD Studio
 2. Right-click the project in Project Manager > **Install**
 3. Access via **View > radTerminal**
+
+## Usage
+
+After installing, use the `View` menu and select `radTerminal`
+Dock the form as desired and optionally save Desktop setting.
+
+Screenshot:
+
+![radTerminal ScreenShot](assets/screenshot1.png)
+
+---
+
+<div align="center">
+<a href="https://www.embarcadero.com/products/delphi" target="_blank">
+  <img src="https://www.embarcadero.com/images/logos/delphi-logo-128.webp"
+       alt="Modern Delphi Logo"
+       width="64" />
+</a>
+<br/>
+Built with Delphi
+</div>
