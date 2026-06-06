@@ -1,4 +1,4 @@
-unit radIDETerminal.CmdShell;
+unit radTerminal.CmdShell;
 
 interface
 

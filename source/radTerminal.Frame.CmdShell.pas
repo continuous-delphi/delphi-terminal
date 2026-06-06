@@ -1,11 +1,11 @@
-unit radIDETerminal.Frame.CmdShell;
+unit radTerminal.Frame.CmdShell;
 
 interface
 
 uses
   System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages,
   Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons,
-  radIDETerminal.CmdShell, radIDETerminal.CommandHistory;
+  radTerminal.CmdShell, radTerminal.CommandHistory;
 
 type
   TRequestPathEvent = procedure(Sender: TObject; var APath: string) of object;

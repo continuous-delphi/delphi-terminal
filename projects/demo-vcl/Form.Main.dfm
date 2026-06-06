@@ -1,7 +1,7 @@
 object frmMain: TfrmMain
   Left = 0
   Top = 0
-  Caption = 'radIDETerminal Demo'
+  Caption = 'radTerminal Demo'
   ClientHeight = 600
   ClientWidth = 800
   Color = clBtnFace

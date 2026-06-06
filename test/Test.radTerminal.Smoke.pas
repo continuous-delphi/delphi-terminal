@@ -1,4 +1,4 @@
-unit Test.radIDETerminal.Smoke;
+unit Test.radTerminal.Smoke;
 
 interface
 

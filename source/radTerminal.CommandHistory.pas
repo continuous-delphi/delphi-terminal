@@ -1,4 +1,4 @@
-unit radIDETerminal.CommandHistory;
+unit radTerminal.CommandHistory;
 
 interface
 

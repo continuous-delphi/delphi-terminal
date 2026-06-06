@@ -4,7 +4,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, Vcl.Controls, Vcl.Forms, Vcl.ComCtrls,
-  radIDETerminal.Frame.CmdShell;
+  radTerminal.Frame.CmdShell;
 
 type
   TfrmMain = class(TForm)

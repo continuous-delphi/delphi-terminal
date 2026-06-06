@@ -1,11 +1,11 @@
-unit Test.radIDETerminal.CmdShell;
+unit Test.radTerminal.CmdShell;
 
 interface
 
 uses
   DUnitX.TestFramework,
   System.SysUtils, System.Classes,
-  radIDETerminal.CmdShell;
+  radTerminal.CmdShell;
 
 type
 

@@ -1,5 +1,5 @@
-# Tickets for the radIDETerminal project
-# Repo remote url: https://github.com/radprogrammer/radIDETerminal
+# Tickets for the radTerminal project
+# Repo remote url: https://github.com/radprogrammer/radTerminal
 # File used by create-github-issues.ps1
 # dev-automation-tooling script & document reference1: C:\code\dev-automation-tooling
 

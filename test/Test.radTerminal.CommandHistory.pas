@@ -1,10 +1,10 @@
-unit Test.radIDETerminal.CommandHistory;
+unit Test.radTerminal.CommandHistory;
 
 interface
 
 uses
   DUnitX.TestFramework,
-  radIDETerminal.CommandHistory;
+  radTerminal.CommandHistory;
 
 type
 

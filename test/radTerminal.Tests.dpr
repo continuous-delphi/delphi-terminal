@@ -1,4 +1,4 @@
-program radIDETerminal.Tests;
+program radTerminal.Tests;
 
 //--- Begin ConsoleProject template changes
 (*
@@ -30,11 +30,11 @@ uses
   DUnitX.Loggers.Console,
   {$ENDIF }
   DUnitX.TestFramework,
-  Test.radIDETerminal.Smoke in 'Test.radIDETerminal.Smoke.pas',
-  Test.radIDETerminal.CmdShell in 'Test.radIDETerminal.CmdShell.pas',
-  Test.radIDETerminal.CommandHistory in 'Test.radIDETerminal.CommandHistory.pas',
-  radIDETerminal.CmdShell in '..\source\radIDETerminal.CmdShell.pas',
-  radIDETerminal.CommandHistory in '..\source\radIDETerminal.CommandHistory.pas';
+  Test.radTerminal.Smoke in 'Test.radTerminal.Smoke.pas',
+  Test.radTerminal.CmdShell in 'Test.radTerminal.CmdShell.pas',
+  Test.radTerminal.CommandHistory in 'Test.radTerminal.CommandHistory.pas',
+  radTerminal.CmdShell in '..\source\radTerminal.CmdShell.pas',
+  radTerminal.CommandHistory in '..\source\radTerminal.CommandHistory.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}
