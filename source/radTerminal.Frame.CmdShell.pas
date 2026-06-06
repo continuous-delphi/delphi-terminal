@@ -15,6 +15,7 @@ type
     FPanelToolbar: TPanel;
     FBtnProjectDir: TSpeedButton;
     FBtnFileDir: TSpeedButton;
+    FBtnClear: TSpeedButton;
     FRichOutput: TRichEdit;
     FPanelInput: TPanel;
     FCmdLabel: TEdit;
@@ -33,6 +34,7 @@ type
     procedure HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleProjectDirClick(Sender: TObject);
     procedure HandleFileDirClick(Sender: TObject);
+    procedure HandleClearClick(Sender: TObject);
     procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
     procedure TrimOutput;
     procedure BuildControls;
@@ -46,6 +48,7 @@ type
     procedure StopShell;
 
     procedure SetWorkingDirectory(const APath: string);
+    procedure ClearOutput;
     procedure FocusInput;
 
     property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
@@ -105,6 +108,14 @@ begin
   FBtnFileDir.Caption := 'File Dir';
   FBtnFileDir.Flat := True;
   FBtnFileDir.OnClick := HandleFileDirClick;
+
+  FBtnClear := TSpeedButton.Create(Self);
+  FBtnClear.Parent := FPanelToolbar;
+  FBtnClear.Align := alLeft;
+  FBtnClear.Width := 45;
+  FBtnClear.Caption := 'Clear';
+  FBtnClear.Flat := True;
+  FBtnClear.OnClick := HandleClearClick;
 
   FPanelInput := TPanel.Create(Self);
   FPanelInput.Parent := Self;
@@ -357,7 +368,12 @@ begin
   else if (Key = VK_TAB) and (ssCtrl in Shift) then
     CycleTab(not (ssShift in Shift))
   else if (ssCtrl in Shift) and (Key in [Ord('1')..Ord('9')]) then
-    SwitchToTab(Key - Ord('1'));
+    SwitchToTab(Key - Ord('1'))
+  else if (Key = Ord('L')) and (ssCtrl in Shift) then
+  begin
+    ClearOutput;
+    Key := 0;
+  end;
 end;
 
 procedure TframeCmdShell.HandleProjectDirClick(Sender: TObject);
@@ -397,6 +413,17 @@ begin
 //  FRichOutput.SelStart := FRichOutput.GetTextLen;
 //  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
   SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+end;
+
+procedure TframeCmdShell.HandleClearClick(Sender: TObject);
+begin
+  ClearOutput;
+end;
+
+procedure TframeCmdShell.ClearOutput;
+begin
+  FRichOutput.Clear;
+  FAnsiParser.Reset;
 end;
 
 procedure TframeCmdShell.FocusInput;

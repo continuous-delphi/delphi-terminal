@@ -313,6 +313,7 @@ Acceptance criteria:
 ---
 Title: Clear terminal output with Ctrl+L and Clear button
 Issue: #13
+Status: closed
 Labels: enhancement
 Body:
 Add a way to clear the terminal output without restarting the shell process.
