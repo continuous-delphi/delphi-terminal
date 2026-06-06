@@ -153,7 +153,9 @@ begin
       Block := Block + P + #0;
       Inc(P, StrLen(P) + 1);
     end;
+    {$IFDEF ENV_NO_COLOR}
     Block := Block + 'NO_COLOR=1' + #0;
+    {$ENDIF}
     Block := Block + #0;
     Result := TEncoding.Unicode.GetBytes(Block);
   finally

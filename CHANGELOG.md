@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radTerminal
 
 ---
 
+## v0.3.8.0
+- ANSI escape code rendering: replace TMemo with TRichEdit, parse SGR sequences for colored terminal output
+[#4](https://github.com/radprogrammer/radTerminal/issues/4)
+
 ## v0.3.7.0
 - Working directory shortcuts: toolbar with Project Dir / File Dir buttons and directory label
 [#9](https://github.com/radprogrammer/radTerminal/issues/9)

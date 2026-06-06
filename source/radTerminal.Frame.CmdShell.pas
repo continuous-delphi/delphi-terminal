@@ -4,8 +4,8 @@ interface
 
 uses
   System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages,
-  Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons,
-  radTerminal.CmdShell, radTerminal.CommandHistory;
+  Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons, Vcl.ComCtrls,
+  radTerminal.CmdShell, radTerminal.CommandHistory, radTerminal.AnsiParser;
 
 type
   TRequestPathEvent = procedure(Sender: TObject; var APath: string) of object;
@@ -15,11 +15,12 @@ type
     FPanelToolbar: TPanel;
     FBtnProjectDir: TSpeedButton;
     FBtnFileDir: TSpeedButton;
-    FMemoOutput: TMemo;
+    FRichOutput: TRichEdit;
     FPanelInput: TPanel;
     FEditInput: TEdit;
     FCmdShell: TCmdShellProcess;
     FHistory: TCommandHistory;
+    FAnsiParser: TAnsiParser;
     FShellExe: string;
     FWorkDir: string;
     FOnRequestProjectDir: TRequestPathEvent;
@@ -30,6 +31,8 @@ type
     procedure HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleProjectDirClick(Sender: TObject);
     procedure HandleFileDirClick(Sender: TObject);
+    procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
+    procedure TrimOutput;
     procedure BuildControls;
   public
     constructor Create(AOwner: TComponent); override;
@@ -50,6 +53,7 @@ begin
   inherited;
   BuildControls;
   FHistory := TCommandHistory.Create;
+  FAnsiParser := TAnsiParser.Create;
   FCmdShell := TCmdShellProcess.Create;
   FCmdShell.OnOutput := HandleOutput;
   FCmdShell.OnProcessExit := HandleProcessExit;
@@ -58,6 +62,7 @@ end;
 destructor TframeCmdShell.Destroy;
 begin
   FCmdShell.Free;
+  FAnsiParser.Free;
   FHistory.Free;
   inherited;
 end;
@@ -101,31 +106,97 @@ begin
   FEditInput.Parent := FPanelInput;
   FEditInput.Align := alClient;
   FEditInput.Font.Name := 'Consolas';
-  FEditInput.Font.Size := 11;
+  FEditInput.Font.Size := 12;
   FEditInput.Font.Color := clLime;
   FEditInput.Color := clBlack;
   FEditInput.OnKeyPress := HandleInputKeyPress;
   FEditInput.OnKeyDown := HandleInputKeyDown;
   FEditInput.BorderStyle := bsNone;
 
-  FMemoOutput := TMemo.Create(Self);
-  FMemoOutput.Parent := Self;
-  FMemoOutput.Align := alClient;
-  FMemoOutput.Font.Name := 'Consolas';
-  FMemoOutput.Font.Size := 10;
-  FMemoOutput.Font.Color := clLime;
-  FMemoOutput.Color := clBlack;
-  FMemoOutput.ReadOnly := True;
-  FMemoOutput.ScrollBars := ssBoth;
-  FMemoOutput.WordWrap := False;
-  FMemoOutput.WantReturns := False;
+  FRichOutput := TRichEdit.Create(Self);
+  FRichOutput.Parent := Self;
+  FRichOutput.Align := alClient;
+  FRichOutput.Font.Name := 'Consolas';
+  FRichOutput.Font.Size := 12;
+  FRichOutput.Font.Color := clLime;
+  FRichOutput.Color := clBlack;
+  FRichOutput.ReadOnly := True;
+  FRichOutput.ScrollBars := ssBoth;
+  FRichOutput.WordWrap := False;
+  FRichOutput.WantReturns := False;
+  FRichOutput.PlainText := False;
 end;
 
 procedure TframeCmdShell.HandleOutput(Sender: TObject; const AText: string);
+var
+  Segments: TArray<TAnsiSegment>;
+  Seg: TAnsiSegment;
 begin
-  FMemoOutput.Perform(EM_SETSEL, WPARAM(-1), LPARAM(-1));
-  FMemoOutput.Perform(EM_REPLACESEL, 0, LPARAM(PChar(AText)));
-  FMemoOutput.Perform(EM_SCROLLCARET, 0, 0);
+  Segments := FAnsiParser.Parse(AText);
+  SendMessage(FRichOutput.Handle, WM_SETREDRAW, 0, 0);
+  try
+    for Seg in Segments do
+    begin
+      FRichOutput.SelStart := FRichOutput.GetTextLen;
+      FRichOutput.SelLength := 0;
+      ApplySegmentFormat(Seg.Attr);
+      FRichOutput.SelText := Seg.Text;
+    end;
+  finally
+    SendMessage(FRichOutput.Handle, WM_SETREDRAW, 1, 0);
+    InvalidateRect(FRichOutput.Handle, nil, True);
+  end;
+  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
+  TrimOutput;
+end;
+
+procedure TframeCmdShell.ApplySegmentFormat(const AAttr: TAnsiAttributes);
+const
+  AnsiColorMap: array[TAnsiColor] of TColor = (
+    clLime,      // acDefault -- terminal green
+    clBlack,     // acBlack
+    $0000CC,     // acRed
+    $00CC00,     // acGreen
+    $00CCCC,     // acYellow
+    $FF4444,     // acBlue (brightened for readability on black)
+    $CC00CC,     // acMagenta
+    $CCCC00,     // acCyan
+    $C0C0C0,     // acWhite
+    $808080,     // acBrightBlack
+    $0000FF,     // acBrightRed
+    $00FF00,     // acBrightGreen
+    $00FFFF,     // acBrightYellow
+    $FF7755,     // acBrightBlue
+    $FF00FF,     // acBrightMagenta
+    $FFFF00,     // acBrightCyan
+    clWhite      // acBrightWhite
+  );
+begin
+  FRichOutput.SelAttributes.Color := AnsiColorMap[AAttr.ForeColor];
+  if asBold in AAttr.Style then
+    FRichOutput.SelAttributes.Style := FRichOutput.SelAttributes.Style + [fsBold]
+  else
+    FRichOutput.SelAttributes.Style := FRichOutput.SelAttributes.Style - [fsBold];
+  if asUnderline in AAttr.Style then
+    FRichOutput.SelAttributes.Style := FRichOutput.SelAttributes.Style + [fsUnderline]
+  else
+    FRichOutput.SelAttributes.Style := FRichOutput.SelAttributes.Style - [fsUnderline];
+end;
+
+procedure TframeCmdShell.TrimOutput;
+const
+  MaxLen = 500000;
+  TrimLen = 125000;
+var
+  Len: Integer;
+begin
+  Len := FRichOutput.GetTextLen;
+  if Len > MaxLen then
+  begin
+    FRichOutput.SelStart := 0;
+    FRichOutput.SelLength := TrimLen;
+    FRichOutput.SelText := '';
+  end;
 end;
 
 procedure TframeCmdShell.HandleProcessExit(Sender: TObject);
@@ -145,7 +216,8 @@ begin
     begin
       FEditInput.ReadOnly := False;
       FEditInput.TextHint := '';
-      FMemoOutput.Text := '';
+      FRichOutput.Clear;
+      FAnsiParser.Reset;
       StartShell(FShellExe, FWorkDir);
       Exit;
     end;
@@ -209,10 +281,15 @@ begin
 end;
 
 procedure TframeCmdShell.StartShell(const AShellExe: string; const AWorkDir: string);
+var
+  Lower: string;
 begin
   FShellExe := AShellExe;
   FWorkDir := AWorkDir;
   FCmdShell.Start(AShellExe, AWorkDir);
+  Lower := LowerCase(ExtractFileName(AShellExe));
+  if Lower.Contains('pwsh') then
+    FCmdShell.SendCommand('$PSStyle.OutputRendering = ''Ansi''');
 end;
 
 procedure TframeCmdShell.StopShell;

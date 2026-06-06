@@ -80,6 +80,7 @@ Acceptance criteria:
 ---
 Title: ANSI escape code rendering in terminal output
 Issue: #4
+Status: closed
 Labels: enhancement
 Body:
 pwsh and other modern CLI tools emit VT100/ANSI escape sequences for colored
