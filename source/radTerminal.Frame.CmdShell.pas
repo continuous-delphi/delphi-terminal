@@ -68,6 +68,11 @@ begin
 end;
 
 procedure TframeCmdShell.BuildControls;
+const
+  TerminalBg = $0C0C0C;   // Campbell background #0C0C0C
+  TerminalFg = $CCCCCC;   // Campbell foreground #CCCCCC
+  TerminalFont = 'Cascadia Mono';
+  TerminalFontSize = 12;
 begin
   FPanelToolbar := TPanel.Create(Self);
   FPanelToolbar.Parent := Self;
@@ -99,16 +104,16 @@ begin
   FPanelInput.Padding.Top := 5;
   FPanelInput.BevelOuter := bvNone;
   FPanelInput.Caption := '';
-  FPanelInput.Color := clBlack;
+  FPanelInput.Color := TerminalBg;
   FPanelInput.ParentBackground := False;
 
   FEditInput := TEdit.Create(Self);
   FEditInput.Parent := FPanelInput;
   FEditInput.Align := alClient;
-  FEditInput.Font.Name := 'Consolas';
-  FEditInput.Font.Size := 12;
-  FEditInput.Font.Color := clLime;
-  FEditInput.Color := clBlack;
+  FEditInput.Font.Name := TerminalFont;
+  FEditInput.Font.Size := TerminalFontSize;
+  FEditInput.Font.Color := TerminalFg;
+  FEditInput.Color := TerminalBg;
   FEditInput.OnKeyPress := HandleInputKeyPress;
   FEditInput.OnKeyDown := HandleInputKeyDown;
   FEditInput.BorderStyle := bsNone;
@@ -116,10 +121,12 @@ begin
   FRichOutput := TRichEdit.Create(Self);
   FRichOutput.Parent := Self;
   FRichOutput.Align := alClient;
-  FRichOutput.Font.Name := 'Consolas';
-  FRichOutput.Font.Size := 12;
-  FRichOutput.Font.Color := clLime;
-  FRichOutput.Color := clBlack;
+  FRichOutput.Font.Name := TerminalFont;
+  FRichOutput.Font.Size := TerminalFontSize;
+  FRichOutput.Font.Color := TerminalFg;
+  FRichOutput.Font.Quality := fqAntialiased;
+  FRichOutput.Color := TerminalBg;
+  FRichOutput.ParentColor := False;
   FRichOutput.ReadOnly := True;
   FRichOutput.ScrollBars := ssBoth;
   FRichOutput.WordWrap := False;
@@ -152,24 +159,25 @@ end;
 
 procedure TframeCmdShell.ApplySegmentFormat(const AAttr: TAnsiAttributes);
 const
+  // Windows Terminal "Campbell" palette (default)
   AnsiColorMap: array[TAnsiColor] of TColor = (
-    clLime,      // acDefault -- terminal green
-    clBlack,     // acBlack
-    $0000CC,     // acRed
-    $00CC00,     // acGreen
-    $00CCCC,     // acYellow
-    $FF4444,     // acBlue (brightened for readability on black)
-    $CC00CC,     // acMagenta
-    $CCCC00,     // acCyan
-    $C0C0C0,     // acWhite
-    $808080,     // acBrightBlack
-    $0000FF,     // acBrightRed
-    $00FF00,     // acBrightGreen
-    $00FFFF,     // acBrightYellow
-    $FF7755,     // acBrightBlue
-    $FF00FF,     // acBrightMagenta
-    $FFFF00,     // acBrightCyan
-    clWhite      // acBrightWhite
+    $CCCCCC,     // acDefault -- Campbell foreground #CCCCCC
+    $000000,     // acBlack
+    $1F0FC5,     // acRed         #C50F1F
+    $0EA113,     // acGreen       #13A10E
+    $009CC1,     // acYellow      #C19C00
+    $DA3700,     // acBlue        #0037DA
+    $981788,     // acMagenta     #881798
+    $DD963A,     // acCyan        #3A96DD
+    $CCCCCC,     // acWhite       #CCCCCC
+    $767676,     // acBrightBlack #767676
+    $5648E7,     // acBrightRed   #E74856
+    $0CC616,     // acBrightGreen #16C60C
+    $A5F1F9,     // acBrightYellow #F9F1A5
+    $FF783B,     // acBrightBlue  #3B78FF
+    $9E00B4,     // acBrightMagenta #B4009E
+    $D6D661,     // acBrightCyan  #61D6D6
+    $F2F2F2      // acBrightWhite #F2F2F2
   );
 begin
   FRichOutput.SelAttributes.Color := AnsiColorMap[AAttr.ForeColor];
