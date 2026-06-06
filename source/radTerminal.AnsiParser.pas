@@ -19,6 +19,10 @@ type
     ForeColor: TAnsiColor;
     BackColor: TAnsiColor;
     Style: TAnsiStyle;
+    UseExtForeColor: Boolean;
+    UseExtBackColor: Boolean;
+    ExtForeColor: Integer;  // BGR color value when UseExtForeColor is True
+    ExtBackColor: Integer;  // BGR color value when UseExtBackColor is True
     procedure Reset;
   end;
 
@@ -50,6 +54,7 @@ type
   private
     FCurrentAttr: TAnsiAttributes;
     FPartialSeq: string;
+    class function Color256ToBGR(AIndex: Integer): Integer; static;
     procedure ApplySGR(const AParams: string);
   public
     constructor Create;
@@ -67,6 +72,10 @@ begin
   ForeColor := acDefault;
   BackColor := acDefault;
   Style := [];
+  UseExtForeColor := False;
+  UseExtBackColor := False;
+  ExtForeColor := 0;
+  ExtBackColor := 0;
 end;
 
 { TAnsiParser }
@@ -84,10 +93,39 @@ begin
   FPartialSeq := '';
 end;
 
+class function TAnsiParser.Color256ToBGR(AIndex: Integer): Integer;
+const
+  // Standard 16 colors (indices 0-15) in BGR
+  Base16: array[0..15] of Integer = (
+    $000000, $0000AA, $00AA00, $00AAAA, $AA0000, $AA00AA, $AA5500, $AAAAAA,
+    $555555, $5555FF, $55FF55, $55FFFF, $FF5555, $FF55FF, $55FFFF, $FFFFFF
+  );
+var
+  R, G, B, Gray: Integer;
+begin
+  if AIndex < 16 then
+    Result := Base16[AIndex]
+  else if AIndex < 232 then
+  begin
+    // 6x6x6 color cube (indices 16-231)
+    AIndex := AIndex - 16;
+    B := (AIndex mod 6) * 51;
+    G := ((AIndex div 6) mod 6) * 51;
+    R := (AIndex div 36) * 51;
+    Result := B shl 16 or G shl 8 or R;
+  end
+  else
+  begin
+    // Grayscale ramp (indices 232-255): 8, 18, 28, ..., 238
+    Gray := (AIndex - 232) * 10 + 8;
+    Result := Gray shl 16 or Gray shl 8 or Gray;
+  end;
+end;
+
 procedure TAnsiParser.ApplySGR(const AParams: string);
 var
   Parts: TArray<string>;
-  I, Code: Integer;
+  I, Code, Sub, N, R, G, B: Integer;
 begin
   if AParams = '' then
   begin
@@ -106,40 +144,80 @@ begin
       4: Include(FCurrentAttr.Style, asUnderline);
       22: Exclude(FCurrentAttr.Style, asBold);
       24: Exclude(FCurrentAttr.Style, asUnderline);
-      30: FCurrentAttr.ForeColor := acBlack;
-      31: FCurrentAttr.ForeColor := acRed;
-      32: FCurrentAttr.ForeColor := acGreen;
-      33: FCurrentAttr.ForeColor := acYellow;
-      34: FCurrentAttr.ForeColor := acBlue;
-      35: FCurrentAttr.ForeColor := acMagenta;
-      36: FCurrentAttr.ForeColor := acCyan;
-      37: FCurrentAttr.ForeColor := acWhite;
-      39: FCurrentAttr.ForeColor := acDefault;
-      40: FCurrentAttr.BackColor := acBlack;
-      41: FCurrentAttr.BackColor := acRed;
-      42: FCurrentAttr.BackColor := acGreen;
-      43: FCurrentAttr.BackColor := acYellow;
-      44: FCurrentAttr.BackColor := acBlue;
-      45: FCurrentAttr.BackColor := acMagenta;
-      46: FCurrentAttr.BackColor := acCyan;
-      47: FCurrentAttr.BackColor := acWhite;
-      49: FCurrentAttr.BackColor := acDefault;
-      90: FCurrentAttr.ForeColor := acBrightBlack;
-      91: FCurrentAttr.ForeColor := acBrightRed;
-      92: FCurrentAttr.ForeColor := acBrightGreen;
-      93: FCurrentAttr.ForeColor := acBrightYellow;
-      94: FCurrentAttr.ForeColor := acBrightBlue;
-      95: FCurrentAttr.ForeColor := acBrightMagenta;
-      96: FCurrentAttr.ForeColor := acBrightCyan;
-      97: FCurrentAttr.ForeColor := acBrightWhite;
-      100: FCurrentAttr.BackColor := acBrightBlack;
-      101: FCurrentAttr.BackColor := acBrightRed;
-      102: FCurrentAttr.BackColor := acBrightGreen;
-      103: FCurrentAttr.BackColor := acBrightYellow;
-      104: FCurrentAttr.BackColor := acBrightBlue;
-      105: FCurrentAttr.BackColor := acBrightMagenta;
-      106: FCurrentAttr.BackColor := acBrightCyan;
-      107: FCurrentAttr.BackColor := acBrightWhite;
+      30: begin FCurrentAttr.ForeColor := acBlack; FCurrentAttr.UseExtForeColor := False; end;
+      31: begin FCurrentAttr.ForeColor := acRed; FCurrentAttr.UseExtForeColor := False; end;
+      32: begin FCurrentAttr.ForeColor := acGreen; FCurrentAttr.UseExtForeColor := False; end;
+      33: begin FCurrentAttr.ForeColor := acYellow; FCurrentAttr.UseExtForeColor := False; end;
+      34: begin FCurrentAttr.ForeColor := acBlue; FCurrentAttr.UseExtForeColor := False; end;
+      35: begin FCurrentAttr.ForeColor := acMagenta; FCurrentAttr.UseExtForeColor := False; end;
+      36: begin FCurrentAttr.ForeColor := acCyan; FCurrentAttr.UseExtForeColor := False; end;
+      37: begin FCurrentAttr.ForeColor := acWhite; FCurrentAttr.UseExtForeColor := False; end;
+      39: begin FCurrentAttr.ForeColor := acDefault; FCurrentAttr.UseExtForeColor := False; end;
+      40: begin FCurrentAttr.BackColor := acBlack; FCurrentAttr.UseExtBackColor := False; end;
+      41: begin FCurrentAttr.BackColor := acRed; FCurrentAttr.UseExtBackColor := False; end;
+      42: begin FCurrentAttr.BackColor := acGreen; FCurrentAttr.UseExtBackColor := False; end;
+      43: begin FCurrentAttr.BackColor := acYellow; FCurrentAttr.UseExtBackColor := False; end;
+      44: begin FCurrentAttr.BackColor := acBlue; FCurrentAttr.UseExtBackColor := False; end;
+      45: begin FCurrentAttr.BackColor := acMagenta; FCurrentAttr.UseExtBackColor := False; end;
+      46: begin FCurrentAttr.BackColor := acCyan; FCurrentAttr.UseExtBackColor := False; end;
+      47: begin FCurrentAttr.BackColor := acWhite; FCurrentAttr.UseExtBackColor := False; end;
+      49: begin FCurrentAttr.BackColor := acDefault; FCurrentAttr.UseExtBackColor := False; end;
+      38, 48:
+      begin
+        // Extended color: 38;5;N (256-color) or 38;2;R;G;B (RGB)
+        if I + 1 < Length(Parts) then
+        begin
+          Sub := StrToIntDef(Parts[I + 1], 0);
+          if (Sub = 5) and (I + 2 < Length(Parts)) then
+          begin
+            N := StrToIntDef(Parts[I + 2], 0);
+            if Code = 38 then
+            begin
+              FCurrentAttr.UseExtForeColor := True;
+              FCurrentAttr.ExtForeColor := Color256ToBGR(N);
+            end
+            else
+            begin
+              FCurrentAttr.UseExtBackColor := True;
+              FCurrentAttr.ExtBackColor := Color256ToBGR(N);
+            end;
+            Inc(I, 2);
+          end
+          else if (Sub = 2) and (I + 4 < Length(Parts)) then
+          begin
+            R := StrToIntDef(Parts[I + 2], 0);
+            G := StrToIntDef(Parts[I + 3], 0);
+            B := StrToIntDef(Parts[I + 4], 0);
+            if Code = 38 then
+            begin
+              FCurrentAttr.UseExtForeColor := True;
+              FCurrentAttr.ExtForeColor := B shl 16 or G shl 8 or R;
+            end
+            else
+            begin
+              FCurrentAttr.UseExtBackColor := True;
+              FCurrentAttr.ExtBackColor := B shl 16 or G shl 8 or R;
+            end;
+            Inc(I, 4);
+          end;
+        end;
+      end;
+      90: begin FCurrentAttr.ForeColor := acBrightBlack; FCurrentAttr.UseExtForeColor := False; end;
+      91: begin FCurrentAttr.ForeColor := acBrightRed; FCurrentAttr.UseExtForeColor := False; end;
+      92: begin FCurrentAttr.ForeColor := acBrightGreen; FCurrentAttr.UseExtForeColor := False; end;
+      93: begin FCurrentAttr.ForeColor := acBrightYellow; FCurrentAttr.UseExtForeColor := False; end;
+      94: begin FCurrentAttr.ForeColor := acBrightBlue; FCurrentAttr.UseExtForeColor := False; end;
+      95: begin FCurrentAttr.ForeColor := acBrightMagenta; FCurrentAttr.UseExtForeColor := False; end;
+      96: begin FCurrentAttr.ForeColor := acBrightCyan; FCurrentAttr.UseExtForeColor := False; end;
+      97: begin FCurrentAttr.ForeColor := acBrightWhite; FCurrentAttr.UseExtForeColor := False; end;
+      100: begin FCurrentAttr.BackColor := acBrightBlack; FCurrentAttr.UseExtBackColor := False; end;
+      101: begin FCurrentAttr.BackColor := acBrightRed; FCurrentAttr.UseExtBackColor := False; end;
+      102: begin FCurrentAttr.BackColor := acBrightGreen; FCurrentAttr.UseExtBackColor := False; end;
+      103: begin FCurrentAttr.BackColor := acBrightYellow; FCurrentAttr.UseExtBackColor := False; end;
+      104: begin FCurrentAttr.BackColor := acBrightBlue; FCurrentAttr.UseExtBackColor := False; end;
+      105: begin FCurrentAttr.BackColor := acBrightMagenta; FCurrentAttr.UseExtBackColor := False; end;
+      106: begin FCurrentAttr.BackColor := acBrightCyan; FCurrentAttr.UseExtBackColor := False; end;
+      107: begin FCurrentAttr.BackColor := acBrightWhite; FCurrentAttr.UseExtBackColor := False; end;
     end;
     Inc(I);
   end;

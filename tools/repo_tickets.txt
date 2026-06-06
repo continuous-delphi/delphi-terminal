@@ -393,6 +393,7 @@ Acceptance criteria:
 ---
 Title: ANSI 256-color and RGB color support
 Issue: #16
+Status: closed
 Labels: enhancement
 Body:
 Extend the ANSI parser to support 256-color and 24-bit RGB color sequences

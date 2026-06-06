@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radTerminal
 
 ---
 
+## v0.6.8.0
+- ANSI 256-color and 24-bit RGB color support for foreground and background
+[#16](https://github.com/radprogrammer/radTerminal/issues/16)
+
 ## v0.5.8.0
 - Tab switching with Ctrl+Tab/Ctrl+Shift+Tab and Ctrl+1/2/3
 [#12](https://github.com/radprogrammer/radTerminal/issues/12)

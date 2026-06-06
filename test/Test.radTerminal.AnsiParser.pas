@@ -31,6 +31,14 @@ type
     [Test] procedure UnderlineAndClear;
     [Test] procedure ConsecutiveTextCoalesces;
     [Test] procedure QuestionMarkParamHandled;
+    [Test] procedure ExtColor256Foreground;
+    [Test] procedure ExtColor256Background;
+    [Test] procedure ExtColorRGBForeground;
+    [Test] procedure ExtColorRGBBackground;
+    [Test] procedure ExtColor256GrayscaleRamp;
+    [Test] procedure ExtColor256ColorCube;
+    [Test] procedure ExtColorResetClearsExtended;
+    [Test] procedure ExtColorStandardAfterExtended;
   end;
 
 implementation
@@ -199,7 +207,106 @@ begin
   Assert.AreEqual('AB', Segments[0].Text);
 end;
 
+procedure TTestAnsiParser.ExtColor256Foreground;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // ESC[38;5;196m = 256-color red (index 196)
+  Segments := FParser.Parse(#27'[38;5;196mColorText');
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.AreEqual('ColorText', Segments[0].Text);
+  Assert.IsTrue(Segments[0].Attr.UseExtForeColor);
+end;
+
+procedure TTestAnsiParser.ExtColor256Background;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // ESC[48;5;21m = 256-color background (index 21)
+  Segments := FParser.Parse(#27'[48;5;21mBgText');
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.IsTrue(Segments[0].Attr.UseExtBackColor);
+end;
+
+procedure TTestAnsiParser.ExtColorRGBForeground;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // ESC[38;2;255;128;0m = RGB orange
+  Segments := FParser.Parse(#27'[38;2;255;128;0mOrange');
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.AreEqual('Orange', Segments[0].Text);
+  Assert.IsTrue(Segments[0].Attr.UseExtForeColor);
+  // BGR: B=0, G=128, R=255 -> $00008000 or $80FF -> 0 shl 16 or 128 shl 8 or 255
+  Assert.AreEqual(128 shl 8 or 255, Segments[0].Attr.ExtForeColor);
+end;
+
+procedure TTestAnsiParser.ExtColorRGBBackground;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // ESC[48;2;0;255;0m = RGB green background
+  Segments := FParser.Parse(#27'[48;2;0;255;0mGreenBg');
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.IsTrue(Segments[0].Attr.UseExtBackColor);
+  // BGR: B=0, G=255, R=0 -> $00FF00
+  Assert.AreEqual($00FF00, Segments[0].Attr.ExtBackColor);
+end;
+
+procedure TTestAnsiParser.ExtColor256GrayscaleRamp;
+var
+  Segments: TArray<TAnsiSegment>;
+  Expected: Integer;
+begin
+  // Index 232 = first grayscale: gray level 8 -> BGR $080808
+  Segments := FParser.Parse(#27'[38;5;232mGray');
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.IsTrue(Segments[0].Attr.UseExtForeColor);
+  Expected := 8 shl 16 or 8 shl 8 or 8;
+  Assert.AreEqual(Expected, Segments[0].Attr.ExtForeColor);
+end;
+
+procedure TTestAnsiParser.ExtColor256ColorCube;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // Index 16 = first cube entry: R=0, G=0, B=0 -> $000000
+  Segments := FParser.Parse(#27'[38;5;16mBlack');
+  Assert.IsTrue(Segments[0].Attr.UseExtForeColor);
+  Assert.AreEqual(0, Segments[0].Attr.ExtForeColor);
+
+  // Index 21 = R=0, G=0, B=255 -> BGR $FF0000
+  Segments := FParser.Parse(#27'[38;5;21mBlue');
+  Assert.IsTrue(Segments[0].Attr.UseExtForeColor);
+  Assert.AreEqual(255 shl 16, Segments[0].Attr.ExtForeColor);
+end;
+
+procedure TTestAnsiParser.ExtColorResetClearsExtended;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // Set extended color, then reset
+  Segments := FParser.Parse(#27'[38;5;196mRed'#27'[0mNormal');
+  Assert.AreEqual(NativeInt(2), Length(Segments));
+  Assert.IsTrue(Segments[0].Attr.UseExtForeColor);
+  Assert.IsFalse(Segments[1].Attr.UseExtForeColor);
+  Assert.IsTrue(Segments[1].Attr.ForeColor = acDefault);
+end;
+
+procedure TTestAnsiParser.ExtColorStandardAfterExtended;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // Set extended color, then standard color should clear extended
+  Segments := FParser.Parse(#27'[38;5;196mExt'#27'[32mStd');
+  Assert.AreEqual(NativeInt(2), Length(Segments));
+  Assert.IsTrue(Segments[0].Attr.UseExtForeColor);
+  Assert.IsFalse(Segments[1].Attr.UseExtForeColor);
+  Assert.IsTrue(Segments[1].Attr.ForeColor = acGreen);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TTestAnsiParser);
 
 end.
+

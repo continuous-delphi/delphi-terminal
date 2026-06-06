@@ -220,7 +220,10 @@ const
     $F2F2F2      // acBrightWhite #F2F2F2
   );
 begin
-  FRichOutput.SelAttributes.Color := AnsiColorMap[AAttr.ForeColor];
+  if AAttr.UseExtForeColor then
+    FRichOutput.SelAttributes.Color := TColor(AAttr.ExtForeColor)
+  else
+    FRichOutput.SelAttributes.Color := AnsiColorMap[AAttr.ForeColor];
   if asBold in AAttr.Style then
     FRichOutput.SelAttributes.Style := FRichOutput.SelAttributes.Style + [fsBold]
   else
