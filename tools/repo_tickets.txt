@@ -180,6 +180,7 @@ Acceptance criteria:
 ---
 Title: IDE plugin skeleton with dockable form
 Issue: #8
+Status: closed
 Labels: enhancement
 Body:
 Create the minimal RAD Studio IDE plugin (BPL package) in

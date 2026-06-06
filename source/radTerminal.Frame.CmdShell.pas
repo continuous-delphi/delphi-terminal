@@ -25,6 +25,7 @@ type
     FWorkDir: string;
     FOnRequestProjectDir: TRequestPathEvent;
     FOnRequestFileDir: TRequestPathEvent;
+
     procedure HandleOutput(Sender: TObject; const AText: string);
     procedure HandleProcessExit(Sender: TObject);
     procedure HandleInputKeyPress(Sender: TObject; var Key: Char);
@@ -37,9 +38,12 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     procedure StartShell(const AShellExe: string; const AWorkDir: string = '');
     procedure StopShell;
+
     procedure SetWorkingDirectory(const APath: string);
+
     property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
     property OnRequestFileDir: TRequestPathEvent read FOnRequestFileDir write FOnRequestFileDir;
   end;
@@ -155,6 +159,8 @@ begin
   end;
   SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
   TrimOutput;
+
+  SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
 procedure TframeCmdShell.ApplySegmentFormat(const AAttr: TAnsiAttributes);
@@ -286,6 +292,9 @@ begin
     Exit;
   Cmd := TCmdShellProcess.ChangeDirectoryCommand(FShellExe, APath);
   FCmdShell.SendCommand(Cmd);
+//  FRichOutput.SelStart := FRichOutput.GetTextLen;
+//  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
+  SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
 procedure TframeCmdShell.StartShell(const AShellExe: string; const AWorkDir: string);
