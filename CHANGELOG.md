@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radTerminal
 
 ---
 
+## v0.5.8.0
+- Tab switching with Ctrl+Tab/Ctrl+Shift+Tab and Ctrl+1/2/3
+[#12](https://github.com/radprogrammer/radTerminal/issues/12)
+
 ## v0.4.8.0
 - IDE plugin skeleton: dockable form with CMD/pwsh/PowerShell tabs, ToolsAPI path resolution
 [#8](https://github.com/radprogrammer/radTerminal/issues/8)

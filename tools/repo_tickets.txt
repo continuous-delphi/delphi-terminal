@@ -268,4 +268,157 @@ Acceptance criteria:
 - [ ] Uninstalling the package removes the menu item
 
 ---
+Title: Keyboard shortcut to toggle terminal panel
+Issue: #11
+Labels: enhancement
+Body:
+Add a configurable keyboard shortcut to show/hide the radTerminal dockable
+form. The specific key combination is TBD -- most obvious choices (Ctrl+Alt+T,
+etc.) are already taken by the IDE.
+
+Implementation notes:
+- Register a shortcut via IOTAKeyboardBinding or a TAction with ShortCut
+- The shortcut should toggle visibility (show if hidden, focus if shown,
+  hide if focused)
+- Consider making the shortcut configurable via the Tools > Options config
+  screen (see config ticket)
+
+Acceptance criteria:
+- [ ] Keyboard shortcut toggles the terminal panel visibility
+- [ ] Shortcut does not conflict with existing IDE shortcuts
+- [ ] Shortcut is discoverable (shown in View menu item hint or caption)
+
+---
+Title: Tab switching with Ctrl+Tab and Ctrl+1/2/3
+Issue: #12
+Status: closed
+Labels: enhancement
+Body:
+Allow switching between terminal tabs (CMD, pwsh, PowerShell) using keyboard
+shortcuts within the terminal panel.
+
+Implementation notes:
+- Ctrl+Tab / Ctrl+Shift+Tab cycles forward/backward through tabs
+- Ctrl+1, Ctrl+2, Ctrl+3 jumps directly to the corresponding tab
+- Handle these in the frame's input edit KeyDown handler
+- After switching tabs, focus the new tab's input edit
+- Only intercept these when the terminal input has focus
+
+Acceptance criteria:
+- [ ] Ctrl+Tab moves to the next tab, Ctrl+Shift+Tab to the previous
+- [ ] Ctrl+1/2/3 jumps to CMD/pwsh/PowerShell tab directly
+- [ ] Focus moves to the input edit on the newly active tab
+- [ ] Shortcuts only fire when terminal input is focused
+
+---
+Title: Clear terminal output with Ctrl+L and Clear button
+Issue: #13
+Labels: enhancement
+Body:
+Add a way to clear the terminal output without restarting the shell process.
+
+Implementation notes:
+- Add a "Clear" TSpeedButton to the toolbar panel (next to Project Dir
+  and File Dir)
+- Ctrl+L in the input edit also clears the output
+- Clear only resets FRichOutput content and FAnsiParser state -- the shell
+  process continues running
+- Do not add the clear command to command history
+
+Acceptance criteria:
+- [ ] Clear button on toolbar clears the terminal output
+- [ ] Ctrl+L in the input edit clears the terminal output
+- [ ] Shell process continues running after clear
+- [ ] ANSI parser state is reset (colors return to default)
+- [ ] Works in both demo VCL app and IDE plugin
+
+---
+Title: Auto-cd on active project switch
+Issue: #14
+Labels: enhancement
+Body:
+When the user switches the active project in the IDE, automatically change
+the terminal's working directory to the new project's folder.
+
+Implementation notes:
+- Register an IOTAProjectNotifier or IOTAIDENotifier to detect active
+  project changes
+- When the active project changes, call SetWorkingDirectory on the
+  affected tab(s)
+- Open question: should all tabs change directory, or only the currently
+  active tab? The user should be prompted for preference, or this could
+  be a config option (see config ticket). Default suggestion: change only
+  the active tab, since the user may intentionally have different tabs in
+  different directories.
+- Guard against rapid-fire notifications (e.g. project group loading)
+
+Acceptance criteria:
+- [ ] Switching active project changes the terminal working directory
+- [ ] Behavior is configurable (all tabs vs active tab only)
+- [ ] No errors when no project is open or project has no folder
+- [ ] Rapid project switches do not flood the terminal with cd commands
+
+---
+Title: Tools > Options configuration screen for radTerminal
+Issue: #15
+Labels: enhancement
+Body:
+Add a configuration screen under Tools > Options > Third Party > radTerminal
+for user preferences. Settings are persisted to the Windows registry under
+the Embarcadero key (standard for IDE experts).
+
+Implementation notes:
+- Register a frame via INTAAddInOptions (ToolsAPI) to appear under
+  Third Party in the Options dialog
+- Registry key: HKCU\Software\Embarcadero\BDS\<version>\radTerminal
+- Configuration options (initial set):
+  - Default shell: which shell tab to activate on first open
+    (CMD / pwsh / PowerShell)
+  - Visible tabs: checkboxes for which shell tabs to create
+    (e.g. disable legacy PowerShell if not needed)
+  - Auto-cd behavior: all tabs vs active tab only (relates to auto-cd
+    ticket)
+  - Font size override
+- Load settings on plugin initialization, apply to dockable form creation
+- Save settings on Options dialog OK
+
+Acceptance criteria:
+- [ ] radTerminal appears under Tools > Options > Third Party
+- [ ] Settings are saved to and loaded from the registry
+- [ ] Changing visible tabs takes effect on next terminal open
+- [ ] Default shell selection is respected
+- [ ] Settings survive IDE restart
+
+---
+Title: ANSI 256-color and RGB color support
+Issue: #16
+Labels: enhancement
+Body:
+Extend the ANSI parser to support 256-color and 24-bit RGB color sequences
+used by modern CLI tools like `git diff --color`, `bat`, `delta`, etc.
+
+Implementation notes:
+- 256-color foreground: ESC[38;5;Nm where N is 0-255
+- 256-color background: ESC[48;5;Nm where N is 0-255
+- 24-bit RGB foreground: ESC[38;2;R;G;Bm
+- 24-bit RGB background: ESC[48;2;R;G;Bm
+- The 256-color palette consists of:
+  - 0-7: standard colors (already supported)
+  - 8-15: bright colors (already supported)
+  - 16-231: 6x6x6 color cube
+  - 232-255: grayscale ramp
+- Extend TAnsiAttributes to hold a TColor directly instead of TAnsiColor
+  enum when extended colors are used
+- Update ApplySegmentFormat to use the direct TColor value
+- Add unit tests for 256-color and RGB parsing
+
+Acceptance criteria:
+- [ ] `git diff --color=always` renders with correct colors
+- [ ] 256-color codes (ESC[38;5;Nm) are parsed and rendered
+- [ ] 24-bit RGB codes (ESC[38;2;R;G;Bm) are parsed and rendered
+- [ ] Both foreground and background extended colors work
+- [ ] Existing 16-color support is not broken
+- [ ] Unit tests cover 256-color and RGB parsing
+
+---
 

@@ -36,6 +36,8 @@ type
     procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
     procedure TrimOutput;
     procedure BuildControls;
+  protected
+    procedure WndProc(var Message: TMessage); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -263,7 +265,82 @@ begin
   end;
 end;
 
+procedure TframeCmdShell.WndProc(var Message: TMessage);
+var
+  Key: Word;
+  Shift: TShiftState;
+begin
+  if (Message.Msg = CM_DIALOGKEY) and FEditInput.Focused then
+  begin
+    Key := TWMKey(Message).CharCode;
+    Shift := KeyDataToShiftState(TWMKey(Message).KeyData);
+    if (Key = VK_TAB) and (ssCtrl in Shift) then
+    begin
+      HandleInputKeyDown(FEditInput, Key, Shift);
+      Message.Result := 1;
+      Exit;
+    end;
+  end;
+  inherited WndProc(Message);
+end;
+
 procedure TframeCmdShell.HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+
+  function FindPageControl: TPageControl;
+  var
+    P: TWinControl;
+  begin
+    Result := nil;
+    P := Self.Parent;
+    while P <> nil do
+    begin
+      if P is TPageControl then
+        Exit(TPageControl(P));
+      if P is TTabSheet then
+      begin
+        if TTabSheet(P).PageControl <> nil then
+          Exit(TTabSheet(P).PageControl);
+      end;
+      P := P.Parent;
+    end;
+  end;
+
+  procedure SwitchToTab(AIndex: Integer);
+  var
+    PC: TPageControl;
+    Frame: TframeCmdShell;
+    I: Integer;
+  begin
+    PC := FindPageControl;
+    if (PC = nil) or (AIndex < 0) or (AIndex >= PC.PageCount) then
+      Exit;
+    PC.ActivePageIndex := AIndex;
+    for I := 0 to PC.ActivePage.ControlCount - 1 do
+      if PC.ActivePage.Controls[I] is TframeCmdShell then
+      begin
+        Frame := TframeCmdShell(PC.ActivePage.Controls[I]);
+        Frame.FocusInput;
+        Break;
+      end;
+    Key := 0;
+  end;
+
+  procedure CycleTab(AForward: Boolean);
+  var
+    PC: TPageControl;
+    Idx: Integer;
+  begin
+    PC := FindPageControl;
+    if (PC = nil) or (PC.PageCount < 2) then
+      Exit;
+    Idx := PC.ActivePageIndex;
+    if AForward then
+      Idx := (Idx + 1) mod PC.PageCount
+    else
+      Idx := (Idx - 1 + PC.PageCount) mod PC.PageCount;
+    SwitchToTab(Idx);
+  end;
+
 begin
   if Key = VK_UP then
   begin
@@ -276,7 +353,11 @@ begin
     FEditInput.Text := FHistory.NavigateDown;
     FEditInput.SelStart := Length(FEditInput.Text);
     Key := 0;
-  end;
+  end
+  else if (Key = VK_TAB) and (ssCtrl in Shift) then
+    CycleTab(not (ssShift in Shift))
+  else if (ssCtrl in Shift) and (Key in [Ord('1')..Ord('9')]) then
+    SwitchToTab(Key - Ord('1'));
 end;
 
 procedure TframeCmdShell.HandleProjectDirClick(Sender: TObject);
