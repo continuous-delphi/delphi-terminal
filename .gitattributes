@@ -1,0 +1,59 @@
+# --------------------------------------------
+# Delphi / RAD Studio - line endings + diffs
+# --------------------------------------------
+
+# Default: do NOT auto-normalize everything.
+# We will explicitly mark what is text and what is binary.
+* -text
+
+# ---- Delphi source + project files (treat as text, enforce CRLF) ----
+*.pas   text eol=crlf diff=pascal
+*.dpr   text eol=crlf diff=pascal
+*.dpk   text eol=crlf diff=pascal
+*.dproj text eol=crlf
+*.groupproj text eol=crlf
+*.drc   text eol=crlf
+*.inc   text eol=crlf diff=pascal
+*.rc    text eol=crlf
+*.dfm   text eol=crlf
+*.fmx   text eol=crlf
+*.lfm   text eol=crlf
+
+# Documentation and config use LF
+*.md  text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# ---- Common build/automation scripts ----
+# Batch files should be CRLF on Windows
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+
+# ---- Treat these as binary (no EOL conversions) ----
+*.dcu   binary
+*.exe   binary
+*.dll   binary
+*.bpl   binary
+*.dcp   binary
+*.bpi   binary
+*.lib   binary
+*.a     binary
+*.obj   binary
+*.res   binary
+*.ico   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.bmp   binary
+*.pdf   binary
+*.zip   binary
+*.7z    binary
+
+# ---- Make Delphi form files diff-able ----
+# This doesn't change line endings; it just helps diffs.
+*.dfm   diff
+*.fmx   diff

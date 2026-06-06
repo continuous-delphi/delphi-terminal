@@ -1,0 +1,19 @@
+#!/bin/sh
+# Pre-commit hook: bump the 3rd version number (patch/sequence) and zero the 4th (build).
+# The 3rd number is the monotonic commit count -- never resets across major/minor bumps.
+# The 4th number tracks local CI builds between commits and resets here.
+#
+# Uses Invoke-DelphiIncVer from delphi-powershell-ci.
+# Pattern matches the 4-part version string in source/radIDETerminal.Info.pas.
+
+pwsh -NoProfile -Command '
+  $result = Invoke-DelphiIncVer -File "source/radIDETerminal.Info.pas" -IncverTarget "Text" -IncverStyle "WinVer" -IncverPart "patch" -IncverPattern "(\d+\.\d+\.\d+\.\d+)"
+  if (-not $result.Success) {
+    Write-Error "IncVer failed: $($result.Message)"
+    exit 1
+  }
+  Write-Host "Version: $($result.OldVersion) -> $($result.NewVersion)"
+'
+
+# Stage the version file so it's included in the commit.
+git add source/radIDETerminal.Info.pas
