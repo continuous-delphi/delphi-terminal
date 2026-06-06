@@ -45,7 +45,7 @@ type
 implementation
 
 uses
-  Winapi.Windows, ToolsAPI;
+  Winapi.Windows, ToolsAPI, radTerminal.Settings;
 
 var
   FInstance: TfrmradTerminalDock;
@@ -67,6 +67,8 @@ end;
 constructor TfrmradTerminalDock.Create(AOwner: TComponent);
 var
   WorkDir: string;
+  S: TradTerminalSettings;
+  DefaultIdx, I: Integer;
 begin
   inherited Create(AOwner);
   DeskSection := 'radTerminal';
@@ -78,28 +80,56 @@ begin
   Position := poScreenCenter;
   OnClose := HandleFormClose;
 
+  S := TerminalSettings;
+  if not S.ShowCmdTab and not S.ShowPwshTab and not S.ShowPowerShellTab then
+    S.ShowCmdTab := True;
   WorkDir := GetInitialWorkDir;
 
   FPageControl := TPageControl.Create(Self);
   FPageControl.Parent := Self;
   FPageControl.Align := alClient;
 
-  CreateTerminalTab('CMD', 'cmd.exe', FFrameCmd);
-  CreateTerminalTab('pwsh', 'pwsh.exe', FFramePwsh);
-  CreateTerminalTab('PowerShell', 'powershell.exe', FFramePowerShell);
+  if S.ShowCmdTab then
+  begin
+    CreateTerminalTab('CMD', 'cmd.exe', FFrameCmd);
+    FFrameCmd.StartShell('cmd.exe', WorkDir);
+  end;
+  if S.ShowPwshTab then
+  begin
+    CreateTerminalTab('pwsh', 'pwsh.exe', FFramePwsh);
+    FFramePwsh.StartShell('pwsh.exe', WorkDir);
+  end;
+  if S.ShowPowerShellTab then
+  begin
+    CreateTerminalTab('PowerShell', 'powershell.exe', FFramePowerShell);
+    FFramePowerShell.StartShell('powershell.exe', WorkDir);
+  end;
 
-  FFrameCmd.StartShell('cmd.exe', WorkDir);
-  FFramePwsh.StartShell('pwsh.exe', WorkDir);
-  FFramePowerShell.StartShell('powershell.exe', WorkDir);
+  // Activate the default shell tab
+  DefaultIdx := -1;
+  for I := 0 to FPageControl.PageCount - 1 do
+  begin
+    if SameText(FPageControl.Pages[I].Caption, 'CMD') and SameText(S.DefaultShell, 'cmd.exe') then
+      DefaultIdx := I
+    else if SameText(FPageControl.Pages[I].Caption, 'pwsh') and SameText(S.DefaultShell, 'pwsh.exe') then
+      DefaultIdx := I
+    else if SameText(FPageControl.Pages[I].Caption, 'PowerShell') and SameText(S.DefaultShell, 'powershell.exe') then
+      DefaultIdx := I;
+  end;
+  if (DefaultIdx >= 0) and (DefaultIdx < FPageControl.PageCount) then
+    FPageControl.ActivePageIndex := DefaultIdx;
 end;
 
 destructor TfrmradTerminalDock.Destroy;
 begin
   if FInstance = Self then
     FInstance := nil;
-  FFramePowerShell.StopShell;
-  FFramePwsh.StopShell;
-  FFrameCmd.StopShell;
+  if FFramePowerShell <> nil then
+    FFramePowerShell.StopShell;
+  if FFramePwsh <> nil then
+    FFramePwsh.StopShell;
+  if FFrameCmd <> nil then
+    FFrameCmd.StopShell;
   inherited;
 end;
 
@@ -165,17 +195,16 @@ end;
 
 procedure TfrmradTerminalDock.FocusActiveFrame;
 var
-  Frame: TframeCmdShell;
+  I: Integer;
 begin
-  Frame := nil;
-  if FPageControl.ActivePage = FPageControl.Pages[0] then
-    Frame := FFrameCmd
-  else if FPageControl.ActivePage = FPageControl.Pages[1] then
-    Frame := FFramePwsh
-  else if FPageControl.ActivePage = FPageControl.Pages[2] then
-    Frame := FFramePowerShell;
-  if Frame <> nil then
-    Frame.FocusInput;
+  if (FPageControl = nil) or (FPageControl.ActivePage = nil) then
+    Exit;
+  for I := 0 to FPageControl.ActivePage.ControlCount - 1 do
+    if FPageControl.ActivePage.Controls[I] is TframeCmdShell then
+    begin
+      TframeCmdShell(FPageControl.ActivePage.Controls[I]).FocusInput;
+      Exit;
+    end;
 end;
 
 procedure TfrmradTerminalDock.HandleFormClose(Sender: TObject; var Action: TCloseAction);

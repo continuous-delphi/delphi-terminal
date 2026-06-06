@@ -49,6 +49,8 @@ procedure TfrmMain.FormCreate(Sender: TObject);
 var
   ExeDir: string;
 begin
+  ReportMemoryLeaksOnShutdown := True;
+
   ExeDir := ExtractFilePath(Application.ExeName);
 
   FFrameCmdShell := TframeCmdShell.Create(Self);

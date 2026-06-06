@@ -19,11 +19,19 @@ procedure Register;
 implementation
 
 uses
-  radTerminal.Plugin.Wizard;
+  ToolsAPI,
+  radTerminal.Plugin.Wizard,
+  radTerminal.Plugin.OptionsPage,
+  radTerminal.Settings;
 
 procedure Register;
+var
+  RegKey: string;
 begin
+  RegKey := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey;
+  TerminalSettings.LoadFromRegistry(RegKey);
   TradTerminalWizard.Register;
+  TradTerminalOptionsPage.RegisterOptions;
 end;
 
 end.

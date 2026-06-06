@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radTerminal
 
 ---
 
+## v0.7.8.0
+- Tools > Options > Third Party > radTerminal configuration screen with registry persistence
+[#15](https://github.com/radprogrammer/radTerminal/issues/15)
+
 ## v0.6.8.0
 - ANSI 256-color and 24-bit RGB color support for foreground and background
 [#16](https://github.com/radprogrammer/radTerminal/issues/16)

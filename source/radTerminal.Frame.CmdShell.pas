@@ -17,7 +17,7 @@ interface
 uses
   System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages,
   Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons, Vcl.ComCtrls,
-  radTerminal.CmdShell, radTerminal.CommandHistory, radTerminal.AnsiParser;
+  radTerminal.CmdShell, radTerminal.CommandHistory, radTerminal.AnsiParser, radTerminal.Settings;
 
 type
   TRequestPathEvent = procedure(Sender: TObject; var APath: string) of object;
@@ -95,9 +95,13 @@ procedure TframeCmdShell.BuildControls;
 const
   TerminalBg = $0C0C0C;   // Campbell background #0C0C0C
   TerminalFg = $CCCCCC;   // Campbell foreground #CCCCCC
-  TerminalFont = 'Cascadia Mono';
-  TerminalFontSize = 12;
+var
+  TerminalFont: string;
+  TerminalFontSize: Integer;
 begin
+  TerminalFont := TerminalSettings.FontName;
+  TerminalFontSize := TerminalSettings.FontSize;
+
   FPanelToolbar := TPanel.Create(Self);
   FPanelToolbar.Parent := Self;
   FPanelToolbar.Align := alTop;

@@ -120,3 +120,4 @@ commit*
 *.dot
 coverage.db
 *.txt
+/projects/ide-plugin/radTerminalPlugin.dproj

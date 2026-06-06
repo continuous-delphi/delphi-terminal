@@ -16,10 +16,13 @@ contains
   radTerminal.Plugin.DockForm in 'radTerminal.Plugin.DockForm.pas',
   radTerminal.Plugin.Wizard in 'radTerminal.Plugin.Wizard.pas',
   radTerminal.Plugin.Menu in 'radTerminal.Plugin.Menu.pas',
+  radTerminal.Plugin.OptionsPage in 'radTerminal.Plugin.OptionsPage.pas',
+  radTerminal.Plugin.OptionsFrame in 'radTerminal.Plugin.OptionsFrame.pas',
   radTerminal.Frame.CmdShell in '..\..\source\radTerminal.Frame.CmdShell.pas',
   radTerminal.CmdShell in '..\..\source\radTerminal.CmdShell.pas',
   radTerminal.AnsiParser in '..\..\source\radTerminal.AnsiParser.pas',
   radTerminal.CommandHistory in '..\..\source\radTerminal.CommandHistory.pas',
-  radTerminal.Info in '..\..\source\radTerminal.Info.pas';
+  radTerminal.Info in '..\..\source\radTerminal.Info.pas',
+  radTerminal.Settings in '..\..\source\radTerminal.Settings.pas';
 
 end.

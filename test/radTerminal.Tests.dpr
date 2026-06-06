@@ -36,7 +36,8 @@ uses
   Test.radTerminal.AnsiParser in 'Test.radTerminal.AnsiParser.pas',
   radTerminal.CmdShell in '..\source\radTerminal.CmdShell.pas',
   radTerminal.CommandHistory in '..\source\radTerminal.CommandHistory.pas',
-  radTerminal.AnsiParser in '..\source\radTerminal.AnsiParser.pas';
+  radTerminal.AnsiParser in '..\source\radTerminal.AnsiParser.pas',
+  radTerminal.Settings in '..\source\radTerminal.Settings.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

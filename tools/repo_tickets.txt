@@ -362,6 +362,7 @@ Acceptance criteria:
 ---
 Title: Tools > Options configuration screen for radTerminal
 Issue: #15
+Status: closed
 Labels: enhancement
 Body:
 Add a configuration screen under Tools > Options > Third Party > radTerminal

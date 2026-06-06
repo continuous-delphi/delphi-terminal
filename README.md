@@ -80,6 +80,10 @@ Screenshot:
 
 ![radTerminal ScreenShot](assets/screenshot1.png)
 
+Config screen:
+
+![radTerminal Config ScreenShot](assets/screenshot-config1.png)
+
 ---
 
 <div align="center">
