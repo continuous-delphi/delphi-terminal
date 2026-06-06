@@ -17,6 +17,7 @@ type
     FBtnFileDir: TSpeedButton;
     FRichOutput: TRichEdit;
     FPanelInput: TPanel;
+    FCmdLabel: TEdit;
     FEditInput: TEdit;
     FCmdShell: TCmdShellProcess;
     FHistory: TCommandHistory;
@@ -43,6 +44,7 @@ type
     procedure StopShell;
 
     procedure SetWorkingDirectory(const APath: string);
+    procedure FocusInput;
 
     property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
     property OnRequestFileDir: TRequestPathEvent read FOnRequestFileDir write FOnRequestFileDir;
@@ -56,6 +58,7 @@ constructor TframeCmdShell.Create(AOwner: TComponent);
 begin
   inherited;
   BuildControls;
+
   FHistory := TCommandHistory.Create;
   FAnsiParser := TAnsiParser.Create;
   FCmdShell := TCmdShellProcess.Create;
@@ -110,7 +113,22 @@ begin
   FPanelInput.Caption := '';
   FPanelInput.Color := TerminalBg;
   FPanelInput.ParentBackground := False;
+  FPanelInput.ParentColor := False;
   FPanelInput.StyleElements := [];
+
+  FCmdLabel := TEdit.Create(Self);
+  FCmdLabel.Parent := FPanelInput;
+  FCmdLabel.Align := alLeft;
+  FCmdLabel.Text := 'command: ';
+  FCmdLabel.Font.Name := TerminalFont;
+  FCmdLabel.Font.Size := TerminalFontSize;
+  FCmdLabel.Font.Color := TerminalFg;
+  FCmdLabel.Color := TerminalBg;
+  FCmdLabel.ReadOnly := True;
+  FCmdLabel.BorderStyle := bsNone;
+  FCmdLabel.TabStop := False;
+  FCmdLabel.Width := 80;
+  FCmdLabel.StyleElements := [];
 
   FEditInput := TEdit.Create(Self);
   FEditInput.Parent := FPanelInput;
@@ -298,6 +316,12 @@ begin
 //  FRichOutput.SelStart := FRichOutput.GetTextLen;
 //  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
   SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+end;
+
+procedure TframeCmdShell.FocusInput;
+begin
+  if FEditInput.CanFocus then
+    FEditInput.SetFocus;
 end;
 
 procedure TframeCmdShell.StartShell(const AShellExe: string; const AWorkDir: string);

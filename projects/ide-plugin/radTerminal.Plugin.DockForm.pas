@@ -22,6 +22,7 @@ type
     function GetCurrentFileDir: string;
     function GetInitialWorkDir: string;
     procedure HandleFormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FocusActiveFrame;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -43,6 +44,7 @@ begin
     FInstance := TfrmradTerminalDock.Create(nil);
   FInstance.Show;
   FInstance.BringToFront;
+  FInstance.FocusActiveFrame;
 end;
 
 class procedure TfrmradTerminalDock.CleanUp;
@@ -147,6 +149,21 @@ begin
   Result := GetActiveProjectDir;
   if Result = '' then
     Result := GetEnvironmentVariable('USERPROFILE');
+end;
+
+procedure TfrmradTerminalDock.FocusActiveFrame;
+var
+  Frame: TframeCmdShell;
+begin
+  Frame := nil;
+  if FPageControl.ActivePage = FPageControl.Pages[0] then
+    Frame := FFrameCmd
+  else if FPageControl.ActivePage = FPageControl.Pages[1] then
+    Frame := FFramePwsh
+  else if FPageControl.ActivePage = FPageControl.Pages[2] then
+    Frame := FFramePowerShell;
+  if Frame <> nil then
+    Frame.FocusInput;
 end;
 
 procedure TfrmradTerminalDock.HandleFormClose(Sender: TObject; var Action: TCloseAction);
