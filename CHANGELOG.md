@@ -6,6 +6,8 @@ Home repo: https://github.com/radprogrammer/radTerminal
 ## v0.4.8.0
 - IDE plugin skeleton: dockable form with CMD/pwsh/PowerShell tabs, ToolsAPI path resolution
 [#8](https://github.com/radprogrammer/radTerminal/issues/8)
+- Move menu item from Help Wizards to View menu via INTAServices.MainMenu
+[#10](https://github.com/radprogrammer/radTerminal/issues/10)
 
 ## v0.3.8.0
 - ANSI escape code rendering: replace TMemo with TRichEdit, parse SGR sequences for colored terminal output

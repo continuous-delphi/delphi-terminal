@@ -91,6 +91,7 @@
         <DCCReference Include="radTerminal.Plugin.Registration.pas"/>
         <DCCReference Include="radTerminal.Plugin.DockForm.pas"/>
         <DCCReference Include="radTerminal.Plugin.Wizard.pas"/>
+        <DCCReference Include="radTerminal.Plugin.Menu.pas"/>
         <DCCReference Include="..\..\source\radTerminal.Frame.CmdShell.pas"/>
         <DCCReference Include="..\..\source\radTerminal.CmdShell.pas"/>
         <DCCReference Include="..\..\source\radTerminal.AnsiParser.pas"/>

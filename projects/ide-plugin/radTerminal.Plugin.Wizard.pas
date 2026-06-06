@@ -6,7 +6,7 @@ uses
   ToolsAPI;
 
 type
-  TradTerminalWizard = class(TNotifierObject, IOTAWizard, IOTAMenuWizard)
+  TradTerminalWizard = class(TNotifierObject, IOTAWizard)
   public
     class procedure Register;
     { IOTAWizard }
@@ -14,14 +14,9 @@ type
     function GetName: string;
     function GetState: TWizardState;
     procedure Execute;
-    { IOTAMenuWizard }
-    function GetMenuText: string;
   end;
 
 implementation
-
-uses
-  radTerminal.Plugin.DockForm;
 
 class procedure TradTerminalWizard.Register;
 begin
@@ -43,14 +38,9 @@ begin
   Result := [wsEnabled];
 end;
 
-function TradTerminalWizard.GetMenuText: string;
-begin
-  Result := 'radTerminal';
-end;
-
 procedure TradTerminalWizard.Execute;
 begin
-  TfrmradTerminalDock.ShowInstance;
+  // Menu click is handled by radTerminal.Plugin.Menu
 end;
 
 end.

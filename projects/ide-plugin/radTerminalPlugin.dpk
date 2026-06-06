@@ -14,6 +14,7 @@ contains
   radTerminal.Plugin.Registration in 'radTerminal.Plugin.Registration.pas',
   radTerminal.Plugin.DockForm in 'radTerminal.Plugin.DockForm.pas',
   radTerminal.Plugin.Wizard in 'radTerminal.Plugin.Wizard.pas',
+  radTerminal.Plugin.Menu in 'radTerminal.Plugin.Menu.pas',
   radTerminal.Frame.CmdShell in '..\..\source\radTerminal.Frame.CmdShell.pas',
   radTerminal.CmdShell in '..\..\source\radTerminal.CmdShell.pas',
   radTerminal.AnsiParser in '..\..\source\radTerminal.AnsiParser.pas',
