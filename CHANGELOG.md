@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radIDETerminal
 
 ---
 
+## v0.3.7.0
+- Working directory shortcuts: toolbar with Project Dir / File Dir buttons and directory label
+[#9](https://github.com/radprogrammer/radIDETerminal/issues/9)
+
 ## v0.2.6.0
 - Detect shell process exit gracefully; show restart prompt on Enter
 [#7](https://github.com/radprogrammer/radIDETerminal/issues/7)

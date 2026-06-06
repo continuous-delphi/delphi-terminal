@@ -4,12 +4,17 @@ interface
 
 uses
   System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages,
-  Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls,
+  Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons,
   radIDETerminal.CmdShell, radIDETerminal.CommandHistory;
 
 type
+  TRequestPathEvent = procedure(Sender: TObject; var APath: string) of object;
+
   TframeCmdShell = class(TFrame)
   private
+    FPanelToolbar: TPanel;
+    FBtnProjectDir: TSpeedButton;
+    FBtnFileDir: TSpeedButton;
     FMemoOutput: TMemo;
     FPanelInput: TPanel;
     FEditInput: TEdit;
@@ -17,16 +22,23 @@ type
     FHistory: TCommandHistory;
     FShellExe: string;
     FWorkDir: string;
+    FOnRequestProjectDir: TRequestPathEvent;
+    FOnRequestFileDir: TRequestPathEvent;
     procedure HandleOutput(Sender: TObject; const AText: string);
     procedure HandleProcessExit(Sender: TObject);
     procedure HandleInputKeyPress(Sender: TObject; var Key: Char);
     procedure HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure HandleProjectDirClick(Sender: TObject);
+    procedure HandleFileDirClick(Sender: TObject);
     procedure BuildControls;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure StartShell(const AShellExe: string; const AWorkDir: string = '');
     procedure StopShell;
+    procedure SetWorkingDirectory(const APath: string);
+    property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
+    property OnRequestFileDir: TRequestPathEvent read FOnRequestFileDir write FOnRequestFileDir;
   end;
 
 implementation
@@ -52,11 +64,34 @@ end;
 
 procedure TframeCmdShell.BuildControls;
 begin
+  FPanelToolbar := TPanel.Create(Self);
+  FPanelToolbar.Parent := Self;
+  FPanelToolbar.Align := alTop;
+  FPanelToolbar.Height := 26;
+  FPanelToolbar.BevelOuter := bvNone;
+  FPanelToolbar.Caption := '';
+
+  FBtnProjectDir := TSpeedButton.Create(Self);
+  FBtnProjectDir.Parent := FPanelToolbar;
+  FBtnProjectDir.Align := alLeft;
+  FBtnProjectDir.Width := 80;
+  FBtnProjectDir.Caption := 'Project Dir';
+  FBtnProjectDir.Flat := True;
+  FBtnProjectDir.OnClick := HandleProjectDirClick;
+
+  FBtnFileDir := TSpeedButton.Create(Self);
+  FBtnFileDir.Parent := FPanelToolbar;
+  FBtnFileDir.Align := alLeft;
+  FBtnFileDir.Width := 60;
+  FBtnFileDir.Caption := 'File Dir';
+  FBtnFileDir.Flat := True;
+  FBtnFileDir.OnClick := HandleFileDirClick;
+
   FPanelInput := TPanel.Create(Self);
   FPanelInput.Parent := Self;
   FPanelInput.Align := alBottom;
   FPanelInput.Height := 30;
-  FPanelInput.Padding.top := 5;  //nudge the command down a little
+  FPanelInput.Padding.Top := 5;
   FPanelInput.BevelOuter := bvNone;
   FPanelInput.Caption := '';
   FPanelInput.Color := clBlack;
@@ -135,6 +170,42 @@ begin
     FEditInput.SelStart := Length(FEditInput.Text);
     Key := 0;
   end;
+end;
+
+procedure TframeCmdShell.HandleProjectDirClick(Sender: TObject);
+var
+  Path: string;
+begin
+  Path := '';
+  if Assigned(FOnRequestProjectDir) then
+  begin
+    FOnRequestProjectDir(Self, Path);
+    if Path <> '' then
+      SetWorkingDirectory(Path);
+  end;
+end;
+
+procedure TframeCmdShell.HandleFileDirClick(Sender: TObject);
+var
+  Path: string;
+begin
+  Path := '';
+  if Assigned(FOnRequestFileDir) then
+  begin
+    FOnRequestFileDir(Self, Path);
+    if Path <> '' then
+      SetWorkingDirectory(Path);
+  end;
+end;
+
+procedure TframeCmdShell.SetWorkingDirectory(const APath: string);
+var
+  Cmd: string;
+begin
+  if not FCmdShell.Running then
+    Exit;
+  Cmd := TCmdShellProcess.ChangeDirectoryCommand(FShellExe, APath);
+  FCmdShell.SendCommand(Cmd);
 end;
 
 procedure TframeCmdShell.StartShell(const AShellExe: string; const AWorkDir: string);

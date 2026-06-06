@@ -25,6 +25,7 @@ type
     destructor Destroy; override;
     class function EncodingForShell(const AShellExe: string): TEncoding;
     class function BuildEnvironmentBlock: TBytes;
+    class function ChangeDirectoryCommand(const AShellExe, APath: string): string;
     procedure Start(const AShellExe: string; const AWorkDir: string = '');
     procedure SendCommand(const ACommand: string);
     procedure Terminate;
@@ -158,6 +159,17 @@ begin
   finally
     FreeEnvironmentStrings(EnvStrings);
   end;
+end;
+
+class function TCmdShellProcess.ChangeDirectoryCommand(const AShellExe, APath: string): string;
+var
+  Lower: string;
+begin
+  Lower := LowerCase(ExtractFileName(AShellExe));
+  if Lower.Contains('pwsh') or Lower.Contains('powershell') then
+    Result := 'Set-Location "' + APath + '"'
+  else
+    Result := 'cd /d "' + APath + '"';
 end;
 
 procedure TCmdShellProcess.Start(const AShellExe: string; const AWorkDir: string);

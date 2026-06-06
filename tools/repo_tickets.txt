@@ -202,4 +202,37 @@ Acceptance criteria:
 - [ ] Form position/docking state persists across IDE sessions
 
 ---
+Title: Working directory shortcuts (project dir / file dir)
+Issue: #9
+Status: closed
+Labels: enhancement
+Body:
+Add a mechanism to quickly change the shell's working directory to:
+- The active project's folder (simulated in demo VCL via folder picker)
+- The currently open file's folder (simulated in demo VCL via folder picker)
+
+This prepares the infrastructure for IDE integration where ToolsAPI will
+provide the actual paths.
+
+Implementation notes:
+- Add a toolbar panel at the top of TframeCmdShell with "Project Dir" and
+  "File Dir" buttons, plus a label showing the current working directory
+- Add `SetWorkingDirectory(const APath: string)` to the frame which sends
+  the appropriate shell command (`cd /d "path"` for cmd, `Set-Location "path"`
+  for pwsh/powershell)
+- TCmdShellProcess needs to know its shell type so the frame can pick the
+  correct cd command (store the shell exe from Start)
+- In the demo VCL app, the buttons open a folder picker dialog
+- The frame exposes an event or callback so the host can provide paths
+  (IDE plugin will supply via ToolsAPI; demo app uses folder picker)
+
+Acceptance criteria:
+- [ ] Toolbar with Project Dir and File Dir buttons visible in each tab
+- [ ] Clicking a button opens folder picker (demo VCL) or resolves path (IDE)
+- [ ] Selecting a folder changes the shell working directory
+- [ ] Correct command used per shell type (cd /d for cmd, Set-Location for PS)
+- [ ] Current working directory label updates after change
+- [ ] Unit tests verify correct command generation per shell type
+
+---
 

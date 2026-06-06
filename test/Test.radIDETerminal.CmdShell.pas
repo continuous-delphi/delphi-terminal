@@ -40,6 +40,10 @@ type
     [Test] procedure LegacyPSShouldStartAndReportRunning;
     [Test] procedure LegacyPSShouldProduceOutput;
     [Test] procedure LegacyPSShouldTerminateCleanly;
+
+    [Test] procedure ChangeDirectoryCommandShouldUseCdForCmd;
+    [Test] procedure ChangeDirectoryCommandShouldUseSetLocationForPwsh;
+    [Test] procedure ChangeDirectoryCommandShouldUseSetLocationForPowerShell;
   end;
 
 implementation
@@ -220,6 +224,23 @@ begin
   Assert.IsTrue(FShell.Running, 'Should be running before Terminate');
   FShell.Terminate;
   Assert.IsFalse(FShell.Running, 'Should not be running after Terminate');
+end;
+
+{ ChangeDirectoryCommand tests }
+
+procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseCdForCmd;
+begin
+  Assert.AreEqual('cd /d "C:\test"', TCmdShellProcess.ChangeDirectoryCommand('cmd.exe', 'C:\test'));
+end;
+
+procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseSetLocationForPwsh;
+begin
+  Assert.AreEqual('Set-Location "C:\test"', TCmdShellProcess.ChangeDirectoryCommand('pwsh.exe', 'C:\test'));
+end;
+
+procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseSetLocationForPowerShell;
+begin
+  Assert.AreEqual('Set-Location "C:\test"', TCmdShellProcess.ChangeDirectoryCommand('powershell.exe', 'C:\test'));
 end;
 
 initialization
