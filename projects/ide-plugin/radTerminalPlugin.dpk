@@ -4,6 +4,7 @@ package radTerminalPlugin;
 {$DESIGNONLY}
 {$DESCRIPTION 'radTerminal - Dockable Terminal for RAD Studio'}
 {$IMPLICITBUILD ON}
+{$LIBSUFFIX AUTO}
 
 requires
   rtl,

@@ -59,6 +59,9 @@ begin
   AutoSave := True;
   SaveStateNecessary := True;
   Caption := 'radTerminal';
+  ClientWidth := 800;
+  ClientHeight := 400;
+  Position := poScreenCenter;
   OnClose := HandleFormClose;
 
   WorkDir := GetInitialWorkDir;

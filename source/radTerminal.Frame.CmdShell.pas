@@ -110,6 +110,7 @@ begin
   FPanelInput.Caption := '';
   FPanelInput.Color := TerminalBg;
   FPanelInput.ParentBackground := False;
+  FPanelInput.StyleElements := [];
 
   FEditInput := TEdit.Create(Self);
   FEditInput.Parent := FPanelInput;
@@ -121,6 +122,7 @@ begin
   FEditInput.OnKeyPress := HandleInputKeyPress;
   FEditInput.OnKeyDown := HandleInputKeyDown;
   FEditInput.BorderStyle := bsNone;
+  FEditInput.StyleElements := [];
 
   FRichOutput := TRichEdit.Create(Self);
   FRichOutput.Parent := Self;
@@ -131,6 +133,7 @@ begin
   FRichOutput.Font.Quality := fqAntialiased;
   FRichOutput.Color := TerminalBg;
   FRichOutput.ParentColor := False;
+  FRichOutput.StyleElements := [];
   FRichOutput.ReadOnly := True;
   FRichOutput.ScrollBars := ssBoth;
   FRichOutput.WordWrap := False;
