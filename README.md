@@ -8,7 +8,7 @@
 
 [![Delphi](https://img.shields.io/badge/delphi-red)](https://www.embarcadero.com/products/delphi)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/continuous-delphi/delphi-lexer)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/radprogrammer/radTerminal)
 [![RAD Programmer](https://img.shields.io/badge/org-radProgrammer-red)](https://github.com/radprogrammer)
 
 Dockable terminal panel for **RAD Studio**. Run CMD, PowerShell 7 (pwsh),
