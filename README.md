@@ -29,8 +29,10 @@ and legacy PowerShell sessions directly inside the IDE.
   - Ctrl+Tab / Ctrl+Shift+Tab -- cycle through shell tabs
   - Ctrl+1, Ctrl+2, Ctrl+3 -- jump to CMD, pwsh, or PowerShell tab
   - Up / Down -- navigate command history
-- **IDE integration** -- dockable form with persistent dock state and
-  `View` menu item
+- **IDE integration** -- dockable form with persistent dock state,
+  `View` menu item, and config screen in `Tools>Options>Third Party>radTerminal`
+- Auto change-directory option when the active Project changes
+- Configurable Font Name + Font Size used in console window
 
 ## Project Layout
 
