@@ -121,3 +121,4 @@ commit*
 coverage.db
 *.txt
 /projects/ide-plugin/radTerminalPlugin.dproj
+*.otares

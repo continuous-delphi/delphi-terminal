@@ -95,7 +95,6 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="..\..\source\radTerminal.CmdShell.pas"/>
-        <DCCReference Include="..\..\source\radTerminal.Info.pas"/>
         <DCCReference Include="..\..\source\radTerminal.AnsiParser.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

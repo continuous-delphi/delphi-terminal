@@ -60,6 +60,9 @@ and command history.
 ## Requirements
 
 - A relatively recent version of RAD Studio
+- You should remove {$LIBSUFFIX AUTO} for older versions.
+- Plugin might otherwise be compatible back to XE3 (TStringHelper.contains)
+but old versions are untested.
 
 Optional
 - Defaults to `Cascadia Mono` font (ships with Windows Terminal)
