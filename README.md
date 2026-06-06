@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)"  srcset="assets/radterminal-logo-reversed.svg">
     <source media="(prefers-color-scheme: light)" srcset="assets/radterminal-logo.svg">
-    <img alt="radTerminal" src="docs/radterminal-logo.svg" width="420">
+    <img alt="radTerminal" src="assets/radterminal-logo.svg" width="420">
   </picture>
 </p>
 
