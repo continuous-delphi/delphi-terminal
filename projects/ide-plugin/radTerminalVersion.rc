@@ -1,7 +1,7 @@
 // Version: 0.7.9.0
 
 1 VERSIONINFO
-FILEVERSION 0,7,9,0
+FILEVERSION 0,7,10,0
 PRODUCTVERSION 0,7,9,0
 FILEFLAGSMASK 0x3FL
 FILEFLAGS 0x0L
@@ -16,7 +16,7 @@ BEGIN
       VALUE "Comments", "RADProgrammer.com\0"
       VALUE "CompanyName", "Ideas Awakened Inc\0"
       VALUE "FileDescription", "radTerminal - Dockable Terminal for RAD Studio\0"
-      VALUE "FileVersion", "0.7.9.0\0"
+      VALUE "FileVersion", "0.7.10.0\0"
       VALUE "InternalName", "radTerminalPlugin\0"
       VALUE "LegalCopyright", "Copyright (c) 2026 Darian Miller\0"
       VALUE "OriginalFilename", "radTerminalPlugin370.bpl\0"

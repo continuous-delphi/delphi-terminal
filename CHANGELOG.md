@@ -5,6 +5,7 @@ Home repo: https://github.com/radprogrammer/radTerminal
 
 ## v0.7.9.0
 - .RC version info added to BPL project
+[#19](https://github.com/radprogrammer/radTerminal/issues/19)
 
 ## v0.7.8.0
 - Auto-cd on active project switch with configurable scope (active tab / all tabs)
