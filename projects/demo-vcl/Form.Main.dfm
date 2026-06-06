@@ -19,7 +19,7 @@ object frmMain: TfrmMain
     Top = 0
     Width = 800
     Height = 600
-    ActivePage = tabCmdShell
+    ActivePage = tabPowerShell
     Align = alClient
     TabOrder = 0
     object tabCmdShell: TTabSheet

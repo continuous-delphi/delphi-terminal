@@ -102,7 +102,9 @@
         </DelphiCompile>
         <DCCReference Include="Test.radIDETerminal.Smoke.pas"/>
         <DCCReference Include="Test.radIDETerminal.CmdShell.pas"/>
+        <DCCReference Include="Test.radIDETerminal.CommandHistory.pas"/>
         <DCCReference Include="..\source\radIDETerminal.CmdShell.pas"/>
+        <DCCReference Include="..\source\radIDETerminal.CommandHistory.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -129,4 +129,76 @@ Acceptance criteria:
 - [ ] Unit test verifies ANSI-free output from pwsh
 
 ---
+Title: Command history with up/down arrow keys
+Issue: #6
+Status: closed
+Labels: enhancement
+Body:
+Add command history navigation to the terminal input. When the user presses
+Up or Down arrow in the input TEdit, cycle through previously entered
+commands.
+
+Implementation notes:
+- Store commands in a TStringList (per frame instance)
+- Track a history index; Up moves backward, Down moves forward
+- Pressing Enter resets the index to the end
+- Empty commands should not be added to history
+- Duplicate consecutive commands should not be added
+
+Acceptance criteria:
+- [ ] Up arrow recalls the previous command
+- [ ] Down arrow moves forward through history
+- [ ] Enter submits and resets history position
+- [ ] Empty and duplicate consecutive commands are not stored
+- [ ] Each tab maintains its own independent history
+- [ ] Unit tests verify history navigation
+
+---
+Title: Detect shell process exit and handle gracefully
+Issue: #7
+Labels: enhancement
+Body:
+When the shell process exits (e.g. user types `exit`), the UI should
+detect this and respond appropriately rather than leaving a dead session.
+
+Implementation notes:
+- The reader thread already exits when the pipe closes; use this as
+  the signal that the process has ended
+- Fire an OnTerminated event from the reader thread exit path
+- In the frame, show a message in the output memo (e.g. "[Process exited]")
+- Disable the input edit when the process is not running
+- Optionally offer a restart mechanism (e.g. press Enter to restart)
+
+Acceptance criteria:
+- [ ] Typing `exit` in any shell shows a process-exited message
+- [ ] Input edit is disabled or shows restart prompt after exit
+- [ ] Running property reflects the actual process state
+- [ ] Unit test verifies OnTerminated fires after process exit
+
+---
+Title: IDE plugin skeleton with dockable form
+Issue: #8
+Labels: enhancement
+Body:
+Create the minimal RAD Studio IDE plugin (BPL package) in
+`projects/ide-plugin/` that registers a dockable form and hosts the
+shared TframeCmdShell frame.
+
+Implementation notes:
+- Create a design-time/runtime BPL package (.dpk, .dproj)
+- Register a dockable form using ToolsAPI (IDockableForm or
+  TDockableForm descendant)
+- Add a menu item under View (or Tools) to show/hide the terminal
+- Host the shared frame inside the dockable form
+- Keep the plugin as thin as possible -- no business logic
+- The plugin should work with RAD Studio 12+
+
+Acceptance criteria:
+- [ ] BPL package builds successfully
+- [ ] Installing the package adds a menu item to show the terminal
+- [ ] The dockable form appears and hosts the terminal frame
+- [ ] Terminal is functional within the IDE (CMD/pwsh/PowerShell)
+- [ ] Form position/docking state persists across IDE sessions
+
+---
 

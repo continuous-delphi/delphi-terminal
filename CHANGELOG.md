@@ -3,6 +3,10 @@ Home repo: https://github.com/radprogrammer/radIDETerminal
 
 ---
 
+## v0.2.5.0
+- Command history with up/down arrow keys in the terminal input
+[#6](https://github.com/radprogrammer/radIDETerminal/issues/6)
+
 ## v0.2.4.0
 - Suppress ANSI escape codes via NO_COLOR=1 in process environment block (workaround until #4)
 [#5](https://github.com/radprogrammer/radIDETerminal/issues/5)

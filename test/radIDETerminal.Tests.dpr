@@ -32,7 +32,9 @@ uses
   DUnitX.TestFramework,
   Test.radIDETerminal.Smoke in 'Test.radIDETerminal.Smoke.pas',
   Test.radIDETerminal.CmdShell in 'Test.radIDETerminal.CmdShell.pas',
-  radIDETerminal.CmdShell in '..\source\radIDETerminal.CmdShell.pas';
+  Test.radIDETerminal.CommandHistory in 'Test.radIDETerminal.CommandHistory.pas',
+  radIDETerminal.CmdShell in '..\source\radIDETerminal.CmdShell.pas',
+  radIDETerminal.CommandHistory in '..\source\radIDETerminal.CommandHistory.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}
