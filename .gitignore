@@ -110,6 +110,8 @@ TestInsightSettings.ini
 /tools/*.ps1
 *.log
 *.md
+!/CHANGELOG.md
+!/README.md
 !ConPtyMigrationPlan.md
 /log
 /.claude
@@ -118,6 +120,7 @@ TestInsightSettings.ini
 *.xml
 *.json
 commit*
+!/tools/repo_tickets.txt
 *.dot
 coverage.db
 *.txt

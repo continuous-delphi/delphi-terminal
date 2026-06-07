@@ -61,6 +61,7 @@ type
     FPipeHandle: THandle;
     FOwner: TCmdShellProcess;
     FEncoding: TEncoding;
+    FIsUTF8: Boolean;
     procedure NotifyOutput(const AText: string);
     procedure NotifyExit;
   protected
@@ -76,6 +77,7 @@ begin
   FOwner := AOwner;
   FPipeHandle := APipeHandle;
   FEncoding := AEncoding;
+  FIsUTF8 := (AEncoding.CodePage = 65001);
   FreeOnTerminate := False;
   inherited Create(False);
 end;
@@ -97,23 +99,83 @@ begin
     end);
 end;
 
+function CompleteUTF8Length(const ABytes: TBytes; ALen: Integer): Integer;
+var
+  I, ExpectedLen: Integer;
+  B: Byte;
+begin
+  Result := ALen;
+  if ALen = 0 then
+    Exit;
+  for I := 1 to 3 do
+  begin
+    if I > ALen then
+      Break;
+    B := ABytes[ALen - I];
+    if B and $80 = 0 then
+      Exit(ALen)
+    else if B and $C0 <> $80 then
+    begin
+      if B and $E0 = $C0 then ExpectedLen := 2
+      else if B and $F0 = $E0 then ExpectedLen := 3
+      else if B and $F8 = $F0 then ExpectedLen := 4
+      else Exit(ALen);
+      if I < ExpectedLen then
+        Exit(ALen - I)
+      else
+        Exit(ALen);
+    end;
+  end;
+end;
+
 procedure TPipeReaderThread.Execute;
 var
   Buffer: array[0..4095] of Byte;
   BytesRead: DWORD;
-  Bytes: TBytes;
+  Combined: TBytes;
+  Leftover: TBytes;
+  CombinedLen, CompleteLen, LeftoverLen: Integer;
 begin
+  SetLength(Leftover, 0);
   while not Terminated do
   begin
     if not ReadFile(FPipeHandle, Buffer[0], SizeOf(Buffer), BytesRead, nil) then
       Break;
     if BytesRead > 0 then
     begin
-      SetLength(Bytes, BytesRead);
-      Move(Buffer[0], Bytes[0], BytesRead);
-      NotifyOutput(FEncoding.GetString(Bytes));
+      LeftoverLen := Length(Leftover);
+      if (LeftoverLen > 0) and FIsUTF8 then
+      begin
+        CombinedLen := LeftoverLen + Integer(BytesRead);
+        SetLength(Combined, CombinedLen);
+        Move(Leftover[0], Combined[0], LeftoverLen);
+        Move(Buffer[0], Combined[LeftoverLen], BytesRead);
+        SetLength(Leftover, 0);
+      end
+      else
+      begin
+        CombinedLen := Integer(BytesRead);
+        SetLength(Combined, CombinedLen);
+        Move(Buffer[0], Combined[0], BytesRead);
+      end;
+
+      if FIsUTF8 then
+      begin
+        CompleteLen := CompleteUTF8Length(Combined, CombinedLen);
+        if CompleteLen < CombinedLen then
+        begin
+          SetLength(Leftover, CombinedLen - CompleteLen);
+          Move(Combined[CompleteLen], Leftover[0], CombinedLen - CompleteLen);
+          SetLength(Combined, CompleteLen);
+        end;
+      end;
+
+      if Length(Combined) > 0 then
+        NotifyOutput(FEncoding.GetString(Combined));
     end;
   end;
+  if Length(Leftover) > 0 then
+    NotifyOutput(FEncoding.GetString(Leftover));
   if not FOwner.FTerminating then
     NotifyExit;
 end;

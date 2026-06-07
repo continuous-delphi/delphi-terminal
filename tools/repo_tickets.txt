@@ -491,6 +491,7 @@ Acceptance criteria:
 ---
 Title: Multi-byte UTF-8 characters can split across pipe reads
 Issue: #24
+Status: closed
 Labels: bug
 Body:
 The reader thread in `TPipeReaderThread.Execute` reads raw bytes from the

@@ -41,6 +41,8 @@ type
     [Test] procedure LegacyPSShouldProduceOutput;
     [Test] procedure LegacyPSShouldTerminateCleanly;
 
+    [Test] procedure PwshShouldDecodeMultiByteUTF8Correctly;
+
     [Test] procedure ChangeDirectoryCommandShouldUseCdForCmd;
     [Test] procedure ChangeDirectoryCommandShouldUseSetLocationForPwsh;
     [Test] procedure ChangeDirectoryCommandShouldUseSetLocationForPowerShell;
@@ -224,6 +226,20 @@ begin
   Assert.IsTrue(FShell.Running, 'Should be running before Terminate');
   FShell.Terminate;
   Assert.IsFalse(FShell.Running, 'Should not be running after Terminate');
+end;
+
+procedure TTestCmdShellProcess.PwshShouldDecodeMultiByteUTF8Correctly;
+begin
+  FShell.Start('pwsh.exe', GetEnvironmentVariable('TEMP'));
+  FOutput := '';
+  // Emit a string with 2-byte (e-acute), 3-byte (Euro sign), and 4-byte (emoji) UTF-8 characters
+  // surrounded by ASCII markers so we can verify no replacement characters appeared
+  FShell.SendCommand('Write-Output "UTF8TEST:' + #$00E9 + #$20AC + #$D83D#$DE00 + ':END"');
+  DrainQueueUntil('UTF8TEST:');
+  DrainQueue(500);
+  Assert.IsTrue(FOutput.Contains(#$00E9), 'Output should contain e-acute (2-byte UTF-8)');
+  Assert.IsTrue(FOutput.Contains(#$20AC), 'Output should contain Euro sign (3-byte UTF-8)');
+  Assert.IsFalse(FOutput.Contains(#$FFFD), 'Output should not contain replacement characters');
 end;
 
 { ChangeDirectoryCommand tests }
