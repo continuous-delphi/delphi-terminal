@@ -462,4 +462,31 @@ Acceptance criteria:
 - [ ] Existing tests continue to pass
 
 ---
+Title: Check WriteFile return value in SendCommand
+Issue: #23
+Status: closed
+Labels: bug
+Body:
+`TCmdShellProcess.SendCommand` does not check the return value of `WriteFile`.
+If the shell process has crashed between the `FRunning` check and the write,
+the call fails silently -- the user gets no feedback that their command was
+not delivered.
+
+**Affected code:** `source/Delphi.Terminal.CmdShell.pas`, `SendCommand` method.
+
+```delphi
+WriteFile(FStdInWrite, Bytes[0], Length(Bytes), Written, nil);
+```
+
+The fix should check the `WriteFile` result. On failure (broken pipe), close
+the stdin write handle so subsequent sends also fail fast. The reader thread
+will independently detect the broken stdout pipe and fire `HandleNaturalExit`
+to update `FRunning` and notify the UI.
+
+Acceptance criteria:
+- [ ] `WriteFile` return value is checked in `SendCommand`
+- [ ] Broken pipe closes the stdin handle to prevent repeated writes to a dead handle
+- [ ] Existing tests continue to pass
+
+---
 

@@ -3,6 +3,10 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v0.8.17.0
+- Check WriteFile return value in SendCommand; close stdin handle on broken pipe
+[#23](https://github.com/continuous-delphi/delphi-terminal/issues/23)
+
 ## v0.8.16.0
 - Fix use-after-free risk in queued thread notifications during shutdown
 [#22](https://github.com/continuous-delphi/delphi-terminal/issues/22)

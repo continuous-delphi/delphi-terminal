@@ -261,7 +261,11 @@ begin
   if not FRunning then
     Exit;
   Bytes := FEncoding.GetBytes(ACommand + #13#10);
-  WriteFile(FStdInWrite, Bytes[0], Length(Bytes), Written, nil);
+  if not WriteFile(FStdInWrite, Bytes[0], Length(Bytes), Written, nil) then
+  begin
+    CloseHandle(FStdInWrite);
+    FStdInWrite := INVALID_HANDLE_VALUE;
+  end;
 end;
 
 procedure TCmdShellProcess.HandleNaturalExit;
