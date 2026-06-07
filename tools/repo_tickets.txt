@@ -427,6 +427,7 @@ Acceptance criteria:
 ---
 Title: Fix use-after-free risk in queued thread notifications during shutdown
 Issue: #22
+Status: closed
 Labels: bug
 Body:
 `NotifyOutput` and `NotifyExit` in `TCmdShellProcess` use `TThread.Queue(nil, ...)`

@@ -80,7 +80,7 @@ var
 begin
   LText := AText;
   LOwner := FOwner;
-  TThread.Queue(nil,
+  TThread.Queue(Self,
     procedure
     begin
       if Assigned(LOwner.FOnOutput) then
@@ -93,7 +93,7 @@ var
   LOwner: TCmdShellProcess;
 begin
   LOwner := FOwner;
-  TThread.Queue(nil,
+  TThread.Queue(Self,
     procedure
     begin
       LOwner.HandleNaturalExit;

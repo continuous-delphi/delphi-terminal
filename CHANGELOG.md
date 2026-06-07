@@ -3,6 +3,10 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v0.8.16.0
+- Fix use-after-free risk in queued thread notifications during shutdown
+[#22](https://github.com/continuous-delphi/delphi-terminal/issues/22)
+
 ## v0.8.14.0
 
 - Support ANSI background colors
