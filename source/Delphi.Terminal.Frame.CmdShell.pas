@@ -40,6 +40,7 @@ type
     FPanelToolbar: TPanel;
     FBtnProjectDir: TSpeedButton;
     FBtnFileDir: TSpeedButton;
+    FBtnCommands: TSpeedButton;
     FBtnClear: TSpeedButton;
     FBtnStop: TSpeedButton;
     FRichOutput: TRichEdit;
@@ -64,6 +65,7 @@ type
     procedure HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleProjectDirClick(Sender: TObject);
     procedure HandleFileDirClick(Sender: TObject);
+    procedure HandleCommandsClick(Sender: TObject);
     procedure HandleClearClick(Sender: TObject);
     procedure HandleStopClick(Sender: TObject);
     procedure FlushOutputBuffer;
@@ -156,6 +158,14 @@ begin
   FBtnFileDir.Caption := 'File Dir';
   FBtnFileDir.Flat := True;
   FBtnFileDir.OnClick := HandleFileDirClick;
+
+  FBtnCommands := TSpeedButton.Create(Self);
+  FBtnCommands.Parent := FPanelToolbar;
+  FBtnCommands.Align := alLeft;
+  FBtnCommands.Width := 80;
+  FBtnCommands.Caption := 'Commands';
+  FBtnCommands.Flat := True;
+  FBtnCommands.OnClick := HandleCommandsClick;
 
   FBtnClear := TSpeedButton.Create(Self);
   FBtnClear.Parent := FPanelToolbar;
@@ -493,6 +503,12 @@ begin
       FOnCommandPaletteRequested(Self);
     Key := 0;
   end;
+end;
+
+procedure TframeCmdShell.HandleCommandsClick(Sender: TObject);
+begin
+  if Assigned(FOnCommandPaletteRequested) then
+    FOnCommandPaletteRequested(Self);
 end;
 
 procedure TframeCmdShell.HandleProjectDirClick(Sender: TObject);
