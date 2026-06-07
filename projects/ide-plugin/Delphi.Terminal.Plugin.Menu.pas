@@ -154,6 +154,7 @@ begin
   FMenuItem := TMenuItem.Create(Parent);
   FMenuItem.Name := CMenuItemName;
   FMenuItem.Caption := CMenuItemCaption;
+  FMenuItem.ShortCut := ShortCut(Ord('N'), [ssCtrl, ssAlt]);
   FMenuItem.OnClick := HandleClick;
   Parent.Add(FMenuItem);
 end;

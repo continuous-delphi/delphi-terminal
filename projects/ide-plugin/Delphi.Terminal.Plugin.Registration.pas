@@ -24,6 +24,7 @@ uses
   Delphi.Terminal.Plugin.Lifecycle,
   Delphi.Terminal.Plugin.Wizard,
   Delphi.Terminal.Plugin.OptionsPage,
+  Delphi.Terminal.Plugin.KeyBinding,
   Delphi.Terminal.Settings;
 
 procedure Register;
@@ -42,6 +43,7 @@ begin
   end;
   TDelphiTerminalWizard.Register;
   TDelphiTerminalOptionsPage.RegisterOptions;
+  RegisterKeyBinding;
 end;
 
 end.

@@ -20,6 +20,7 @@ implementation
 
 uses
   Delphi.Terminal.Plugin.OptionsPage,
+  Delphi.Terminal.Plugin.KeyBinding,
   Delphi.Terminal.Plugin.Menu,
   Delphi.Terminal.Plugin.DockForm,
   Delphi.Terminal.Settings;
@@ -33,6 +34,7 @@ begin
     Exit;
   GShutdownDone := True;
 
+  UnregisterKeyBinding;
   TDelphiTerminalOptionsPage.UnregisterOptions;
   CleanUpTerminalMenu;
   TfrmDelphiTerminalDock.CleanUp;

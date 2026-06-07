@@ -3,6 +3,10 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v0.9.31.0
+- Ctrl+Alt+N keyboard shortcut to toggle the terminal panel (show/focus/hide)
+[#11](https://github.com/continuous-delphi/delphi-terminal/issues/11)
+
 ## v0.9.29.0
 - Fix multi-byte UTF-8 characters splitting across pipe reads, causing replacement characters in non-ASCII output
 [#24](https://github.com/continuous-delphi/delphi-terminal/issues/24)

@@ -270,6 +270,7 @@ Acceptance criteria:
 ---
 Title: Keyboard shortcut to toggle terminal panel
 Issue: #11
+Status: closed
 Labels: enhancement
 Body:
 Add a configurable keyboard shortcut to show/hide the radTerminal dockable

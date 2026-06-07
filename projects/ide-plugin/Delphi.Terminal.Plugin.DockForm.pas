@@ -46,6 +46,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     class procedure ShowInstance;
+    class procedure ToggleInstance;
     class procedure CleanUp;
   end;
 
@@ -109,6 +110,23 @@ begin
   FInstance.Show;
   FInstance.BringToFront;
   FInstance.FocusActiveFrame;
+end;
+
+class procedure TfrmDelphiTerminalDock.ToggleInstance;
+begin
+  if Assigned(FInstance) and FInstance.Visible then
+  begin
+    if FInstance.Focused or FInstance.ContainsControl(Screen.ActiveControl) then
+      FInstance.Hide
+    else
+    begin
+      FInstance.Show;
+      FInstance.BringToFront;
+      FInstance.FocusActiveFrame;
+    end;
+  end
+  else
+    ShowInstance;
 end;
 
 class procedure TfrmDelphiTerminalDock.CleanUp;

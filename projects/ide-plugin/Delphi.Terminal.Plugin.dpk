@@ -43,6 +43,7 @@ contains
   Delphi.Terminal.Plugin.Menu in 'Delphi.Terminal.Plugin.Menu.pas',
   Delphi.Terminal.Plugin.Lifecycle in 'Delphi.Terminal.Plugin.Lifecycle.pas',
   Delphi.Terminal.Plugin.OptionsPage in 'Delphi.Terminal.Plugin.OptionsPage.pas',
+  Delphi.Terminal.Plugin.KeyBinding in 'Delphi.Terminal.Plugin.KeyBinding.pas',
   Delphi.Terminal.Plugin.OptionsFrame in 'Delphi.Terminal.Plugin.OptionsFrame.pas' {frameDelphiTerminalOptions},
   Delphi.Terminal.CommandHistory in '..\..\source\Delphi.Terminal.CommandHistory.pas',
   Delphi.Terminal.Frame.CmdShell in '..\..\source\Delphi.Terminal.Frame.CmdShell.pas',
