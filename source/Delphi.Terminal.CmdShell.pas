@@ -296,7 +296,7 @@ begin
     // CTRL_C_EVENT cannot be targeted at a process group. Broadcast it only
     // after attaching to the shell console and while this process ignores it.
     GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-    Sleep(100);
+    Sleep(250);
   finally
     SetConsoleCtrlHandler(@IgnoreCtrlHandler, False);
     FreeConsole;
