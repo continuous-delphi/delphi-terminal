@@ -489,4 +489,89 @@ Acceptance criteria:
 - [ ] Existing tests continue to pass
 
 ---
+Title: Multi-byte UTF-8 characters can split across pipe reads
+Issue: #24
+Labels: bug
+Body:
+The reader thread in `TPipeReaderThread.Execute` reads raw bytes from the
+pipe and immediately decodes them in a single call:
+
+```delphi
+NotifyOutput(FEncoding.GetString(Bytes));
+```
+
+A multi-byte UTF-8 character (2-4 bytes) can be split across two `ReadFile`
+calls. The first call produces a replacement character for the incomplete
+sequence; the trailing bytes in the next call also produce a replacement
+character. Result: non-ASCII text (accented characters, CJK, emoji, Unicode
+file paths) randomly corrupts depending on where the read boundary falls.
+
+**Affected code:** `source/Delphi.Terminal.CmdShell.pas`, `TPipeReaderThread.Execute`
+(lines 103-117).
+
+**Fix:** Accumulate a small leftover-byte buffer between reads. After each
+`ReadFile`, append the new bytes to the leftover buffer, decode only complete
+characters, and carry over any trailing incomplete byte sequence for the next
+read. For UTF-8, an incomplete trailing sequence can be detected by checking
+the lead-byte pattern of the final bytes.
+
+Acceptance criteria:
+- [ ] Multi-byte UTF-8 characters split across read boundaries decode correctly
+- [ ] Single-byte ASCII output is unaffected
+- [ ] OEM codepage path (CMD) still works correctly
+- [ ] Unit test verifies correct decoding of a split multi-byte character
+- [ ] Existing tests continue to pass
+
+---
+Title: Shell start failure crashes entire terminal panel
+Issue: #25
+Labels: bug
+Body:
+If `pwsh.exe` (or `powershell.exe`) is not installed and the user has that
+tab enabled in settings, `TCmdShellProcess.Start` calls `RaiseLastOSError`.
+This exception propagates out of the dock form constructor, preventing the
+terminal panel from opening at all. A missing optional shell kills the
+entire panel.
+
+**Affected code:** `projects/ide-plugin/Delphi.Terminal.Plugin.DockForm.pas`,
+lines 143-157. Each `StartShell` call can raise, and none are wrapped in
+try/except.
+
+**Fix:** Wrap each `StartShell` call in a try/except. On failure, show an
+error message in that tab's output area (e.g. "[pwsh.exe not found]") and
+leave the tab visible but inactive. The remaining tabs should still start
+normally.
+
+Acceptance criteria:
+- [ ] Terminal panel opens even if one or more shell executables are missing
+- [ ] Failed tabs show a descriptive error message in the output area
+- [ ] Working tabs are unaffected by a sibling tab's failure
+- [ ] Existing tests continue to pass
+
+---
+Title: Add Ctrl+C support to stop long-running / runaway commands
+Issue: #28
+Status: closed
+Labels: enhancement
+Body:
+The shell runs with CREATE_NO_WINDOW, so there is no console to receive
+GenerateConsoleCtrlEvent. The user has no way to interrupt a long-running
+command (e.g., ping -t, an infinite loop).
+
+Implementation uses the AttachConsole + GenerateConsoleCtrlEvent approach:
+- Create shell with CREATE_NEW_PROCESS_GROUP instead of CREATE_NO_WINDOW
+- SendCtrlC: AttachConsole(childPID), disable our handler with
+  SetConsoleCtrlHandler(nil, True), call GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0),
+  then FreeConsole and re-enable our handler
+- Stop speed button on toolbar and Ctrl+C in input edit (when no text selected)
+
+Acceptance criteria:
+- [ ] Ctrl+C in the input edit interrupts the running command
+- [ ] Stop button on toolbar interrupts the running command
+- [ ] Shell session survives the interrupt (user can continue typing)
+- [ ] Ctrl+C with selected text still copies (standard behavior)
+- [ ] All three shell types (CMD, pwsh, PowerShell) work with the new process group flag
+- [ ] Existing tests continue to pass
+
+---
 

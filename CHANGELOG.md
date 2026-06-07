@@ -3,6 +3,10 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v0.8.18.0
+- Ctrl+C support: interrupt running commands via Stop button or Ctrl+C in input
+[#28](https://github.com/continuous-delphi/delphi-terminal/issues/28)
+
 ## v0.8.17.0
 - Check WriteFile return value in SendCommand; close stdin handle on broken pipe
 [#23](https://github.com/continuous-delphi/delphi-terminal/issues/23)

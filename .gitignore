@@ -122,3 +122,4 @@ coverage.db
 *.txt
 /projects/ide-plugin/Delphi.Terminal.Plugin.dproj
 *.otares
+!projects/ide-plugin/Delphi.Terminal.Version.RES

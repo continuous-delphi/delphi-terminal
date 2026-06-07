@@ -40,6 +40,7 @@ type
     class function ChangeDirectoryCommand(const AShellExe, APath: string): string;
     procedure Start(const AShellExe: string; const AWorkDir: string = '');
     procedure SendCommand(const ACommand: string);
+    procedure SendCtrlC;
     procedure Terminate;
     property Running: Boolean read FRunning;
     property OnOutput: TOutputEvent read FOnOutput write FOnOutput;
@@ -235,7 +236,7 @@ begin
 
   EnvBlock := BuildEnvironmentBlock;
 
-  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NO_WINDOW or CREATE_UNICODE_ENVIRONMENT, @EnvBlock[0], WorkDir, StartInfo, FProcessInfo) then
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NEW_PROCESS_GROUP or CREATE_UNICODE_ENVIRONMENT, @EnvBlock[0], WorkDir, StartInfo, FProcessInfo) then
   begin
     CloseHandle(FStdOutRead);
     CloseHandle(StdOutWrite);
@@ -265,6 +266,32 @@ begin
   begin
     CloseHandle(FStdInWrite);
     FStdInWrite := INVALID_HANDLE_VALUE;
+  end;
+end;
+
+var
+  GCtrlHandlerInstalled: Boolean = False;
+
+function OwnCtrlHandler(dwCtrlType: DWORD): BOOL; stdcall;
+begin
+  Result := True;
+end;
+
+procedure TCmdShellProcess.SendCtrlC;
+begin
+  if not FRunning then
+    Exit;
+  if FProcessInfo.dwProcessId = 0 then
+    Exit;
+  if not GCtrlHandlerInstalled then
+  begin
+    SetConsoleCtrlHandler(@OwnCtrlHandler, True);
+    GCtrlHandlerInstalled := True;
+  end;
+  if AttachConsole(FProcessInfo.dwProcessId) then
+  begin
+    GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
+    FreeConsole;
   end;
 end;
 

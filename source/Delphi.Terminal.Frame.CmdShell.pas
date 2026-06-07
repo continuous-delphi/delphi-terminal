@@ -28,6 +28,7 @@ type
     FBtnProjectDir: TSpeedButton;
     FBtnFileDir: TSpeedButton;
     FBtnClear: TSpeedButton;
+    FBtnStop: TSpeedButton;
     FRichOutput: TRichEdit;
     FPanelInput: TPanel;
     FCmdLabel: TEdit;
@@ -47,6 +48,7 @@ type
     procedure HandleProjectDirClick(Sender: TObject);
     procedure HandleFileDirClick(Sender: TObject);
     procedure HandleClearClick(Sender: TObject);
+    procedure HandleStopClick(Sender: TObject);
     procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
     procedure TrimOutput;
     procedure BuildControls;
@@ -132,6 +134,14 @@ begin
   FBtnClear.Caption := 'Clear';
   FBtnClear.Flat := True;
   FBtnClear.OnClick := HandleClearClick;
+
+  FBtnStop := TSpeedButton.Create(Self);
+  FBtnStop.Parent := FPanelToolbar;
+  FBtnStop.Align := alLeft;
+  FBtnStop.Width := 45;
+  FBtnStop.Caption := 'Stop';
+  FBtnStop.Flat := True;
+  FBtnStop.OnClick := HandleStopClick;
 
   FPanelInput := TPanel.Create(Self);
   FPanelInput.Parent := Self;
@@ -405,6 +415,11 @@ begin
   begin
     ClearOutput;
     Key := 0;
+  end
+  else if (Key = Ord('C')) and (ssCtrl in Shift) and (FEditInput.SelLength = 0) then
+  begin
+    FCmdShell.SendCtrlC;
+    Key := 0;
   end;
 end;
 
@@ -450,6 +465,11 @@ end;
 procedure TframeCmdShell.HandleClearClick(Sender: TObject);
 begin
   ClearOutput;
+end;
+
+procedure TframeCmdShell.HandleStopClick(Sender: TObject);
+begin
+  FCmdShell.SendCtrlC;
 end;
 
 procedure TframeCmdShell.ClearOutput;
