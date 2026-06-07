@@ -33,4 +33,4 @@ pwsh -NoProfile -Command '
 '
 
 # Stage the version file so it's included in the commit.
-git add projects/ide-plugin/Delphi.Terminal.Version.rc projects/ide-plugin/Delphi.Terminal.Version.res
+git add projects/ide-plugin/Delphi.Terminal.Version.rc projects/ide-plugin/Delphi.Terminal.Version.RES
