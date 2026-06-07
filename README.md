@@ -1,15 +1,12 @@
-<p align="left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)"  srcset="assets/radterminal-logo-reversed.svg">
-    <source media="(prefers-color-scheme: light)" srcset="assets/radterminal-logo.svg">
-    <img alt="radTerminal" src="assets/radterminal-logo.svg" width="420">
-  </picture>
-</p>
+# delphi-terminal
+
+![delphi-terminal logo](https://continuous-delphi.github.io/assets/logos/delphi-terminal-480x270.png)
 
 [![Delphi](https://img.shields.io/badge/delphi-red)](https://www.embarcadero.com/products/delphi)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/radprogrammer/radTerminal)
-[![RAD Programmer](https://img.shields.io/badge/org-radProgrammer-red)](https://github.com/radprogrammer)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/continuous-delphi/delphi-terminal)
+[![Continuous Delphi](https://img.shields.io/badge/org-continuous--delphi-red)](https://github.com/continuous-
+delphi)
 
 Dockable terminal panel for **RAD Studio**. Run CMD, PowerShell 7 (pwsh),
 and legacy PowerShell sessions directly inside the IDE.
@@ -30,7 +27,7 @@ and legacy PowerShell sessions directly inside the IDE.
   - Ctrl+1, Ctrl+2, Ctrl+3 -- jump to CMD, pwsh, or PowerShell tab
   - Up / Down -- navigate command history
 - **IDE integration** -- dockable form with persistent dock state,
-  `View` menu item, and config screen in `Tools>Options>Third Party>radTerminal`
+  `View` menu item, and config screen in `Tools>Options>Third Party>delphi-terminal`
 - Auto change-directory option when the active Project changes
 - Configurable Font Name + Font Size used in console window
 
@@ -74,22 +71,31 @@ Optional
 
 ### IDE Plugin
 
-1. Open `projects/ide-plugin/radTerminalPlugin.dpr` in RAD Studio
+1. Open `projects/ide-plugin/delphi-terminal-Plugin.dpr` in RAD Studio
 2. Right-click the project in Project Manager > **Install**
-3. Access via **View > radTerminal**
+3. Access via **View > delphi-terminal**
 
 ## Usage
 
-After installing, use the `View` menu and select `radTerminal`
+After installing, use the `View` menu and select `delphi-terminal`
 Dock the form as desired and optionally save Desktop setting.
 
 Screenshot:
 
-![radTerminal ScreenShot](assets/screenshot1.png)
+![delphi-terminal ScreenShot](assets/screenshot1.png)
 
 Config screen:
 
-![radTerminal Config ScreenShot](assets/screenshot-config1.png)
+![delphi-terminal Config ScreenShot](assets/screenshot-config1.png)
+
+---
+
+![continuous-delphi logo](https://continuous-delphi.github.io/assets/logos/continuous-delphi-480x270.png)
+
+## Part of Continuous Delphi
+
+This tool is part of the [Continuous-Delphi](https://github.com/continuous-delphi)
+ecosystem, dedicated to the long-term success of Delphi applications.
 
 ---
 

@@ -1,7 +1,7 @@
 (*
 
-  radTerminal
-  https://github.com/radprogrammer/radTerminal
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
 
   Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
   ANSI color rendering, and command history
@@ -10,7 +10,7 @@
   Copyright (c) 2026 Darian Miller
 
 *)
-unit radTerminal.Plugin.DockForm;
+unit Delphi.Terminal.Plugin.DockForm;
 
 interface
 
@@ -18,10 +18,10 @@ uses
   System.SysUtils, System.Classes,
   Vcl.Controls, Vcl.Forms, Vcl.ComCtrls,
   DockForm,
-  radTerminal.Frame.CmdShell;
+  Delphi.Terminal.Frame.CmdShell;
 
 type
-  TfrmradTerminalDock = class(TDockableForm)
+  TfrmDelphiTerminalDock = class(TDockableForm)
   private
     FPageControl: TPageControl;
     FFrameCmd: TframeCmdShell;
@@ -51,28 +51,28 @@ type
 implementation
 
 uses
-  Winapi.Windows, ToolsAPI, radTerminal.Settings;
+  Winapi.Windows, ToolsAPI, Delphi.Terminal.Settings;
 
 type
-  TradTerminalIDENotifier = class(TNotifierObject, IOTAIDENotifier)
+  TDelphiTerminalIDENotifier = class(TNotifierObject, IOTAIDENotifier)
   private
-    FOwner: TfrmradTerminalDock;
+    FOwner: TfrmDelphiTerminalDock;
   public
-    constructor Create(AOwner: TfrmradTerminalDock);
+    constructor Create(AOwner: TfrmDelphiTerminalDock);
     procedure FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
     procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean); overload;
     procedure AfterCompile(Succeeded: Boolean); overload;
   end;
 
-{ TradTerminalIDENotifier }
+{ TDelphiTerminalIDENotifier }
 
-constructor TradTerminalIDENotifier.Create(AOwner: TfrmradTerminalDock);
+constructor TDelphiTerminalIDENotifier.Create(AOwner: TfrmDelphiTerminalDock);
 begin
   inherited Create;
   FOwner := AOwner;
 end;
 
-procedure TradTerminalIDENotifier.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
+procedure TDelphiTerminalIDENotifier.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
 begin
   case NotifyCode of
     ofnBeginProjectGroupOpen:
@@ -88,44 +88,44 @@ begin
   end;
 end;
 
-procedure TradTerminalIDENotifier.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
+procedure TDelphiTerminalIDENotifier.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
 begin
   // Not used
 end;
 
-procedure TradTerminalIDENotifier.AfterCompile(Succeeded: Boolean);
+procedure TDelphiTerminalIDENotifier.AfterCompile(Succeeded: Boolean);
 begin
   // Not used
 end;
 
 var
-  FInstance: TfrmradTerminalDock;
+  FInstance: TfrmDelphiTerminalDock;
 
-class procedure TfrmradTerminalDock.ShowInstance;
+class procedure TfrmDelphiTerminalDock.ShowInstance;
 begin
   if not Assigned(FInstance) then
-    FInstance := TfrmradTerminalDock.Create(nil);
+    FInstance := TfrmDelphiTerminalDock.Create(nil);
   FInstance.Show;
   FInstance.BringToFront;
   FInstance.FocusActiveFrame;
 end;
 
-class procedure TfrmradTerminalDock.CleanUp;
+class procedure TfrmDelphiTerminalDock.CleanUp;
 begin
   FreeAndNil(FInstance);
 end;
 
-constructor TfrmradTerminalDock.Create(AOwner: TComponent);
+constructor TfrmDelphiTerminalDock.Create(AOwner: TComponent);
 var
   WorkDir: string;
-  S: TradTerminalSettings;
+  S: TDelphiTerminalSettings;
   DefaultIdx, I: Integer;
 begin
   inherited Create(AOwner);
-  DeskSection := 'radTerminal';
+  DeskSection := 'DelphiTerminal';
   AutoSave := True;
   SaveStateNecessary := True;
-  Caption := 'radTerminal';
+  Caption := 'Delphi-Terminal';
   ClientWidth := 800;
   ClientHeight := 400;
   Position := poScreenCenter;
@@ -174,7 +174,7 @@ begin
   RegisterIDENotifier;
 end;
 
-destructor TfrmradTerminalDock.Destroy;
+destructor TfrmDelphiTerminalDock.Destroy;
 begin
   UnregisterIDENotifier;
   if FInstance = Self then
@@ -188,7 +188,7 @@ begin
   inherited;
 end;
 
-procedure TfrmradTerminalDock.CreateTerminalTab(const ACaption, AShellExe: string; var AFrame: TframeCmdShell);
+procedure TfrmDelphiTerminalDock.CreateTerminalTab(const ACaption, AShellExe: string; var AFrame: TframeCmdShell);
 var
   Tab: TTabSheet;
 begin
@@ -203,17 +203,17 @@ begin
   AFrame.OnRequestFileDir := HandleRequestFileDir;
 end;
 
-procedure TfrmradTerminalDock.HandleRequestProjectDir(Sender: TObject; var APath: string);
+procedure TfrmDelphiTerminalDock.HandleRequestProjectDir(Sender: TObject; var APath: string);
 begin
   APath := GetActiveProjectDir;
 end;
 
-procedure TfrmradTerminalDock.HandleRequestFileDir(Sender: TObject; var APath: string);
+procedure TfrmDelphiTerminalDock.HandleRequestFileDir(Sender: TObject; var APath: string);
 begin
   APath := GetCurrentFileDir;
 end;
 
-function TfrmradTerminalDock.GetActiveProjectDir: string;
+function TfrmDelphiTerminalDock.GetActiveProjectDir: string;
 var
   ModuleServices: IOTAModuleServices;
   Project: IOTAProject;
@@ -227,7 +227,7 @@ begin
   end;
 end;
 
-function TfrmradTerminalDock.GetCurrentFileDir: string;
+function TfrmDelphiTerminalDock.GetCurrentFileDir: string;
 var
   EditorServices: IOTAEditorServices;
   EditBuffer: IOTAEditBuffer;
@@ -241,14 +241,14 @@ begin
   end;
 end;
 
-function TfrmradTerminalDock.GetInitialWorkDir: string;
+function TfrmDelphiTerminalDock.GetInitialWorkDir: string;
 begin
   Result := GetActiveProjectDir;
   if Result = '' then
     Result := GetEnvironmentVariable('USERPROFILE');
 end;
 
-procedure TfrmradTerminalDock.FocusActiveFrame;
+procedure TfrmDelphiTerminalDock.FocusActiveFrame;
 var
   I: Integer;
 begin
@@ -262,16 +262,16 @@ begin
     end;
 end;
 
-procedure TfrmradTerminalDock.RegisterIDENotifier;
+procedure TfrmDelphiTerminalDock.RegisterIDENotifier;
 var
   Services: IOTAServices;
 begin
   FNotifierIndex := -1;
   if Supports(BorlandIDEServices, IOTAServices, Services) then
-    FNotifierIndex := Services.AddNotifier(TradTerminalIDENotifier.Create(Self));
+    FNotifierIndex := Services.AddNotifier(TDelphiTerminalIDENotifier.Create(Self));
 end;
 
-procedure TfrmradTerminalDock.UnregisterIDENotifier;
+procedure TfrmDelphiTerminalDock.UnregisterIDENotifier;
 var
   Services: IOTAServices;
 begin
@@ -283,7 +283,7 @@ begin
   end;
 end;
 
-procedure TfrmradTerminalDock.HandleActiveProjectChanged;
+procedure TfrmDelphiTerminalDock.HandleActiveProjectChanged;
 var
   ProjectDir: string;
   I: Integer;
@@ -310,7 +310,7 @@ begin
   end;
 end;
 
-procedure TfrmradTerminalDock.HandleFormClose(Sender: TObject; var Action: TCloseAction);
+procedure TfrmDelphiTerminalDock.HandleFormClose(Sender: TObject; var Action: TCloseAction);
 begin
   Action := caHide;
 end;
@@ -318,6 +318,6 @@ end;
 initialization
 
 finalization
-  TfrmradTerminalDock.CleanUp;
+  TfrmDelphiTerminalDock.CleanUp;
 
 end.

@@ -1,4 +1,4 @@
-unit Test.radTerminal.Smoke;
+unit Test.Delphi.Terminal.Smoke;
 
 interface
 

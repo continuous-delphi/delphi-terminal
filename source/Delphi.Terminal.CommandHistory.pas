@@ -1,4 +1,4 @@
-unit radTerminal.CommandHistory;
+unit Delphi.Terminal.CommandHistory;
 
 interface
 

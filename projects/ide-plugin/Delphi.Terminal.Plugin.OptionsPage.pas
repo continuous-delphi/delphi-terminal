@@ -1,7 +1,7 @@
 (*
 
-  radTerminal
-  https://github.com/radprogrammer/radTerminal
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
 
   Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
   ANSI color rendering, and command history
@@ -10,7 +10,7 @@
   Copyright (c) 2026 Darian Miller
 
 *)
-unit radTerminal.Plugin.OptionsPage;
+unit Delphi.Terminal.Plugin.OptionsPage;
 
 interface
 
@@ -18,7 +18,7 @@ uses
   Vcl.Forms, ToolsAPI;
 
 type
-  TradTerminalOptionsPage = class(TInterfacedObject, INTAAddInOptions)
+  TDelphiTerminalOptionsPage = class(TInterfacedObject, INTAAddInOptions)
   private
     FFrame: TCustomFrame;
   public
@@ -38,82 +38,76 @@ implementation
 
 uses
   System.SysUtils,
-  radTerminal.Plugin.OptionsFrame,
-  radTerminal.Settings;
+  Delphi.Terminal.Plugin.OptionsFrame,
+  Delphi.Terminal.Settings;
 
 var
   GOptionsPage: INTAAddInOptions = nil;
 
-{ TradTerminalOptionsPage }
+{ TDelphiTerminalOptionsPage }
 
-function TradTerminalOptionsPage.GetArea: string;
+function TDelphiTerminalOptionsPage.GetArea: string;
 begin
   Result := '';  // Third Party section
 end;
 
-function TradTerminalOptionsPage.GetCaption: string;
+function TDelphiTerminalOptionsPage.GetCaption: string;
 begin
-  Result := 'radTerminal';
+  Result := 'DelphiTerminal';
 end;
 
-function TradTerminalOptionsPage.GetFrameClass: TCustomFrameClass;
+function TDelphiTerminalOptionsPage.GetFrameClass: TCustomFrameClass;
 begin
-  Result := TframeradTerminalOptions;
+  Result := TframeDelphiTerminalOptions;
 end;
 
-procedure TradTerminalOptionsPage.FrameCreated(AFrame: TCustomFrame);
+procedure TDelphiTerminalOptionsPage.FrameCreated(AFrame: TCustomFrame);
 begin
   FFrame := AFrame;
-  if FFrame is TframeradTerminalOptions then
-    TframeradTerminalOptions(FFrame).LoadSettings;
+  if FFrame is TframeDelphiTerminalOptions then
+    TframeDelphiTerminalOptions(FFrame).LoadSettings;
 end;
 
-procedure TradTerminalOptionsPage.DialogClosed(Accepted: Boolean);
+procedure TDelphiTerminalOptionsPage.DialogClosed(Accepted: Boolean);
 var
   RegKey: string;
 begin
-  if Accepted and (FFrame is TframeradTerminalOptions) then
+  if Accepted and (FFrame is TframeDelphiTerminalOptions) then
   begin
-    TframeradTerminalOptions(FFrame).SaveSettings;
+    TframeDelphiTerminalOptions(FFrame).SaveSettings;
     RegKey := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey;
     TerminalSettings.SaveToRegistry(RegKey);
   end;
   FFrame := nil;
 end;
 
-function TradTerminalOptionsPage.ValidateContents: Boolean;
+function TDelphiTerminalOptionsPage.ValidateContents: Boolean;
 begin
   Result := True;
-  if FFrame is TframeradTerminalOptions then
-  begin
-    with TframeradTerminalOptions(FFrame) do
-    begin
-      // Ensure at least one tab is checked -- handled by settings consumer
-    end;
-  end;
+  //toconsider: ensure options make sense, don't rely on inferred behavior
 end;
 
-function TradTerminalOptionsPage.GetHelpContext: Integer;
+function TDelphiTerminalOptionsPage.GetHelpContext: Integer;
 begin
   Result := 0;
 end;
 
-function TradTerminalOptionsPage.IncludeInIDEInsight: Boolean;
+function TDelphiTerminalOptionsPage.IncludeInIDEInsight: Boolean;
 begin
   Result := True;
 end;
 
-class procedure TradTerminalOptionsPage.RegisterOptions;
+class procedure TDelphiTerminalOptionsPage.RegisterOptions;
 var
   Svc: INTAEnvironmentOptionsServices;
 begin
   if not Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, Svc) then
     Exit;
-  GOptionsPage := TradTerminalOptionsPage.Create;
+  GOptionsPage := TDelphiTerminalOptionsPage.Create;
   Svc.RegisterAddInOptions(GOptionsPage);
 end;
 
-class procedure TradTerminalOptionsPage.UnregisterOptions;
+class procedure TDelphiTerminalOptionsPage.UnregisterOptions;
 var
   Svc: INTAEnvironmentOptionsServices;
 begin
@@ -127,6 +121,6 @@ end;
 initialization
 
 finalization
-  TradTerminalOptionsPage.UnregisterOptions;
+  TDelphiTerminalOptionsPage.UnregisterOptions;
 
 end.

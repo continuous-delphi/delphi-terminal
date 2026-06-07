@@ -4,10 +4,10 @@
 # The 4th number tracks local CI builds between commits and resets here.
 #
 # Uses Invoke-DelphiIncVer from delphi-powershell-ci.
-# Pattern matches the 4-part version string in source/radTerminal.Info.pas.
+# Pattern matches the 4-part version string 
 
 pwsh -NoProfile -Command '
-  $result = Invoke-DelphiIncVer -File "projects/ide-plugin/radTerminalVersion.rc" -IncverTarget "RC" -IncverStyle "WinVer" -IncverPart "patch"
+  $result = Invoke-DelphiIncVer -File "projects/ide-plugin/Delphi.Terminal.Version.rc" -IncverTarget "RC" -IncverStyle "WinVer" -IncverPart "patch"
   if (-not $result.Success) {
     Write-Error "IncVer failed: $($result.Message)"
     exit 1
@@ -16,4 +16,4 @@ pwsh -NoProfile -Command '
 '
 
 # Stage the version file so it's included in the commit.
-git add projects/ide-plugin/radTerminalVersion.rc
+git add projects/ide-plugin/Delphi.Terminal.Version.rc

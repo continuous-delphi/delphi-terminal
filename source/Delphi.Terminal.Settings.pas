@@ -1,7 +1,7 @@
 (*
 
-  radTerminal
-  https://github.com/radprogrammer/radTerminal
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
 
   Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
   ANSI color rendering, and command history
@@ -10,7 +10,7 @@
   Copyright (c) 2026 Darian Miller
 
 *)
-unit radTerminal.Settings;
+unit Delphi.Terminal.Settings;
 
 interface
 
@@ -18,7 +18,7 @@ uses
   System.SysUtils, System.Classes;
 
 type
-  TradTerminalSettings = class
+  TDelphiTerminalSettings = class
   private
     FShowCmdTab: Boolean;
     FShowPwshTab: Boolean;
@@ -41,7 +41,7 @@ type
     property AutoCdMode: Integer read FAutoCdMode write FAutoCdMode;
   end;
 
-function TerminalSettings: TradTerminalSettings;
+function TerminalSettings: TDelphiTerminalSettings;
 
 implementation
 
@@ -49,27 +49,27 @@ uses
   System.Win.Registry, Winapi.Windows;
 
 var
-  GSettings: TradTerminalSettings = nil;
+  GSettings: TDelphiTerminalSettings = nil;
 
-function TerminalSettings: TradTerminalSettings;
+function TerminalSettings: TDelphiTerminalSettings;
 begin
   if GSettings = nil then
   begin
-    GSettings := TradTerminalSettings.Create;
+    GSettings := TDelphiTerminalSettings.Create;
     GSettings.SetDefaults;
   end;
   Result := GSettings;
 end;
 
-{ TradTerminalSettings }
+{ TDelphiTerminalSettings }
 
-constructor TradTerminalSettings.Create;
+constructor TDelphiTerminalSettings.Create;
 begin
   inherited Create;
   SetDefaults;
 end;
 
-procedure TradTerminalSettings.SetDefaults;
+procedure TDelphiTerminalSettings.SetDefaults;
 begin
   FShowCmdTab := True;
   FShowPwshTab := True;
@@ -80,12 +80,12 @@ begin
   FAutoCdMode := 0;
 end;
 
-procedure TradTerminalSettings.LoadFromRegistry(const ARegKeyBase: string);
+procedure TDelphiTerminalSettings.LoadFromRegistry(const ARegKeyBase: string);
 var
   Reg: TRegistry;
   Key: string;
 begin
-  Key := ARegKeyBase + '\radTerminal';
+  Key := ARegKeyBase + '\ContinousDelphi.DelphiTerminal';
   Reg := TRegistry.Create(KEY_READ);
   try
     Reg.RootKey := HKEY_CURRENT_USER;
@@ -111,12 +111,12 @@ begin
   end;
 end;
 
-procedure TradTerminalSettings.SaveToRegistry(const ARegKeyBase: string);
+procedure TDelphiTerminalSettings.SaveToRegistry(const ARegKeyBase: string);
 var
   Reg: TRegistry;
   Key: string;
 begin
-  Key := ARegKeyBase + '\radTerminal';
+  Key := ARegKeyBase + '\ContinousDelphi.DelphiTerminal';
   Reg := TRegistry.Create(KEY_WRITE);
   try
     Reg.RootKey := HKEY_CURRENT_USER;

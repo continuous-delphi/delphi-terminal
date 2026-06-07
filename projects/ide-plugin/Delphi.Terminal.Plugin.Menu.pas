@@ -1,7 +1,7 @@
 (*
 
-  radTerminal
-  https://github.com/radprogrammer/radTerminal
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
 
   Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
   ANSI color rendering, and command history
@@ -10,9 +10,9 @@
   Copyright (c) 2026 Darian Miller
 
 *)
-unit radTerminal.Plugin.Menu;
+unit Delphi.Terminal.Plugin.Menu;
 
-// Adds a "radTerminal" item to the IDE View menu and wires it to the
+// Adds a "Delphi-Terminal" item to the IDE View menu and wires it to the
 // dockable terminal form. Lifecycle is handled in unit initialization /
 // finalization -- installing the package adds the menu, uninstalling
 // removes it.
@@ -25,16 +25,16 @@ uses
   System.SysUtils, System.Classes,
   Vcl.Menus,
   ToolsAPI,
-  radTerminal.Plugin.DockForm;
+  Delphi.Terminal.Plugin.DockForm;
 
 const
-  CMenuItemName = 'radTerminalShowItem';
-  CMenuItemCaption = 'rad&Terminal';
+  CMenuItemName = 'DelphiTerminalShowItem';
+  CMenuItemCaption = 'Delphi-&Terminal';
   CViewMenuNames: array[0..1] of string = ('ViewsMenu', 'ViewMenu');
   CToolsMenuNames: array[0..1] of string = ('ToolsMenu', 'ToolsTools');
 
 type
-  TradTerminalMenu = class
+  TDelphiTerminalMenu = class
   private
     FMenuItem: TMenuItem;
     procedure HandleClick(Sender: TObject);
@@ -51,28 +51,28 @@ type
   end;
 
 var
-  GMenu: TradTerminalMenu = nil;
+  GMenu: TDelphiTerminalMenu = nil;
 
-{ TradTerminalMenu }
+{ TDelphiTerminalMenu }
 
-constructor TradTerminalMenu.Create;
+constructor TDelphiTerminalMenu.Create;
 begin
   inherited Create;
   Install;
 end;
 
-destructor TradTerminalMenu.Destroy;
+destructor TDelphiTerminalMenu.Destroy;
 begin
   Uninstall;
   inherited Destroy;
 end;
 
-function TradTerminalMenu.StripAmpersands(const AText: string): string;
+function TDelphiTerminalMenu.StripAmpersands(const AText: string): string;
 begin
   Result := StringReplace(AText, '&', '', [rfReplaceAll]);
 end;
 
-function TradTerminalMenu.FindItemByName(const AMainMenu: TMainMenu; const AName: string): TMenuItem;
+function TDelphiTerminalMenu.FindItemByName(const AMainMenu: TMainMenu; const AName: string): TMenuItem;
 
   function Recurse(const AParent: TMenuItem): TMenuItem;
   var
@@ -93,7 +93,7 @@ begin
   Result := Recurse(AMainMenu.Items);
 end;
 
-function TradTerminalMenu.FindTopLevelByNames(const AMainMenu: TMainMenu; const ANames: array of string): TMenuItem;
+function TDelphiTerminalMenu.FindTopLevelByNames(const AMainMenu: TMainMenu; const ANames: array of string): TMenuItem;
 var
   I, J: Integer;
 begin
@@ -104,7 +104,7 @@ begin
         Exit(AMainMenu.Items[I]);
 end;
 
-function TradTerminalMenu.FindTopLevelByCaption(const AMainMenu: TMainMenu; const ACaption: string): TMenuItem;
+function TDelphiTerminalMenu.FindTopLevelByCaption(const AMainMenu: TMainMenu; const ACaption: string): TMenuItem;
 var
   I: Integer;
 begin
@@ -114,7 +114,7 @@ begin
       Exit(AMainMenu.Items[I]);
 end;
 
-function TradTerminalMenu.ResolveParent(const AMainMenu: TMainMenu): TMenuItem;
+function TDelphiTerminalMenu.ResolveParent(const AMainMenu: TMainMenu): TMenuItem;
 begin
   Result := FindTopLevelByNames(AMainMenu, CViewMenuNames);
   if Result = nil then
@@ -127,7 +127,7 @@ begin
     Result := AMainMenu.Items;
 end;
 
-procedure TradTerminalMenu.Install;
+procedure TDelphiTerminalMenu.Install;
 var
   Services: INTAServices;
   MainMenu: TMainMenu;
@@ -156,18 +156,18 @@ begin
   Parent.Add(FMenuItem);
 end;
 
-procedure TradTerminalMenu.Uninstall;
+procedure TDelphiTerminalMenu.Uninstall;
 begin
   FreeAndNil(FMenuItem);
 end;
 
-procedure TradTerminalMenu.HandleClick(Sender: TObject);
+procedure TDelphiTerminalMenu.HandleClick(Sender: TObject);
 begin
-  TfrmradTerminalDock.ShowInstance;
+  TfrmDelphiTerminalDock.ShowInstance;
 end;
 
 initialization
-  GMenu := TradTerminalMenu.Create;
+  GMenu := TDelphiTerminalMenu.Create;
 
 finalization
   FreeAndNil(GMenu);

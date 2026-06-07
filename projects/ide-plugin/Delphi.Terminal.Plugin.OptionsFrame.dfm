@@ -1,4 +1,4 @@
-object frameradTerminalOptions: TframeradTerminalOptions
+object frameDelphiTerminalOptions: TframeDelphiTerminalOptions
   Left = 0
   Top = 0
   Width = 500

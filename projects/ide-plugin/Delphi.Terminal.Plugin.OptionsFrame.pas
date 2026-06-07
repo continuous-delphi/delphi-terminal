@@ -1,7 +1,7 @@
 (*
 
-  radTerminal
-  https://github.com/radprogrammer/radTerminal
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
 
   Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
   ANSI color rendering, and command history
@@ -10,17 +10,17 @@
   Copyright (c) 2026 Darian Miller
 
 *)
-unit radTerminal.Plugin.OptionsFrame;
+unit Delphi.Terminal.Plugin.OptionsFrame;
 
 interface
 
 uses
   System.SysUtils, System.Classes,
   Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls,
-  radTerminal.Settings;
+  Delphi.Terminal.Settings;
 
 type
-  TframeradTerminalOptions = class(TFrame)
+  TframeDelphiTerminalOptions = class(TFrame)
   private
     FChkCmd: TCheckBox;
     FChkPwsh: TCheckBox;
@@ -44,15 +44,15 @@ implementation
 uses
   System.UITypes;
 
-{ TframeradTerminalOptions }
+{ TframeDelphiTerminalOptions }
 
-constructor TframeradTerminalOptions.Create(AOwner: TComponent);
+constructor TframeDelphiTerminalOptions.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   BuildControls;
 end;
 
-function TframeradTerminalOptions.CreateLabel(AParent: TWinControl; ATop: Integer; const ACaption: string): TLabel;
+function TframeDelphiTerminalOptions.CreateLabel(AParent: TWinControl; ATop: Integer; const ACaption: string): TLabel;
 begin
   Result := TLabel.Create(Self);
   Result.Parent := AParent;
@@ -61,7 +61,7 @@ begin
   Result.Caption := ACaption;
 end;
 
-procedure TframeradTerminalOptions.BuildControls;
+procedure TframeDelphiTerminalOptions.BuildControls;
 const
   Col2 = 160;
 var
@@ -152,9 +152,9 @@ begin
   FCboAutoCd.Items.Add('All tabs');
 end;
 
-procedure TframeradTerminalOptions.LoadSettings;
+procedure TframeDelphiTerminalOptions.LoadSettings;
 var
-  S: TradTerminalSettings;
+  S: TDelphiTerminalSettings;
   Idx: Integer;
 begin
   S := TerminalSettings;
@@ -171,9 +171,9 @@ begin
   FCboAutoCd.ItemIndex := S.AutoCdMode;
 end;
 
-procedure TframeradTerminalOptions.SaveSettings;
+procedure TframeDelphiTerminalOptions.SaveSettings;
 var
-  S: TradTerminalSettings;
+  S: TDelphiTerminalSettings;
 begin
   S := TerminalSettings;
   S.ShowCmdTab := FChkCmd.Checked;

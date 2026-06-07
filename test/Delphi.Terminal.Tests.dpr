@@ -1,4 +1,4 @@
-program radTerminal.Tests;
+program Delphi.Terminal.Tests;
 
 //--- Begin ConsoleProject template changes
 (*
@@ -30,14 +30,14 @@ uses
   DUnitX.Loggers.Console,
   {$ENDIF }
   DUnitX.TestFramework,
-  Test.radTerminal.Smoke in 'Test.radTerminal.Smoke.pas',
-  Test.radTerminal.CmdShell in 'Test.radTerminal.CmdShell.pas',
-  Test.radTerminal.CommandHistory in 'Test.radTerminal.CommandHistory.pas',
-  Test.radTerminal.AnsiParser in 'Test.radTerminal.AnsiParser.pas',
-  radTerminal.CmdShell in '..\source\radTerminal.CmdShell.pas',
-  radTerminal.CommandHistory in '..\source\radTerminal.CommandHistory.pas',
-  radTerminal.AnsiParser in '..\source\radTerminal.AnsiParser.pas',
-  radTerminal.Settings in '..\source\radTerminal.Settings.pas';
+  Test.Delphi.Terminal.Smoke in 'Test.Delphi.Terminal.Smoke.pas',
+  Test.Delphi.Terminal.CmdShell in 'Test.Delphi.Terminal.CmdShell.pas',
+  Test.Delphi.Terminal.CommandHistory in 'Test.Delphi.Terminal.CommandHistory.pas',
+  Test.Delphi.Terminal.AnsiParser in 'Test.Delphi.Terminal.AnsiParser.pas',
+  Delphi.Terminal.CmdShell in '..\source\Delphi.Terminal.CmdShell.pas',
+  Delphi.Terminal.CommandHistory in '..\source\Delphi.Terminal.CommandHistory.pas',
+  Delphi.Terminal.AnsiParser in '..\source\Delphi.Terminal.AnsiParser.pas',
+  Delphi.Terminal.Settings in '..\source\Delphi.Terminal.Settings.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

@@ -1,7 +1,7 @@
 (*
 
-  radTerminal
-  https://github.com/radprogrammer/radTerminal
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
 
   Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
   ANSI color rendering, and command history
@@ -10,14 +10,14 @@
   Copyright (c) 2026 Darian Miller
 
 *)
-unit radTerminal.Frame.CmdShell;
+unit Delphi.Terminal.Frame.CmdShell;
 
 interface
 
 uses
   System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages,
   Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons, Vcl.ComCtrls,
-  radTerminal.CmdShell, radTerminal.CommandHistory, radTerminal.AnsiParser, radTerminal.Settings;
+  Delphi.Terminal.CmdShell, Delphi.Terminal.CommandHistory, Delphi.Terminal.AnsiParser, Delphi.Terminal.Settings;
 
 type
   TRequestPathEvent = procedure(Sender: TObject; var APath: string) of object;

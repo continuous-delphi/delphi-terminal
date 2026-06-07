@@ -1,7 +1,7 @@
 (*
 
-  radTerminal
-  https://github.com/radprogrammer/radTerminal
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
 
   Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
   ANSI color rendering, and command history
@@ -10,7 +10,7 @@
   Copyright (c) 2026 Darian Miller
 
 *)
-unit radTerminal.Plugin.Registration;
+unit Delphi.Terminal.Plugin.Registration;
 
 interface
 
@@ -20,9 +20,9 @@ implementation
 
 uses
   ToolsAPI,
-  radTerminal.Plugin.Wizard,
-  radTerminal.Plugin.OptionsPage,
-  radTerminal.Settings;
+  Delphi.Terminal.Plugin.Wizard,
+  Delphi.Terminal.Plugin.OptionsPage,
+  Delphi.Terminal.Settings;
 
 procedure Register;
 var
@@ -30,8 +30,8 @@ var
 begin
   RegKey := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey;
   TerminalSettings.LoadFromRegistry(RegKey);
-  TradTerminalWizard.Register;
-  TradTerminalOptionsPage.RegisterOptions;
+  TDelphiTerminalWizard.Register;
+  TDelphiTerminalOptionsPage.RegisterOptions;
 end;
 
 end.

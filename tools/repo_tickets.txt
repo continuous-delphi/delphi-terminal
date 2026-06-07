@@ -1,5 +1,5 @@
-# Tickets for the radTerminal project
-# Repo remote url: https://github.com/radprogrammer/radTerminal
+# Tickets for the delphi-terminal project
+# Repo remote url: https://github.com/continuous-delphi/delphi-terminal
 # File used by create-github-issues.ps1
 # dev-automation-tooling script & document reference1: C:\code\dev-automation-tooling
 
@@ -253,7 +253,7 @@ and add a TMenuItem directly. Use the radListHotkeys project
 pattern.
 
 Implementation notes:
-- Remove IOTAMenuWizard from TradTerminalWizard (keep IOTAWizard for
+- Remove IOTAMenuWizard from TDelphiTerminalWizard (keep IOTAWizard for
   RegisterPackageWizard lifecycle)
 - Create a new unit radTerminal.Plugin.Menu that handles menu installation
   via INTAServices.MainMenu with View menu fallback resolution

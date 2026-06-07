@@ -1,7 +1,7 @@
 object frmMain: TfrmMain
   Left = 0
   Top = 0
-  Caption = 'radTerminal Demo'
+  Caption = 'delphi-terminal VCL demo app'
   ClientHeight = 600
   ClientWidth = 800
   Color = clBtnFace

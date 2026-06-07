@@ -120,5 +120,5 @@ commit*
 *.dot
 coverage.db
 *.txt
-/projects/ide-plugin/radTerminalPlugin.dproj
+/projects/ide-plugin/Delphi.Terminal.Plugin.dproj
 *.otares

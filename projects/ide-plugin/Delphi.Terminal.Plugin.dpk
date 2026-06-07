@@ -1,0 +1,51 @@
+package Delphi.Terminal.Plugin;
+
+{$R *.res}
+ {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Delphi-Terminal - Dockable Terminal Window for RAD Studio'}
+{$LIBSUFFIX AUTO}
+{$DESIGNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  vcl,
+  designide;
+
+contains
+  Delphi.Terminal.Plugin.Registration in 'Delphi.Terminal.Plugin.Registration.pas',
+  Delphi.Terminal.Plugin.DockForm in 'Delphi.Terminal.Plugin.DockForm.pas',
+  Delphi.Terminal.Plugin.Wizard in 'Delphi.Terminal.Plugin.Wizard.pas',
+  Delphi.Terminal.Plugin.Menu in 'Delphi.Terminal.Plugin.Menu.pas',
+  Delphi.Terminal.Plugin.OptionsPage in 'Delphi.Terminal.Plugin.OptionsPage.pas',
+  Delphi.Terminal.Plugin.OptionsFrame in 'Delphi.Terminal.Plugin.OptionsFrame.pas' {frameDelphiTerminalOptions},
+  Delphi.Terminal.CommandHistory in '..\..\source\Delphi.Terminal.CommandHistory.pas',
+  Delphi.Terminal.Frame.CmdShell in '..\..\source\Delphi.Terminal.Frame.CmdShell.pas',
+  Delphi.Terminal.Settings in '..\..\source\Delphi.Terminal.Settings.pas',
+  Delphi.Terminal.AnsiParser in '..\..\source\Delphi.Terminal.AnsiParser.pas',
+  Delphi.Terminal.CmdShell in '..\..\source\Delphi.Terminal.CmdShell.pas';
+
+end.

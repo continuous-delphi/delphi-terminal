@@ -1,2 +1,2 @@
 @echo off
-start "" "https://github.com/radprogrammer/radTerminal"
+start "" "https://github.com/continuous-delphi/delphi-terminal"

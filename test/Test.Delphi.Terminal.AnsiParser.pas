@@ -1,11 +1,11 @@
-unit Test.radTerminal.AnsiParser;
+unit Test.Delphi.Terminal.AnsiParser;
 
 interface
 
 uses
   DUnitX.TestFramework,
   System.SysUtils,
-  radTerminal.AnsiParser;
+  Delphi.Terminal.AnsiParser;
 
 type
 

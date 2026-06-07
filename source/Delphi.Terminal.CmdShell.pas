@@ -1,7 +1,7 @@
 (*
 
-  radTerminal
-  https://github.com/radprogrammer/radTerminal
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
 
   Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
   ANSI color rendering, and command history
@@ -10,7 +10,7 @@
   Copyright (c) 2026 Darian Miller
 
 *)
-unit radTerminal.CmdShell;
+unit Delphi.Terminal.CmdShell;
 
 interface
 
