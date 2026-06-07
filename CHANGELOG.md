@@ -3,7 +3,7 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
-## v0.8.10.0
+## v0.8.14.0
 
 - Renamed from radTerminal to Delphi-Terminal
   and moved from RAD Programmer to Continuous-Delphi
