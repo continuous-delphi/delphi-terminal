@@ -425,4 +425,40 @@ Acceptance criteria:
 - [ ] Unit tests cover 256-color and RGB parsing
 
 ---
+Title: Fix use-after-free risk in queued thread notifications during shutdown
+Issue: #22
+Labels: bug
+Body:
+`NotifyOutput` and `NotifyExit` in `TCmdShellProcess` use `TThread.Queue(nil, ...)`
+with closures that capture `LOwner` (a raw pointer to the owning `TCmdShellProcess`).
+If the shell object is destroyed while queued messages are still pending in the main
+thread message queue, the closures execute against freed memory.
+
+**Scenario:** The reader thread queues multiple output notifications. The owner calls
+`Terminate` (which waits for thread exit and frees the thread). The destructor
+completes. The queued anonymous methods then fire with a dangling `LOwner` pointer,
+causing an access violation.
+
+This is most likely to manifest during IDE shutdown or when rapidly closing/reopening
+the terminal panel while the shell is producing output.
+
+**Affected code:** `source/Delphi.Terminal.CmdShell.pas` lines 76-101
+(`TPipeReaderThread.NotifyOutput` and `TPipeReaderThread.NotifyExit`).
+
+**Possible approaches:**
+- Add a guard flag (e.g. `FDestroying`) checked inside each queued closure before
+  accessing the owner, protected by a shared reference or critical section
+- Switch from `TThread.Queue(nil, ...)` to `TThread.Queue(FReaderThread, ...)` so
+  that freeing the thread cancels its pending queued methods
+- Use an ref-counted shared-state record so closures can detect owner destruction
+- Drain the message queue after `WaitFor` and before freeing the owner
+
+Acceptance criteria:
+- [ ] Destroying a `TCmdShellProcess` while output is actively being produced does
+      not cause an access violation
+- [ ] Rapid close/reopen of the terminal panel does not crash
+- [ ] IDE shutdown with active shell output does not crash
+- [ ] Existing tests continue to pass
+
+---
 
