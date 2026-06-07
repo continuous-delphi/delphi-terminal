@@ -20,8 +20,10 @@ uses
   Delphi.Terminal.SavedCommands;
 
 type
+  TCommandPaletteAction = (paCancel, paEdit, paRun);
+
   TCommandPaletteResult = record
-    Accepted: Boolean;
+    Action: TCommandPaletteAction;
     Command: TSavedCommand;
   end;
 
@@ -37,7 +39,7 @@ type
     procedure HandleFilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleListBoxDblClick(Sender: TObject);
     procedure ApplyFilter;
-    procedure AcceptSelected;
+    procedure AcceptSelected(AAction: TCommandPaletteAction);
   protected
     procedure DoShow; override;
     procedure Deactivate; override;
@@ -169,7 +171,10 @@ begin
     end;
     VK_RETURN:
     begin
-      AcceptSelected;
+      if ssCtrl in Shift then
+        AcceptSelected(paRun)
+      else
+        AcceptSelected(paEdit);
       Key := 0;
     end;
     VK_ESCAPE:
@@ -182,17 +187,17 @@ end;
 
 procedure TfrmCommandPalette.HandleListBoxDblClick(Sender: TObject);
 begin
-  AcceptSelected;
+  AcceptSelected(paEdit);
 end;
 
-procedure TfrmCommandPalette.AcceptSelected;
+procedure TfrmCommandPalette.AcceptSelected(AAction: TCommandPaletteAction);
 var
   SelIdx: Integer;
 begin
   if FListBox.ItemIndex < 0 then
     Exit;
   SelIdx := FFilteredIndices[FListBox.ItemIndex];
-  FResult.Accepted := True;
+  FResult.Action := AAction;
   FResult.Command := FCommands[SelIdx];
   ModalResult := mrOk;
 end;

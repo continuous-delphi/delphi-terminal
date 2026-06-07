@@ -436,7 +436,7 @@ begin
     ScreenPt := ClientToScreen(Point(0, 0));
 
   PaletteResult := ShowCommandPalette(Self, Commands, ScreenPt);
-  if not PaletteResult.Accepted then
+  if PaletteResult.Action = paCancel then
     Exit;
 
   TargetFrame := FrameForShellType(Ord(PaletteResult.Command.ShellType));
@@ -468,12 +468,14 @@ begin
   end;
 
   if ExpandedDir <> '' then
-  begin
-    CompoundCmd := TCmdShellProcess.ChangeDirectoryAndRun(TargetFrame.ShellExe, ExpandedDir, ExpandedCmd);
-    TargetFrame.SendUserCommand(CompoundCmd);
-  end
+    CompoundCmd := TCmdShellProcess.ChangeDirectoryAndRun(TargetFrame.ShellExe, ExpandedDir, ExpandedCmd)
   else
-    TargetFrame.SendUserCommand(ExpandedCmd);
+    CompoundCmd := ExpandedCmd;
+
+  if PaletteResult.Action = paEdit then
+    TargetFrame.InsertCommandText(CompoundCmd)
+  else
+    TargetFrame.SendUserCommand(CompoundCmd);
 end;
 
 procedure TfrmDelphiTerminalDock.HandleFormClose(Sender: TObject; var Action: TCloseAction);

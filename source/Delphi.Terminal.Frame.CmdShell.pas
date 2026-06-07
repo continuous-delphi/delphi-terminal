@@ -71,6 +71,7 @@ type
     procedure ClearOutput;
     procedure FocusInput;
     procedure SendUserCommand(const AText: string);
+    procedure InsertCommandText(const AText: string);
     procedure ShowMessage(const AText: string);
 
     property ShellExe: string read FShellExe;
@@ -556,6 +557,13 @@ begin
   FHistory.ResetPosition;
   FCmdShell.SendCommand(AText);
   FEditInput.Clear;
+end;
+
+procedure TframeCmdShell.InsertCommandText(const AText: string);
+begin
+  FEditInput.Text := AText;
+  FEditInput.SelStart := Length(AText);
+  FocusInput;
 end;
 
 procedure TframeCmdShell.ShowMessage(const AText: string);
