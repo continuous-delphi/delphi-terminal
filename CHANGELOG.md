@@ -3,6 +3,11 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v0.8.22.0
+
+- Prevent pwsh crash issues if not installed
+[#25](https://github.com/continuous-delphi/delphi-terminal/issues/25)
+
 ## v0.8.21.0
 - Ctrl+C support: interrupt running commands via Stop button or Ctrl+C in input
 [#28](https://github.com/continuous-delphi/delphi-terminal/issues/28)

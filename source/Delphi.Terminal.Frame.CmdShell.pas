@@ -38,6 +38,7 @@ type
     FAnsiParser: TAnsiParser;
     FShellExe: string;
     FWorkDir: string;
+    FShellUnavailable: Boolean;
     FOnRequestProjectDir: TRequestPathEvent;
     FOnRequestFileDir: TRequestPathEvent;
 
@@ -60,6 +61,7 @@ type
 
     procedure StartShell(const AShellExe: string; const AWorkDir: string = '');
     procedure StopShell;
+    procedure ShowStartupError(const AShellExe, AMessage: string);
 
     procedure SetWorkingDirectory(const APath: string);
     procedure ClearOutput;
@@ -304,6 +306,8 @@ begin
     Key := #0;
     if not FCmdShell.Running then
     begin
+      if FShellUnavailable then
+        Exit;
       FEditInput.ReadOnly := False;
       FEditInput.TextHint := '';
       FRichOutput.Clear;
@@ -490,10 +494,22 @@ var
 begin
   FShellExe := AShellExe;
   FWorkDir := AWorkDir;
+  FShellUnavailable := False;
   FCmdShell.Start(AShellExe, AWorkDir);
   Lower := LowerCase(ExtractFileName(AShellExe));
   if Lower.Contains('pwsh') then
     FCmdShell.SendCommand('$PSStyle.OutputRendering = ''Ansi''');
+end;
+
+procedure TframeCmdShell.ShowStartupError(const AShellExe, AMessage: string);
+begin
+  FShellExe := AShellExe;
+  FShellUnavailable := True;
+  FEditInput.ReadOnly := True;
+  FEditInput.Text := '';
+  FEditInput.TextHint := 'Shell unavailable';
+  ClearOutput;
+  HandleOutput(Self, Format('[%s not found]'#13#10'%s'#13#10, [AShellExe, AMessage]));
 end;
 
 procedure TframeCmdShell.StopShell;

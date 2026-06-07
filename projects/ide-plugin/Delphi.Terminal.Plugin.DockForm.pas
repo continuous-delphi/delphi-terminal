@@ -31,6 +31,7 @@ type
     FGroupOpening: Boolean;
     FLastProjectDir: string;
     procedure CreateTerminalTab(const ACaption, AShellExe: string; var AFrame: TframeCmdShell);
+    procedure StartTerminalShell(AFrame: TframeCmdShell; const AShellExe, AWorkDir: string);
     procedure HandleRequestProjectDir(Sender: TObject; var APath: string);
     procedure HandleRequestFileDir(Sender: TObject; var APath: string);
     function GetActiveProjectDir: string;
@@ -143,17 +144,17 @@ begin
   if S.ShowCmdTab then
   begin
     CreateTerminalTab('CMD', 'cmd.exe', FFrameCmd);
-    FFrameCmd.StartShell('cmd.exe', WorkDir);
+    StartTerminalShell(FFrameCmd, 'cmd.exe', WorkDir);
   end;
   if S.ShowPwshTab then
   begin
     CreateTerminalTab('pwsh', 'pwsh.exe', FFramePwsh);
-    FFramePwsh.StartShell('pwsh.exe', WorkDir);
+    StartTerminalShell(FFramePwsh, 'pwsh.exe', WorkDir);
   end;
   if S.ShowPowerShellTab then
   begin
     CreateTerminalTab('PowerShell', 'powershell.exe', FFramePowerShell);
-    FFramePowerShell.StartShell('powershell.exe', WorkDir);
+    StartTerminalShell(FFramePowerShell, 'powershell.exe', WorkDir);
   end;
 
   // Activate the default shell tab
@@ -201,6 +202,16 @@ begin
   AFrame.Align := alClient;
   AFrame.OnRequestProjectDir := HandleRequestProjectDir;
   AFrame.OnRequestFileDir := HandleRequestFileDir;
+end;
+
+procedure TfrmDelphiTerminalDock.StartTerminalShell(AFrame: TframeCmdShell; const AShellExe, AWorkDir: string);
+begin
+  try
+    AFrame.StartShell(AShellExe, AWorkDir);
+  except
+    on E: Exception do
+      AFrame.ShowStartupError(AShellExe, E.Message);
+  end;
 end;
 
 procedure TfrmDelphiTerminalDock.HandleRequestProjectDir(Sender: TObject; var APath: string);

@@ -6,7 +6,8 @@ uses
   Delphi.Terminal.Frame.CmdShell in '..\..\source\Delphi.Terminal.Frame.CmdShell.pas' {frameCmdShell: TFrame},
   Delphi.Terminal.Settings in '..\..\source\Delphi.Terminal.Settings.pas',
   Delphi.Terminal.AnsiParser in '..\..\source\Delphi.Terminal.AnsiParser.pas',
-  Delphi.Terminal.CmdShell in '..\..\source\Delphi.Terminal.CmdShell.pas';
+  Delphi.Terminal.CmdShell in '..\..\source\Delphi.Terminal.CmdShell.pas',
+  Delphi.Terminal.CommandHistory in '..\..\source\Delphi.Terminal.CommandHistory.pas';
 
 {$R *.res}
 
