@@ -13,7 +13,7 @@ REM or stand-alone in: https://github.com/continuous-delphi/delphi-clean
 REM
 
 pwsh -NoProfile -NoLogo -Command ^
-  "$ErrorActionPreference = 'Stop'; Invoke-DelphiClean -CleanLevel deep -CleanIncludeFilePattern '*.res'" 
+  "$ErrorActionPreference = 'Stop'; Invoke-DelphiClean -CleanLevel deep
 
 if %ERRORLEVEL% NEQ 0 (
   echo.

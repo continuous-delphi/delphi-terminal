@@ -13,13 +13,19 @@ pwsh -NoProfile -Command '
     exit 1
   }
   # Compile .rc to .res
-    $brcc = Join-Path $env:BDS "bin\brcc32.exe"
-    if (-not (Test-Path $brcc)) {
-      # Fallback: search common location
+    $brcc = $null
+    if ($env:BDS) {
+      $brcc = Join-Path $env:BDS "bin\brcc32.exe"
+    }
+    if (-not $brcc -or -not (Test-Path $brcc)) {
       $brcc = "C:\Delphi\RADStudio37\bin\brcc32.exe"
     }
     if (Test-Path $brcc) {
-      & $brcc "projects/ide-plugin/Delphi.Terminal.Version.rc" 2>&1 | Out-Null
+      $output = & $brcc "projects/ide-plugin/Delphi.Terminal.Version.rc" 2>&1
+      if ($LASTEXITCODE -ne 0) {
+        Write-Error "brcc32 failed: $output"
+        exit 1
+      }
     } else {
       Write-Warning "brcc32.exe not found -- .res not recompiled"
     }
@@ -27,4 +33,4 @@ pwsh -NoProfile -Command '
 '
 
 # Stage the version file so it's included in the commit.
-git add projects/ide-plugin/Delphi.Terminal.Version.rc
+git add projects/ide-plugin/Delphi.Terminal.Version.rc projects/ide-plugin/Delphi.Terminal.Version.res

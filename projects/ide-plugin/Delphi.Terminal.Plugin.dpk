@@ -1,7 +1,8 @@
 package Delphi.Terminal.Plugin;
 
 {$R *.res}
- {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$R Delphi.Terminal.Version.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
