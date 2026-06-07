@@ -236,7 +236,7 @@ begin
 
   EnvBlock := BuildEnvironmentBlock;
 
-  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NEW_PROCESS_GROUP or CREATE_UNICODE_ENVIRONMENT, @EnvBlock[0], WorkDir, StartInfo, FProcessInfo) then
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_UNICODE_ENVIRONMENT, @EnvBlock[0], WorkDir, StartInfo, FProcessInfo) then
   begin
     CloseHandle(FStdOutRead);
     CloseHandle(StdOutWrite);
@@ -276,33 +276,30 @@ end;
 
 procedure TCmdShellProcess.SendCtrlC;
 var
-  AttachedHere: Boolean;
+  AttachedToShellConsole: Boolean;
 begin
   if not FRunning then
     Exit;
   if FProcessInfo.dwProcessId = 0 then
     Exit;
 
-  AttachedHere := AttachConsole(FProcessInfo.dwProcessId);
-  if not AttachedHere and (GetLastError <> ERROR_ACCESS_DENIED) then
+  AttachedToShellConsole := AttachConsole(FProcessInfo.dwProcessId);
+  if not AttachedToShellConsole then
     Exit;
 
   if not SetConsoleCtrlHandler(@IgnoreCtrlHandler, True) then
   begin
-    if AttachedHere then
-      FreeConsole;
+    FreeConsole;
     Exit;
   end;
   try
-    // The shell is started as a new process group, so its PID is also the
-    // group id. CTRL_BREAK_EVENT can be targeted at that group; CTRL_C_EVENT
-    // with group 0 broadcasts to this process too and can close the demo app.
-    GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, FProcessInfo.dwProcessId);
+    // CTRL_C_EVENT cannot be targeted at a process group. Broadcast it only
+    // after attaching to the shell console and while this process ignores it.
+    GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
     Sleep(100);
   finally
     SetConsoleCtrlHandler(@IgnoreCtrlHandler, False);
-    if AttachedHere then
-      FreeConsole;
+    FreeConsole;
   end;
 end;
 
