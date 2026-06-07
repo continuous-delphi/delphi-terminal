@@ -2,6 +2,12 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+
+## v0.9.24.0
+
+- Some optimizations
+PlainText now uses TStringBuilder, segments are accumulated in TList<TAnsiSegment> and converted once with ToArray, and CSI params are copied once instead of appended char-by-char.
+
 ## v0.8.23.0
 - OSC sequences now keep buffering in FPartialSeq until the parser sees
 either BEL or ESC \, so split PowerShell title sequences are stripped

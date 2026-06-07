@@ -77,6 +77,9 @@ type
 
 implementation
 
+uses
+  System.Generics.Collections;
+
 { TAnsiAttributes }
 
 procedure TAnsiAttributes.Reset;
@@ -240,19 +243,21 @@ var
   Input: string;
   I, Len: Integer;
   SeqStart: Integer;
-  PlainText: string;
+  ParamsStart: Integer;
+  PlainText: TStringBuilder;
   SeqParams: string;
   OscTerminated: Boolean;
   Seg: TAnsiSegment;
+  Segments: TList<TAnsiSegment>;
 
   procedure FlushPlainText;
   begin
-    if PlainText <> '' then
+    if PlainText.Length > 0 then
     begin
-      Seg.Text := PlainText;
+      Seg.Text := PlainText.ToString;
       Seg.Attr := FCurrentAttr;
-      Result := Result + [Seg];
-      PlainText := '';
+      Segments.Add(Seg);
+      PlainText.Clear;
     end;
   end;
 
@@ -264,97 +269,105 @@ begin
   if Len = 0 then
     Exit;
 
-  PlainText := '';
-  I := 1;
-  while I <= Len do
-  begin
-    if Input[I] = #27 then
+  PlainText := TStringBuilder.Create;
+  Segments := TList<TAnsiSegment>.Create;
+  try
+    I := 1;
+    while I <= Len do
     begin
-      // Check if we have at least ESC[
-      if I + 1 > Len then
+      if Input[I] = #27 then
       begin
-        // ESC at end of buffer -- partial sequence
-        FlushPlainText;
-        FPartialSeq := Copy(Input, I, Len - I + 1);
-        Exit;
-      end;
-
-      if Input[I + 1] = '[' then
-      begin
-        // CSI sequence: ESC [ params command
-        Inc(I, 2); // skip ESC[
-        SeqParams := '';
-        while (I <= Len) and CharInSet(Input[I], ['0'..'9', ';', '?']) do
+        // Check if we have at least ESC[
+        if I + 1 > Len then
         begin
-          SeqParams := SeqParams + Input[I];
-          Inc(I);
-        end;
-        if I > Len then
-        begin
-          // Incomplete sequence -- store for next call
+          // ESC at end of buffer -- partial sequence
           FlushPlainText;
-          FPartialSeq := #27'[' + SeqParams;
+          FPartialSeq := Copy(Input, I, Len - I + 1);
+          Result := Segments.ToArray;
           Exit;
         end;
-        // I now points to the command character
-        if Input[I] = 'm' then
+
+        if Input[I + 1] = '[' then
         begin
-          FlushPlainText;
-          ApplySGR(SeqParams);
-        end;
-        // All other CSI commands (H, J, K, A, B, C, D, etc.) are silently stripped
-        Inc(I);
-      end
-      else if Input[I + 1] = ']' then
-      begin
-        // OSC sequence: ESC ] ... ST (or BEL)
-        SeqStart := I;
-        Inc(I, 2);
-        OscTerminated := False;
-        while I <= Len do
-        begin
-          if Input[I] = #7 then
-          begin
+          // CSI sequence: ESC [ params command
+          Inc(I, 2); // skip ESC[
+          ParamsStart := I;
+          while (I <= Len) and CharInSet(Input[I], ['0'..'9', ';', '?']) do
             Inc(I);
-            OscTerminated := True;
-            Break;
-          end
-          else if Input[I] = #27 then
+          SeqParams := Copy(Input, ParamsStart, I - ParamsStart);
+          if I > Len then
           begin
-            if I + 1 > Len then
-              Break;
-            if Input[I + 1] = '\' then
+            // Incomplete sequence -- store for next call
+            FlushPlainText;
+            FPartialSeq := #27'[' + SeqParams;
+            Result := Segments.ToArray;
+            Exit;
+          end;
+          // I now points to the command character
+          if Input[I] = 'm' then
+          begin
+            FlushPlainText;
+            ApplySGR(SeqParams);
+          end;
+          // All other CSI commands (H, J, K, A, B, C, D, etc.) are silently stripped
+          Inc(I);
+        end
+        else if Input[I + 1] = ']' then
+        begin
+          // OSC sequence: ESC ] ... ST (or BEL)
+          SeqStart := I;
+          Inc(I, 2);
+          OscTerminated := False;
+          while I <= Len do
+          begin
+            if Input[I] = #7 then
             begin
-              Inc(I, 2);
+              Inc(I);
               OscTerminated := True;
               Break;
+            end
+            else if Input[I] = #27 then
+            begin
+              if I + 1 > Len then
+                Break;
+              if Input[I + 1] = '\' then
+              begin
+                Inc(I, 2);
+                OscTerminated := True;
+                Break;
+              end;
             end;
+            Inc(I);
           end;
-          Inc(I);
-        end;
 
-        if not OscTerminated then
+          if not OscTerminated then
+          begin
+            FlushPlainText;
+            FPartialSeq := Copy(Input, SeqStart, Len - SeqStart + 1);
+            Result := Segments.ToArray;
+            Exit;
+          end;
+          // OSC sequences are stripped
+        end
+        else
         begin
-          FlushPlainText;
-          FPartialSeq := Copy(Input, SeqStart, Len - SeqStart + 1);
-          Exit;
+          // Other ESC sequences (ESC followed by single char) -- strip
+          Inc(I, 2);
         end;
-        // OSC sequences are stripped
       end
       else
       begin
-        // Other ESC sequences (ESC followed by single char) -- strip
-        Inc(I, 2);
+        PlainText.Append(Input[I]);
+        Inc(I);
       end;
-    end
-    else
-    begin
-      PlainText := PlainText + Input[I];
-      Inc(I);
     end;
-  end;
 
-  FlushPlainText;
+    FlushPlainText;
+    Result := Segments.ToArray;
+  finally
+    Segments.Free;
+    PlainText.Free;
+  end;
 end;
 
 end.

@@ -26,12 +26,17 @@ type
     FStdOutRead: THandle;
     FProcessInfo: TProcessInformation;
     FReaderThread: TThread;
+    FOutputLock: TObject;
+    FQueuedOutput: TStringBuilder;
+    FOutputNotifyPending: Boolean;
     FRunning: Boolean;
     FTerminating: Boolean;
     FOnOutput: TOutputEvent;
     FOnProcessExit: TNotifyEvent;
     FEncoding: TEncoding;
     procedure HandleNaturalExit;
+    procedure QueueOutput(const AText: string);
+    procedure FlushQueuedOutput;
   public
     constructor Create;
     destructor Destroy; override;
@@ -41,6 +46,7 @@ type
     procedure Start(const AShellExe: string; const AWorkDir: string = '');
     procedure SendCommand(const ACommand: string);
     procedure SendCtrlC;
+    procedure DiscardQueuedOutput;
     procedure Terminate;
     property Running: Boolean read FRunning;
     property OnOutput: TOutputEvent read FOnOutput write FOnOutput;
@@ -75,18 +81,8 @@ begin
 end;
 
 procedure TPipeReaderThread.NotifyOutput(const AText: string);
-var
-  LText: string;
-  LOwner: TCmdShellProcess;
 begin
-  LText := AText;
-  LOwner := FOwner;
-  TThread.Queue(Self,
-    procedure
-    begin
-      if Assigned(LOwner.FOnOutput) then
-        LOwner.FOnOutput(LOwner, LText);
-    end);
+  FOwner.QueueOutput(AText);
 end;
 
 procedure TPipeReaderThread.NotifyExit;
@@ -129,6 +125,8 @@ begin
   inherited Create;
   FStdInWrite := INVALID_HANDLE_VALUE;
   FStdOutRead := INVALID_HANDLE_VALUE;
+  FOutputLock := TObject.Create;
+  FQueuedOutput := TStringBuilder.Create;
   FProcessInfo.hProcess := 0;
   FProcessInfo.hThread := 0;
 end;
@@ -136,8 +134,68 @@ end;
 destructor TCmdShellProcess.Destroy;
 begin
   Terminate;
+  FQueuedOutput.Free;
+  FOutputLock.Free;
   FEncoding.Free;
   inherited;
+end;
+
+procedure TCmdShellProcess.QueueOutput(const AText: string);
+var
+  QueueThread: TThread;
+  ShouldQueue: Boolean;
+begin
+  if AText = '' then
+    Exit;
+
+  QueueThread := FReaderThread;
+  ShouldQueue := False;
+  TMonitor.Enter(FOutputLock);
+  try
+    FQueuedOutput.Append(AText);
+    if not FOutputNotifyPending then
+    begin
+      FOutputNotifyPending := True;
+      ShouldQueue := True;
+    end;
+  finally
+    TMonitor.Exit(FOutputLock);
+  end;
+
+  if ShouldQueue and (QueueThread <> nil) then
+    TThread.Queue(QueueThread,
+      procedure
+      begin
+        FlushQueuedOutput;
+      end);
+end;
+
+procedure TCmdShellProcess.FlushQueuedOutput;
+var
+  Text: string;
+begin
+  TMonitor.Enter(FOutputLock);
+  try
+    Text := FQueuedOutput.ToString;
+    FQueuedOutput.Clear;
+    FOutputNotifyPending := False;
+  finally
+    TMonitor.Exit(FOutputLock);
+  end;
+
+  if (Text <> '') and Assigned(FOnOutput) then
+    FOnOutput(Self, Text);
+end;
+
+procedure TCmdShellProcess.DiscardQueuedOutput;
+begin
+  TMonitor.Enter(FOutputLock);
+  try
+    FQueuedOutput.Clear;
+    FOutputNotifyPending := False;
+  finally
+    TMonitor.Exit(FOutputLock);
+  end;
 end;
 
 class function TCmdShellProcess.EncodingForShell(const AShellExe: string): TEncoding;

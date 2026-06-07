@@ -36,6 +36,8 @@ type
     FCmdShell: TCmdShellProcess;
     FHistory: TCommandHistory;
     FAnsiParser: TAnsiParser;
+    FOutputBuffer: TStringBuilder;
+    FOutputRenderPending: Boolean;
     FShellExe: string;
     FWorkDir: string;
     FShellUnavailable: Boolean;
@@ -50,6 +52,7 @@ type
     procedure HandleFileDirClick(Sender: TObject);
     procedure HandleClearClick(Sender: TObject);
     procedure HandleStopClick(Sender: TObject);
+    procedure FlushOutputBuffer;
     procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
     procedure TrimOutput;
     procedure BuildControls;
@@ -75,6 +78,10 @@ implementation
 
 {$R *.dfm}
 
+const
+  WM_RENDER_OUTPUT = WM_APP + 101;
+  MAX_RENDER_CHARS_PER_PASS = 65536;
+
 constructor TframeCmdShell.Create(AOwner: TComponent);
 begin
   inherited;
@@ -82,6 +89,7 @@ begin
 
   FHistory := TCommandHistory.Create;
   FAnsiParser := TAnsiParser.Create;
+  FOutputBuffer := TStringBuilder.Create;
   FCmdShell := TCmdShellProcess.Create;
   FCmdShell.OnOutput := HandleOutput;
   FCmdShell.OnProcessExit := HandleProcessExit;
@@ -90,6 +98,7 @@ end;
 destructor TframeCmdShell.Destroy;
 begin
   FCmdShell.Free;
+  FOutputBuffer.Free;
   FAnsiParser.Free;
   FHistory.Free;
   inherited;
@@ -201,11 +210,35 @@ begin
 end;
 
 procedure TframeCmdShell.HandleOutput(Sender: TObject; const AText: string);
+begin
+  if AText = '' then
+    Exit;
+  FOutputBuffer.Append(AText);
+  if not FOutputRenderPending then
+  begin
+    FOutputRenderPending := True;
+    PostMessage(Handle, WM_RENDER_OUTPUT, 0, 0);
+  end;
+end;
+
+procedure TframeCmdShell.FlushOutputBuffer;
 var
+  Count: Integer;
+  Text: string;
   Segments: TArray<TAnsiSegment>;
   Seg: TAnsiSegment;
 begin
-  Segments := FAnsiParser.Parse(AText);
+  FOutputRenderPending := False;
+  if FOutputBuffer.Length = 0 then
+    Exit;
+
+  Count := FOutputBuffer.Length;
+  if Count > MAX_RENDER_CHARS_PER_PASS then
+    Count := MAX_RENDER_CHARS_PER_PASS;
+
+  Text := FOutputBuffer.ToString(0, Count);
+  FOutputBuffer.Remove(0, Count);
+  Segments := FAnsiParser.Parse(Text);
   SendMessage(FRichOutput.Handle, WM_SETREDRAW, 0, 0);
   try
     for Seg in Segments do
@@ -223,6 +256,12 @@ begin
   TrimOutput;
 
   SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+
+  if FOutputBuffer.Length > 0 then
+  begin
+    FOutputRenderPending := True;
+    PostMessage(Handle, WM_RENDER_OUTPUT, 0, 0);
+  end;
 end;
 
 procedure TframeCmdShell.ApplySegmentFormat(const AAttr: TAnsiAttributes);
@@ -327,6 +366,13 @@ var
   Key: Word;
   Shift: TShiftState;
 begin
+  if Message.Msg = WM_RENDER_OUTPUT then
+  begin
+    Message.Result := 0;
+    FlushOutputBuffer;
+    Exit;
+  end;
+
   if (Message.Msg = CM_DIALOGKEY) and FEditInput.Focused then
   begin
     Key := TWMKey(Message).CharCode;
@@ -473,11 +519,17 @@ end;
 
 procedure TframeCmdShell.HandleStopClick(Sender: TObject);
 begin
+  FCmdShell.DiscardQueuedOutput;
+  FOutputBuffer.Clear;
+  FOutputRenderPending := False;
+  FAnsiParser.Reset;
   FCmdShell.SendCtrlC;
 end;
 
 procedure TframeCmdShell.ClearOutput;
 begin
+  FOutputBuffer.Clear;
+  FOutputRenderPending := False;
   FRichOutput.Clear;
   FAnsiParser.Reset;
 end;
