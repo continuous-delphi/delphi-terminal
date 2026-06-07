@@ -38,10 +38,16 @@ type
     function GetCurrentFileDir: string;
     function GetInitialWorkDir: string;
     procedure HandleFormClose(Sender: TObject; var Action: TCloseAction);
+    procedure HandleCommandPaletteRequested(Sender: TObject);
     procedure FocusActiveFrame;
     procedure RegisterIDENotifier;
     procedure UnregisterIDENotifier;
     procedure HandleActiveProjectChanged;
+    function GetActiveProjectFile: string;
+    function GetCurrentFilePath: string;
+    function GetCurrentFileName: string;
+    function ActiveFrame: TframeCmdShell;
+    function FrameForShellType(AType: Integer): TframeCmdShell;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -54,7 +60,11 @@ type
 implementation
 
 uses
-  Winapi.Windows, ToolsAPI, Delphi.Terminal.Settings;
+  Winapi.Windows, ToolsAPI,
+  Delphi.Terminal.Settings,
+  Delphi.Terminal.SavedCommands,
+  Delphi.Terminal.VariableExpander,
+  Delphi.Terminal.Plugin.CommandPalette;
 
 type
   TDelphiTerminalIDENotifier = class(TNotifierObject, IOTAIDENotifier)
@@ -232,6 +242,7 @@ begin
   AFrame.Align := alClient;
   AFrame.OnRequestProjectDir := HandleRequestProjectDir;
   AFrame.OnRequestFileDir := HandleRequestFileDir;
+  AFrame.OnCommandPaletteRequested := HandleCommandPaletteRequested;
 end;
 
 procedure TfrmDelphiTerminalDock.StartTerminalShell(AFrame: TframeCmdShell; const AShellExe, AWorkDir: string);
@@ -349,6 +360,132 @@ begin
       if FPageControl.ActivePage.Controls[0] is TframeCmdShell then
         TframeCmdShell(FPageControl.ActivePage.Controls[0]).SetWorkingDirectory(ProjectDir);
   end;
+end;
+
+function TfrmDelphiTerminalDock.GetActiveProjectFile: string;
+var
+  ModuleServices: IOTAModuleServices;
+  Project: IOTAProject;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
+  begin
+    Project := ModuleServices.GetActiveProject;
+    if Assigned(Project) then
+      Result := Project.FileName;
+  end;
+end;
+
+function TfrmDelphiTerminalDock.GetCurrentFilePath: string;
+var
+  EditorServices: IOTAEditorServices;
+  EditBuffer: IOTAEditBuffer;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAEditorServices, EditorServices) then
+  begin
+    EditBuffer := EditorServices.TopBuffer;
+    if Assigned(EditBuffer) then
+      Result := EditBuffer.FileName;
+  end;
+end;
+
+function TfrmDelphiTerminalDock.GetCurrentFileName: string;
+begin
+  Result := ExtractFileName(GetCurrentFilePath);
+end;
+
+function TfrmDelphiTerminalDock.ActiveFrame: TframeCmdShell;
+begin
+  Result := nil;
+  if (FPageControl <> nil) and (FPageControl.ActivePage <> nil) and (FPageControl.ActivePage.ControlCount > 0) then
+    if FPageControl.ActivePage.Controls[0] is TframeCmdShell then
+      Result := TframeCmdShell(FPageControl.ActivePage.Controls[0]);
+end;
+
+function TfrmDelphiTerminalDock.FrameForShellType(AType: Integer): TframeCmdShell;
+begin
+  case TSavedCommandShellType(AType) of
+    scCmd: Result := FFrameCmd;
+    scPwsh: Result := FFramePwsh;
+    scPowerShell: Result := FFramePowerShell;
+  else
+    Result := ActiveFrame;
+  end;
+  if Result = nil then
+    Result := ActiveFrame;
+end;
+
+function QuotingForShell(const AShellExe: string): TTerminalShellQuoting;
+var
+  Lower: string;
+begin
+  Lower := LowerCase(ExtractFileName(AShellExe));
+  if Lower.Contains('pwsh') or Lower.Contains('powershell') then
+    Result := sqPowerShell
+  else
+    Result := sqCmd;
+end;
+
+procedure TfrmDelphiTerminalDock.HandleCommandPaletteRequested(Sender: TObject);
+var
+  Commands: TSavedCommandList;
+  ScreenPt: TPoint;
+  PaletteResult: TCommandPaletteResult;
+  Vars: TTerminalVariables;
+  Quoting: TTerminalShellQuoting;
+  ExpandedCmd, ExpandedDir, Unresolved: string;
+  TargetFrame: TframeCmdShell;
+begin
+  Commands := TerminalSettings.SavedCommands;
+  if Commands.Count = 0 then
+    Exit;
+
+  if Sender is TframeCmdShell then
+    ScreenPt := TframeCmdShell(Sender).ClientToScreen(Point(0, 0))
+  else
+    ScreenPt := ClientToScreen(Point(0, 0));
+
+  PaletteResult := ShowCommandPalette(Self, Commands, ScreenPt);
+  if not PaletteResult.Accepted then
+    Exit;
+
+  TargetFrame := FrameForShellType(Ord(PaletteResult.Command.ShellType));
+  if TargetFrame = nil then
+    Exit;
+
+  Vars := Default(TTerminalVariables);
+  Vars.ProjectDir := GetActiveProjectDir;
+  Vars.ProjectFile := GetActiveProjectFile;
+  Vars.FileDir := GetCurrentFileDir;
+  Vars.FilePath := GetCurrentFilePath;
+  Vars.FileName := GetCurrentFileName;
+  Vars.RadTerminalDir := ExtractFilePath(GetModuleName(HInstance));
+
+  Quoting := QuotingForShell(TargetFrame.ShellExe);
+  ExpandedCmd := ExpandTerminalVariables(PaletteResult.Command.Command, Vars, Quoting);
+  ExpandedDir := ExpandTerminalVariables(PaletteResult.Command.WorkingDir, Vars, Quoting);
+
+  TargetFrame := FrameForShellType(Ord(PaletteResult.Command.ShellType));
+  if TargetFrame = nil then
+    Exit;
+
+  if HasUnresolvedVariables(ExpandedCmd) then
+  begin
+    Unresolved := FindUnresolvedVariable(ExpandedCmd);
+    TargetFrame.ShowMessage(Format('[delphi-terminal] Cannot run "%s": %s could not be resolved', [PaletteResult.Command.Name, Unresolved]));
+    Exit;
+  end;
+  if HasUnresolvedVariables(ExpandedDir) then
+  begin
+    Unresolved := FindUnresolvedVariable(ExpandedDir);
+    TargetFrame.ShowMessage(Format('[delphi-terminal] Cannot run "%s": %s could not be resolved', [PaletteResult.Command.Name, Unresolved]));
+    Exit;
+  end;
+
+  if ExpandedDir <> '' then
+    TargetFrame.SetWorkingDirectory(ExpandedDir);
+  TargetFrame.SendUserCommand(ExpandedCmd);
 end;
 
 procedure TfrmDelphiTerminalDock.HandleFormClose(Sender: TObject; var Action: TCloseAction);

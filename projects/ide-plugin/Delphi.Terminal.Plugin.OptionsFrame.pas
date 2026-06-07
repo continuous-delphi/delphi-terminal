@@ -29,10 +29,12 @@ type
     FEdtFontName: TEdit;
     FEdtFontSize: TEdit;
     FCboAutoCd: TComboBox;
+    FBtnSavedCommands: TButton;
     FLblHomepage: TLabel;
     procedure BuildControls;
     function CreateLabel(AParent: TWinControl; ATop: Integer; const ACaption: string): TLabel;
     procedure HomepageClick(Sender: TObject);
+    procedure HandleSavedCommandsClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     procedure LoadSettings;
@@ -44,7 +46,8 @@ implementation
 {$R *.dfm}
 
 uses
-  Winapi.Windows, Winapi.ShellAPI, System.UITypes;
+  Winapi.Windows, Winapi.ShellAPI, System.UITypes,
+  Delphi.Terminal.Plugin.SavedCommandsEditor;
 
 { TframeDelphiTerminalOptions }
 
@@ -71,7 +74,7 @@ var
   Lbl: TLabel;
 begin
   Width := 500;
-  Height := 350;
+  Height := 420;
 
   Y := 16;
 
@@ -154,6 +157,20 @@ begin
   FCboAutoCd.Items.Add('All tabs');
   Inc(Y, 36);
 
+  // --- Saved Commands ---
+  Lbl := CreateLabel(Self, Y, 'Saved Commands');
+  Lbl.Font.Style := [TFontStyle.fsBold];
+  Inc(Y, 24);
+
+  FBtnSavedCommands := TButton.Create(Self);
+  FBtnSavedCommands.Parent := Self;
+  FBtnSavedCommands.Left := 32;
+  FBtnSavedCommands.Top := Y;
+  FBtnSavedCommands.Width := 140;
+  FBtnSavedCommands.Caption := 'Saved Commands...';
+  FBtnSavedCommands.OnClick := HandleSavedCommandsClick;
+  Inc(Y, 36);
+
   // --- Homepage link ---
   CreateLabel(Self, Y + 3, 'Homepage:');
   FLblHomepage := TLabel.Create(Self);
@@ -165,6 +182,11 @@ begin
   FLblHomepage.Font.Style := [TFontStyle.fsUnderline];
   FLblHomepage.Cursor := crHandPoint;
   FLblHomepage.OnClick := HomepageClick;
+end;
+
+procedure TframeDelphiTerminalOptions.HandleSavedCommandsClick(Sender: TObject);
+begin
+  EditSavedCommands(Self, TerminalSettings.SavedCommands);
 end;
 
 procedure TframeDelphiTerminalOptions.HomepageClick(Sender: TObject);

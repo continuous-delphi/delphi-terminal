@@ -43,6 +43,7 @@ type
     FShellUnavailable: Boolean;
     FOnRequestProjectDir: TRequestPathEvent;
     FOnRequestFileDir: TRequestPathEvent;
+    FOnCommandPaletteRequested: TNotifyEvent;
 
     procedure HandleOutput(Sender: TObject; const AText: string);
     procedure HandleProcessExit(Sender: TObject);
@@ -69,9 +70,13 @@ type
     procedure SetWorkingDirectory(const APath: string);
     procedure ClearOutput;
     procedure FocusInput;
+    procedure SendUserCommand(const AText: string);
+    procedure ShowMessage(const AText: string);
 
+    property ShellExe: string read FShellExe;
     property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
     property OnRequestFileDir: TRequestPathEvent read FOnRequestFileDir write FOnRequestFileDir;
+    property OnCommandPaletteRequested: TNotifyEvent read FOnCommandPaletteRequested write FOnCommandPaletteRequested;
   end;
 
 implementation
@@ -354,10 +359,7 @@ begin
       StartShell(FShellExe, FWorkDir);
       Exit;
     end;
-    FHistory.Add(FEditInput.Text);
-    FHistory.ResetPosition;
-    FCmdShell.SendCommand(FEditInput.Text);
-    FEditInput.Clear;
+    SendUserCommand(FEditInput.Text);
   end;
 end;
 
@@ -470,6 +472,12 @@ begin
   begin
     FCmdShell.SendCtrlC;
     Key := 0;
+  end
+  else if (Key = Ord('P')) and (ssCtrl in Shift) then
+  begin
+    if Assigned(FOnCommandPaletteRequested) then
+      FOnCommandPaletteRequested(Self);
+    Key := 0;
   end;
 end;
 
@@ -538,6 +546,21 @@ procedure TframeCmdShell.FocusInput;
 begin
   if FEditInput.CanFocus then
     FEditInput.SetFocus;
+end;
+
+procedure TframeCmdShell.SendUserCommand(const AText: string);
+begin
+  if not FCmdShell.Running then
+    Exit;
+  FHistory.Add(AText);
+  FHistory.ResetPosition;
+  FCmdShell.SendCommand(AText);
+  FEditInput.Clear;
+end;
+
+procedure TframeCmdShell.ShowMessage(const AText: string);
+begin
+  HandleOutput(Self, AText + #13#10);
 end;
 
 procedure TframeCmdShell.StartShell(const AShellExe: string; const AWorkDir: string);

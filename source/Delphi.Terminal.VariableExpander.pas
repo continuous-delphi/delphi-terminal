@@ -1,0 +1,112 @@
+(*
+
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
+
+  Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
+  ANSI color rendering, and command history
+
+  License: MIT
+  Copyright (c) 2026 Darian Miller
+
+*)
+unit Delphi.Terminal.VariableExpander;
+
+interface
+
+type
+  TTerminalShellQuoting = (sqCmd, sqPowerShell);
+
+  TTerminalVariables = record
+    ProjectDir: string;
+    ProjectFile: string;
+    FileDir: string;
+    FilePath: string;
+    FileName: string;
+    RadTerminalDir: string;
+  end;
+
+function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables; AQuoting: TTerminalShellQuoting): string;
+function HasUnresolvedVariables(const AText: string): Boolean;
+function FindUnresolvedVariable(const AText: string): string;
+function QuoteForShell(const AValue: string; AQuoting: TTerminalShellQuoting): string;
+
+implementation
+
+uses
+  System.SysUtils;
+
+type
+  TVarMapping = record
+    Token: string;
+    Value: string;
+  end;
+
+function BuildMappings(const AVars: TTerminalVariables): TArray<TVarMapping>;
+begin
+  SetLength(Result, 6);
+  Result[0].Token := '${ProjectDir}';   Result[0].Value := AVars.ProjectDir;
+  Result[1].Token := '${ProjectFile}';  Result[1].Value := AVars.ProjectFile;
+  Result[2].Token := '${FileDir}';      Result[2].Value := AVars.FileDir;
+  Result[3].Token := '${FilePath}';     Result[3].Value := AVars.FilePath;
+  Result[4].Token := '${FileName}';     Result[4].Value := AVars.FileName;
+  Result[5].Token := '${radTerminalDir}'; Result[5].Value := AVars.RadTerminalDir;
+end;
+
+function QuoteForShell(const AValue: string; AQuoting: TTerminalShellQuoting): string;
+var
+  V: string;
+begin
+  case AQuoting of
+    sqCmd:
+    begin
+      V := AValue;
+      // Strip trailing backslash to prevent \" being parsed as escaped quote
+      while (V <> '') and (V[Length(V)] = '\') do
+        V := Copy(V, 1, Length(V) - 1);
+      Result := '"' + V + '"';
+    end;
+    sqPowerShell:
+    begin
+      // Single-quote with doubled internal single quotes
+      Result := '''' + StringReplace(AValue, '''', '''''', [rfReplaceAll]) + '''';
+    end;
+  else
+    Result := AValue;
+  end;
+end;
+
+function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables; AQuoting: TTerminalShellQuoting): string;
+var
+  Mappings: TArray<TVarMapping>;
+  I: Integer;
+begin
+  Result := AText;
+  Mappings := BuildMappings(AVars);
+  for I := Low(Mappings) to High(Mappings) do
+  begin
+    if Mappings[I].Value <> '' then
+      Result := StringReplace(Result, Mappings[I].Token, QuoteForShell(Mappings[I].Value, AQuoting), [rfReplaceAll, rfIgnoreCase]);
+  end;
+end;
+
+function HasUnresolvedVariables(const AText: string): Boolean;
+begin
+  Result := FindUnresolvedVariable(AText) <> '';
+end;
+
+function FindUnresolvedVariable(const AText: string): string;
+var
+  StartPos, EndPos: Integer;
+begin
+  Result := '';
+  StartPos := Pos('${', AText);
+  if StartPos = 0 then
+    Exit;
+  EndPos := Pos('}', AText, StartPos + 2);
+  if EndPos = 0 then
+    Exit;
+  Result := Copy(AText, StartPos, EndPos - StartPos + 1);
+end;
+
+end.
