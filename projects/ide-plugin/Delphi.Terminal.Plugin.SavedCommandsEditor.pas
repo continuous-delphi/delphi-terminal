@@ -235,13 +235,23 @@ begin
   end;
 end;
 
+function ContainsFileVariable(const AText: string): Boolean;
+var
+  Lower: string;
+begin
+  Lower := LowerCase(AText);
+  Result := Lower.Contains('${projectfile}') or Lower.Contains('${filepath}') or Lower.Contains('${filename}');
+end;
+
 function TfrmSavedCommandsEditor.EditCommand(var ACmd: TSavedCommand; AIsNew: Boolean): Boolean;
 var
   Dlg: TForm;
   EdtName, EdtCommand, EdtWorkDir: TEdit;
   CboShell: TComboBox;
   BtnOK, BtnCancel: TButton;
+  LblVars: TLabel;
   Y: Integer;
+  Accepted: Boolean;
 
   procedure AddLabel(AParent: TWinControl; ATop: Integer; const ACaption: string);
   var
@@ -263,7 +273,7 @@ begin
     else
       Dlg.Caption := 'Edit Command';
     Dlg.Width := 500;
-    Dlg.Height := 260;
+    Dlg.Height := 310;
     Dlg.Position := poOwnerFormCenter;
     Dlg.BorderStyle := bsDialog;
 
@@ -317,7 +327,6 @@ begin
     BtnOK.Left := 300;
     BtnOK.Top := Y;
     BtnOK.Width := 80;
-    BtnOK.ModalResult := mrOk;
     BtnOK.Default := True;
 
     BtnCancel := TButton.Create(Dlg);
@@ -328,8 +337,35 @@ begin
     BtnCancel.Width := 80;
     BtnCancel.ModalResult := mrCancel;
     BtnCancel.Cancel := True;
+    Inc(Y, 40);
 
-    if Dlg.ShowModal = mrOk then
+    LblVars := TLabel.Create(Dlg);
+    LblVars.Parent := Dlg;
+    LblVars.Left := 12;
+    LblVars.Top := Y;
+    LblVars.Caption :=
+      'Variables:  ${ProjectDir}  ${ProjectFile}  ${FileDir}  ${FilePath}  ${FileName}  ${radTerminalDir}';
+    LblVars.Font.Size := LblVars.Font.Size - 1;
+    LblVars.Font.Color := TColorRec.Gray;
+
+    Accepted := False;
+    BtnOK.OnClick := procedure(Sender: TObject)
+    begin
+      if ContainsFileVariable(EdtWorkDir.Text) then
+      begin
+        MessageDlg('Working Dir contains a file variable (${ProjectFile}, ${FilePath}, or ${FileName}).' + sLineBreak +
+          'Use a directory variable such as ${ProjectDir} or ${FileDir} instead.', mtWarning, [mbOK], 0);
+        EdtWorkDir.SetFocus;
+      end
+      else
+      begin
+        Accepted := True;
+        Dlg.ModalResult := mrOk;
+      end;
+    end;
+
+    Dlg.ShowModal;
+    if Accepted then
     begin
       ACmd.Name := Trim(EdtName.Text);
       if CboShell.ItemIndex >= 0 then
