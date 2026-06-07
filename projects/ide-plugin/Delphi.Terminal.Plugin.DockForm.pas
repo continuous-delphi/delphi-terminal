@@ -61,6 +61,7 @@ implementation
 
 uses
   Winapi.Windows, ToolsAPI,
+  Delphi.Terminal.CmdShell,
   Delphi.Terminal.Settings,
   Delphi.Terminal.SavedCommands,
   Delphi.Terminal.VariableExpander,
@@ -416,25 +417,13 @@ begin
     Result := ActiveFrame;
 end;
 
-function QuotingForShell(const AShellExe: string): TTerminalShellQuoting;
-var
-  Lower: string;
-begin
-  Lower := LowerCase(ExtractFileName(AShellExe));
-  if Lower.Contains('pwsh') or Lower.Contains('powershell') then
-    Result := sqPowerShell
-  else
-    Result := sqCmd;
-end;
-
 procedure TfrmDelphiTerminalDock.HandleCommandPaletteRequested(Sender: TObject);
 var
   Commands: TSavedCommandList;
   ScreenPt: TPoint;
   PaletteResult: TCommandPaletteResult;
   Vars: TTerminalVariables;
-  Quoting: TTerminalShellQuoting;
-  ExpandedCmd, ExpandedDir, Unresolved: string;
+  ExpandedCmd, ExpandedDir, CompoundCmd, Unresolved: string;
   TargetFrame: TframeCmdShell;
 begin
   Commands := TerminalSettings.SavedCommands;
@@ -462,13 +451,8 @@ begin
   Vars.FileName := GetCurrentFileName;
   Vars.RadTerminalDir := ExtractFilePath(GetModuleName(HInstance));
 
-  Quoting := QuotingForShell(TargetFrame.ShellExe);
-  ExpandedCmd := ExpandTerminalVariables(PaletteResult.Command.Command, Vars, Quoting);
-  ExpandedDir := ExpandTerminalVariables(PaletteResult.Command.WorkingDir, Vars, Quoting);
-
-  TargetFrame := FrameForShellType(Ord(PaletteResult.Command.ShellType));
-  if TargetFrame = nil then
-    Exit;
+  ExpandedCmd := ExpandTerminalVariables(PaletteResult.Command.Command, Vars);
+  ExpandedDir := ExpandTerminalVariables(PaletteResult.Command.WorkingDir, Vars);
 
   if HasUnresolvedVariables(ExpandedCmd) then
   begin
@@ -484,8 +468,12 @@ begin
   end;
 
   if ExpandedDir <> '' then
-    TargetFrame.SetWorkingDirectory(ExpandedDir);
-  TargetFrame.SendUserCommand(ExpandedCmd);
+  begin
+    CompoundCmd := TCmdShellProcess.ChangeDirectoryAndRun(TargetFrame.ShellExe, ExpandedDir, ExpandedCmd);
+    TargetFrame.SendUserCommand(CompoundCmd);
+  end
+  else
+    TargetFrame.SendUserCommand(ExpandedCmd);
 end;
 
 procedure TfrmDelphiTerminalDock.HandleFormClose(Sender: TObject; var Action: TCloseAction);

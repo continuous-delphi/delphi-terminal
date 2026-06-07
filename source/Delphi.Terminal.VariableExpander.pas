@@ -15,8 +15,6 @@ unit Delphi.Terminal.VariableExpander;
 interface
 
 type
-  TTerminalShellQuoting = (sqCmd, sqPowerShell);
-
   TTerminalVariables = record
     ProjectDir: string;
     ProjectFile: string;
@@ -26,10 +24,9 @@ type
     RadTerminalDir: string;
   end;
 
-function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables; AQuoting: TTerminalShellQuoting): string;
+function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables): string;
 function HasUnresolvedVariables(const AText: string): Boolean;
 function FindUnresolvedVariable(const AText: string): string;
-function QuoteForShell(const AValue: string; AQuoting: TTerminalShellQuoting): string;
 
 implementation
 
@@ -53,30 +50,7 @@ begin
   Result[5].Token := '${radTerminalDir}'; Result[5].Value := AVars.RadTerminalDir;
 end;
 
-function QuoteForShell(const AValue: string; AQuoting: TTerminalShellQuoting): string;
-var
-  V: string;
-begin
-  case AQuoting of
-    sqCmd:
-    begin
-      V := AValue;
-      // Strip trailing backslash to prevent \" being parsed as escaped quote
-      while (V <> '') and (V[Length(V)] = '\') do
-        V := Copy(V, 1, Length(V) - 1);
-      Result := '"' + V + '"';
-    end;
-    sqPowerShell:
-    begin
-      // Single-quote with doubled internal single quotes
-      Result := '''' + StringReplace(AValue, '''', '''''', [rfReplaceAll]) + '''';
-    end;
-  else
-    Result := AValue;
-  end;
-end;
-
-function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables; AQuoting: TTerminalShellQuoting): string;
+function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables): string;
 var
   Mappings: TArray<TVarMapping>;
   I: Integer;
@@ -86,7 +60,7 @@ begin
   for I := Low(Mappings) to High(Mappings) do
   begin
     if Mappings[I].Value <> '' then
-      Result := StringReplace(Result, Mappings[I].Token, QuoteForShell(Mappings[I].Value, AQuoting), [rfReplaceAll, rfIgnoreCase]);
+      Result := StringReplace(Result, Mappings[I].Token, Mappings[I].Value, [rfReplaceAll, rfIgnoreCase]);
   end;
 end;
 

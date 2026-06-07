@@ -28,10 +28,6 @@ type
     [Test] procedure HasUnresolvedShouldReturnFalseWhenClean;
     [Test] procedure FindUnresolvedShouldReturnFirstToken;
     [Test] procedure FindUnresolvedShouldReturnEmptyWhenClean;
-    [Test] procedure CmdQuotingShouldWrapInDoubleQuotes;
-    [Test] procedure CmdQuotingShouldStripTrailingBackslash;
-    [Test] procedure PwshQuotingShouldWrapInSingleQuotes;
-    [Test] procedure PwshQuotingShouldDoubleInternalSingleQuotes;
   end;
 
 implementation
@@ -49,37 +45,37 @@ end;
 
 procedure TTestVariableExpander.NoTokensShouldReturnUnchanged;
 begin
-  Assert.AreEqual('echo hello', ExpandTerminalVariables('echo hello', MakeVars, sqCmd));
+  Assert.AreEqual('echo hello', ExpandTerminalVariables('echo hello', MakeVars));
 end;
 
 procedure TTestVariableExpander.ProjectDirShouldExpand;
 begin
-  Assert.AreEqual('cd "C:\myproj"', ExpandTerminalVariables('cd ${ProjectDir}', MakeVars('C:\myproj'), sqCmd));
+  Assert.AreEqual('cd C:\myproj', ExpandTerminalVariables('cd ${ProjectDir}', MakeVars('C:\myproj')));
 end;
 
 procedure TTestVariableExpander.ProjectFileShouldExpand;
 begin
-  Assert.AreEqual('msbuild "C:\myproj\test.dproj"', ExpandTerminalVariables('msbuild ${ProjectFile}', MakeVars('', 'C:\myproj\test.dproj'), sqCmd));
+  Assert.AreEqual('msbuild C:\myproj\test.dproj', ExpandTerminalVariables('msbuild ${ProjectFile}', MakeVars('', 'C:\myproj\test.dproj')));
 end;
 
 procedure TTestVariableExpander.FileDirShouldExpand;
 begin
-  Assert.AreEqual('ls "C:\src"', ExpandTerminalVariables('ls ${FileDir}', MakeVars('', '', 'C:\src'), sqCmd));
+  Assert.AreEqual('ls C:\src', ExpandTerminalVariables('ls ${FileDir}', MakeVars('', '', 'C:\src')));
 end;
 
 procedure TTestVariableExpander.FilePathShouldExpand;
 begin
-  Assert.AreEqual('edit "C:\src\main.pas"', ExpandTerminalVariables('edit ${FilePath}', MakeVars('', '', '', 'C:\src\main.pas'), sqCmd));
+  Assert.AreEqual('edit C:\src\main.pas', ExpandTerminalVariables('edit ${FilePath}', MakeVars('', '', '', 'C:\src\main.pas')));
 end;
 
 procedure TTestVariableExpander.FileNameShouldExpand;
 begin
-  Assert.AreEqual('echo "main.pas"', ExpandTerminalVariables('echo ${FileName}', MakeVars('', '', '', '', 'main.pas'), sqCmd));
+  Assert.AreEqual('echo main.pas', ExpandTerminalVariables('echo ${FileName}', MakeVars('', '', '', '', 'main.pas')));
 end;
 
 procedure TTestVariableExpander.RadTerminalDirShouldExpand;
 begin
-  Assert.AreEqual('run "C:\plugin"', ExpandTerminalVariables('run ${radTerminalDir}', MakeVars('', '', '', '', '', 'C:\plugin'), sqCmd));
+  Assert.AreEqual('run C:\plugin', ExpandTerminalVariables('run ${radTerminalDir}', MakeVars('', '', '', '', '', 'C:\plugin')));
 end;
 
 procedure TTestVariableExpander.MultipleVariablesShouldAllExpand;
@@ -87,44 +83,22 @@ var
   V: TTerminalVariables;
 begin
   V := MakeVars('C:\proj', 'C:\proj\app.dproj', 'C:\src');
-  Assert.AreEqual('"C:\proj" and "C:\src"', ExpandTerminalVariables('${ProjectDir} and ${FileDir}', V, sqCmd));
+  Assert.AreEqual('C:\proj and C:\src', ExpandTerminalVariables('${ProjectDir} and ${FileDir}', V));
 end;
 
 procedure TTestVariableExpander.CaseInsensitiveShouldWork;
 begin
-  Assert.AreEqual('cd "C:\proj"', ExpandTerminalVariables('cd ${projectdir}', MakeVars('C:\proj'), sqCmd));
+  Assert.AreEqual('cd C:\proj', ExpandTerminalVariables('cd ${projectdir}', MakeVars('C:\proj')));
 end;
 
 procedure TTestVariableExpander.EmptyValueShouldLeaveToken;
 begin
-  Assert.AreEqual('cd ${ProjectDir}', ExpandTerminalVariables('cd ${ProjectDir}', MakeVars, sqCmd));
+  Assert.AreEqual('cd ${ProjectDir}', ExpandTerminalVariables('cd ${ProjectDir}', MakeVars));
 end;
 
 procedure TTestVariableExpander.UnknownTokenShouldRemain;
 begin
-  Assert.AreEqual('echo ${Unknown}', ExpandTerminalVariables('echo ${Unknown}', MakeVars('C:\proj'), sqCmd));
-end;
-
-procedure TTestVariableExpander.CmdQuotingShouldWrapInDoubleQuotes;
-begin
-  Assert.AreEqual('"C:\My Projects\Foo"', QuoteForShell('C:\My Projects\Foo', sqCmd));
-end;
-
-procedure TTestVariableExpander.CmdQuotingShouldStripTrailingBackslash;
-begin
-  // Trailing \ would make \" which cmd interprets as escaped quote
-  Assert.AreEqual('"C:\proj"', QuoteForShell('C:\proj\', sqCmd));
-  Assert.AreEqual('"C:\proj"', QuoteForShell('C:\proj\\', sqCmd));
-end;
-
-procedure TTestVariableExpander.PwshQuotingShouldWrapInSingleQuotes;
-begin
-  Assert.AreEqual('''C:\My Projects\Foo''', QuoteForShell('C:\My Projects\Foo', sqPowerShell));
-end;
-
-procedure TTestVariableExpander.PwshQuotingShouldDoubleInternalSingleQuotes;
-begin
-  Assert.AreEqual('''C:\O''''Brien''', QuoteForShell('C:\O''Brien', sqPowerShell));
+  Assert.AreEqual('echo ${Unknown}', ExpandTerminalVariables('echo ${Unknown}', MakeVars('C:\proj')));
 end;
 
 procedure TTestVariableExpander.HasUnresolvedShouldDetectTokens;
