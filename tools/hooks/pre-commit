@@ -12,6 +12,17 @@ pwsh -NoProfile -Command '
     Write-Error "IncVer failed: $($result.Message)"
     exit 1
   }
+  # Compile .rc to .res
+    $brcc = Join-Path $env:BDS "bin\brcc32.exe"
+    if (-not (Test-Path $brcc)) {
+      # Fallback: search common location
+      $brcc = "C:\Delphi\RADStudio37\bin\brcc32.exe"
+    }
+    if (Test-Path $brcc) {
+      & $brcc "projects/ide-plugin/Delphi.Terminal.Version.rc" 2>&1 | Out-Null
+    } else {
+      Write-Warning "brcc32.exe not found -- .res not recompiled"
+    }
   Write-Host "Version: $($result.OldVersion) -> $($result.NewVersion)"
 '
 

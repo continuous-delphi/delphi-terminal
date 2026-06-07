@@ -2,7 +2,7 @@
 
 1 VERSIONINFO
 FILEVERSION 0,7,12,0
-PRODUCTVERSION 0,7,9,0
+PRODUCTVERSION 1,0,0,0
 FILEFLAGSMASK 0x3FL
 FILEFLAGS 0x0L
 FILEOS 0x40004L
@@ -21,7 +21,7 @@ BEGIN
       VALUE "LegalCopyright", "Copyright (c) 2026 Darian Miller\0"
       VALUE "OriginalFilename", "Delphi.Terminal.Plugin370.bpl\0"
       VALUE "ProductName", "Delphi-Terminal\0"
-      VALUE "ProductVersion", "0.7.9.0\0"
+      VALUE "ProductVersion", "1.0.0.0\0"
     END
   END
   BLOCK "VarFileInfo"
