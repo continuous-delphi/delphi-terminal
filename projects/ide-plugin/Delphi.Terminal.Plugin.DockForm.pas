@@ -15,8 +15,11 @@ unit Delphi.Terminal.Plugin.DockForm;
 interface
 
 uses
-  System.SysUtils, System.Classes,
-  Vcl.Controls, Vcl.Forms, Vcl.ComCtrls,
+  System.SysUtils,
+  System.Classes,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.ComCtrls,
   DockForm,
   Delphi.Terminal.Frame.CmdShell;
 
@@ -60,7 +63,8 @@ type
 implementation
 
 uses
-  Winapi.Windows, ToolsAPI,
+  Winapi.Windows,
+  ToolsAPI,
   Delphi.Terminal.CmdShell,
   Delphi.Terminal.Settings,
   Delphi.Terminal.SavedCommands,
@@ -92,10 +96,10 @@ begin
     ofnBeginProjectGroupOpen:
       FOwner.FGroupOpening := True;
     ofnEndProjectGroupOpen:
-    begin
-      FOwner.FGroupOpening := False;
-      FOwner.HandleActiveProjectChanged;
-    end;
+      begin
+        FOwner.FGroupOpening := False;
+        FOwner.HandleActiveProjectChanged;
+      end;
     ofnActiveProjectChanged:
       if not FOwner.FGroupOpening then
         FOwner.HandleActiveProjectChanged;
@@ -164,7 +168,7 @@ var
   DefaultIdx, I: Integer;
 begin
   inherited Create(AOwner);
-  DeskSection := 'continuous_delphi_delphi_terminal';  //unique identifier for the Delphi IDE's desktop layout manager. INI section name, but lets be safe and use _
+  DeskSection := 'continuous_delphi_delphi_terminal'; //unique identifier for the Delphi IDE's desktop layout manager. INI section name, but lets be safe and use _
   AutoSave := True;
   SaveStateNecessary := True;
   Caption := 'delphi-terminal';
@@ -252,7 +256,7 @@ begin
     AFrame.StartShell(AShellExe, AWorkDir);
   except
     on E: Exception do
-      AFrame.ShowStartupError(AShellExe, E.Message);
+    AFrame.ShowStartupError(AShellExe, E.Message);
   end;
 end;
 
@@ -351,7 +355,7 @@ begin
     // All tabs
     for I := 0 to FPageControl.PageCount - 1 do
       if FPageControl.Pages[I].ControlCount > 0 then
-        if FPageControl.Pages[I].Controls[0] is TframeCmdShell then
+      if FPageControl.Pages[I].Controls[0] is TframeCmdShell then
           TframeCmdShell(FPageControl.Pages[I].Controls[0]).SetWorkingDirectory(ProjectDir);
   end
   else
@@ -410,38 +414,66 @@ begin
     scCmd: Result := FFrameCmd;
     scPwsh: Result := FFramePwsh;
     scPowerShell: Result := FFramePowerShell;
-  else
-    Result := ActiveFrame;
+    else
+      Result := ActiveFrame;
   end;
   if Result = nil then
     Result := ActiveFrame;
 end;
 
+function ShellTypeForExe(const AShellExe: string): TSavedCommandShellType;
+var
+  Lower: string;
+begin
+  Lower := LowerCase(ExtractFileName(AShellExe));
+  if Lower.Contains('pwsh') then
+    Result := scPwsh
+  else if Lower.Contains('powershell') then
+    Result := scPowerShell
+  else
+    Result := scCmd;
+end;
+
 procedure TfrmDelphiTerminalDock.HandleCommandPaletteRequested(Sender: TObject);
 var
-  Commands: TSavedCommandList;
+  AllCommands, Filtered: TSavedCommandList;
+  ActiveShell: TSavedCommandShellType;
   ScreenPt: TPoint;
   PaletteResult: TCommandPaletteResult;
   Vars: TTerminalVariables;
   ExpandedCmd, ExpandedDir, CompoundCmd, Unresolved: string;
   TargetFrame: TframeCmdShell;
+  I: Integer;
 begin
-  Commands := TerminalSettings.SavedCommands;
-  if Commands.Count = 0 then
-    Exit;
-
-  if Sender is TframeCmdShell then
-    ScreenPt := TframeCmdShell(Sender).ClientToScreen(Point(0, 0))
-  else
-    ScreenPt := ClientToScreen(Point(0, 0));
-
-  PaletteResult := ShowCommandPalette(Self, Commands, ScreenPt);
-  if PaletteResult.Action = paCancel then
-    Exit;
-
-  TargetFrame := FrameForShellType(Ord(PaletteResult.Command.ShellType));
+  TargetFrame := ActiveFrame;
   if TargetFrame = nil then
     Exit;
+
+  AllCommands := TerminalSettings.SavedCommands;
+  if AllCommands.Count = 0 then
+    Exit;
+
+  ActiveShell := ShellTypeForExe(TargetFrame.ShellExe);
+  Filtered := TSavedCommandList.Create;
+  try
+    for I := 0 to AllCommands.Count - 1 do
+      if (AllCommands[I].ShellType = scActive) or (AllCommands[I].ShellType = ActiveShell) then
+        Filtered.Add(AllCommands[I]);
+
+    if Filtered.Count = 0 then
+      Exit;
+
+    if Sender is TframeCmdShell then
+      ScreenPt := TframeCmdShell(Sender).ClientToScreen(Point(0, 0))
+    else
+      ScreenPt := ClientToScreen(Point(0, 0));
+
+    PaletteResult := ShowCommandPalette(Self, Filtered, ScreenPt);
+    if PaletteResult.Action = paCancel then
+      Exit;
+  finally
+    Filtered.Free;
+  end;
 
   Vars := Default(TTerminalVariables);
   Vars.ProjectDir := GetActiveProjectDir;

@@ -15,9 +15,22 @@ unit Delphi.Terminal.Frame.CmdShell;
 interface
 
 uses
-  System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages, Winapi.RichEdit,
-  Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons, Vcl.ComCtrls,
-  Delphi.Terminal.CmdShell, Delphi.Terminal.CommandHistory, Delphi.Terminal.AnsiParser, Delphi.Terminal.Settings;
+  System.SysUtils,
+  System.Classes,
+  Winapi.Windows,
+  Winapi.Messages,
+  Winapi.RichEdit,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Graphics,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.Buttons,
+  Vcl.ComCtrls,
+  Delphi.Terminal.CmdShell,
+  Delphi.Terminal.CommandHistory,
+  Delphi.Terminal.AnsiParser,
+  Delphi.Terminal.Settings;
 
 type
   TRequestPathEvent = procedure(Sender: TObject; var APath: string) of object;
@@ -112,8 +125,8 @@ end;
 
 procedure TframeCmdShell.BuildControls;
 const
-  TerminalBg = $0C0C0C;   // Campbell background #0C0C0C
-  TerminalFg = $CCCCCC;   // Campbell foreground #CCCCCC
+  TerminalBg = $0C0C0C; // Campbell background #0C0C0C
+  TerminalFg = $CCCCCC; // Campbell foreground #CCCCCC
 var
   TerminalFont: string;
   TerminalFontSize: Integer;
@@ -273,23 +286,23 @@ end;
 procedure TframeCmdShell.ApplySegmentFormat(const AAttr: TAnsiAttributes);
 const
   // Windows Terminal "Campbell" palette (default)
-  AnsiColorMap: array[TAnsiColor] of TColor = (
-    $CCCCCC,     // acDefault -- Campbell foreground #CCCCCC
-    $000000,     // acBlack
-    $1F0FC5,     // acRed         #C50F1F
-    $0EA113,     // acGreen       #13A10E
-    $009CC1,     // acYellow      #C19C00
-    $DA3700,     // acBlue        #0037DA
-    $981788,     // acMagenta     #881798
-    $DD963A,     // acCyan        #3A96DD
-    $CCCCCC,     // acWhite       #CCCCCC
-    $767676,     // acBrightBlack #767676
-    $5648E7,     // acBrightRed   #E74856
-    $0CC616,     // acBrightGreen #16C60C
-    $A5F1F9,     // acBrightYellow #F9F1A5
-    $FF783B,     // acBrightBlue  #3B78FF
-    $9E00B4,     // acBrightMagenta #B4009E
-    $D6D661,     // acBrightCyan  #61D6D6
+  AnsiColorMap: array [TAnsiColor] of TColor = (
+    $CCCCCC, // acDefault -- Campbell foreground #CCCCCC
+    $000000, // acBlack
+    $1F0FC5, // acRed         #C50F1F
+    $0EA113, // acGreen       #13A10E
+    $009CC1, // acYellow      #C19C00
+    $DA3700, // acBlue        #0037DA
+    $981788, // acMagenta     #881798
+    $DD963A, // acCyan        #3A96DD
+    $CCCCCC, // acWhite       #CCCCCC
+    $767676, // acBrightBlack #767676
+    $5648E7, // acBrightRed   #E74856
+    $0CC616, // acBrightGreen #16C60C
+    $A5F1F9, // acBrightYellow #F9F1A5
+    $FF783B, // acBrightBlue  #3B78FF
+    $9E00B4, // acBrightMagenta #B4009E
+    $D6D661, // acBrightCyan  #61D6D6
     $F2F2F2      // acBrightWhite #F2F2F2
   );
 var
@@ -462,7 +475,7 @@ begin
   end
   else if (Key = VK_TAB) and (ssCtrl in Shift) then
     CycleTab(not (ssShift in Shift))
-  else if (ssCtrl in Shift) and (Key in [Ord('1')..Ord('9')]) then
+  else if (ssCtrl in Shift) and (Key in [Ord('1') .. Ord('9')]) then
     SwitchToTab(Key - Ord('1'))
   else if (Key = Ord('L')) and (ssCtrl in Shift) then
   begin
@@ -516,8 +529,8 @@ begin
     Exit;
   Cmd := TCmdShellProcess.ChangeDirectoryCommand(FShellExe, APath);
   FCmdShell.SendCommand(Cmd);
-//  FRichOutput.SelStart := FRichOutput.GetTextLen;
-//  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
+  //  FRichOutput.SelStart := FRichOutput.GetTextLen;
+  //  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
   SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
 end;
 

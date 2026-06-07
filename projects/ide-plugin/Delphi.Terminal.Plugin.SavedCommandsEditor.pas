@@ -243,15 +243,36 @@ begin
   Result := Lower.Contains('${projectfile}') or Lower.Contains('${filepath}') or Lower.Contains('${filename}');
 end;
 
+type
+  TfrmEditCommand = class(TForm)
+  public
+    EdtWorkDir: TEdit;
+    function CloseQuery: Boolean; override;
+  end;
+
+function TfrmEditCommand.CloseQuery: Boolean;
+begin
+  Result := inherited CloseQuery;
+  if not Result then
+    Exit;
+  if (ModalResult = mrOk) and ContainsFileVariable(EdtWorkDir.Text) then
+  begin
+    Result := False;
+    MessageDlg('Working Dir contains a file variable (${ProjectFile}, ${FilePath}, or ${FileName}).' + sLineBreak +
+      'Use a directory variable such as ${ProjectDir} or ${FileDir} instead.', mtWarning, [mbOK], 0);
+    if EdtWorkDir.CanFocus then
+      EdtWorkDir.SetFocus;
+  end;
+end;
+
 function TfrmSavedCommandsEditor.EditCommand(var ACmd: TSavedCommand; AIsNew: Boolean): Boolean;
 var
-  Dlg: TForm;
-  EdtName, EdtCommand, EdtWorkDir: TEdit;
+  Dlg: TfrmEditCommand;
+  EdtName, EdtCommand: TEdit;
   CboShell: TComboBox;
   BtnOK, BtnCancel: TButton;
   LblVars: TLabel;
   Y: Integer;
-  Accepted: Boolean;
 
   procedure AddLabel(AParent: TWinControl; ATop: Integer; const ACaption: string);
   var
@@ -266,7 +287,7 @@ var
 
 begin
   Result := False;
-  Dlg := TForm.CreateNew(Self);
+  Dlg := TfrmEditCommand.CreateNew(Self);
   try
     if AIsNew then
       Dlg.Caption := 'Add Command'
@@ -312,13 +333,13 @@ begin
     Inc(Y, 32);
 
     AddLabel(Dlg, Y, 'Working Dir:');
-    EdtWorkDir := TEdit.Create(Dlg);
-    EdtWorkDir.Parent := Dlg;
-    EdtWorkDir.Left := 120;
-    EdtWorkDir.Top := Y;
-    EdtWorkDir.Width := 350;
-    EdtWorkDir.Text := ACmd.WorkingDir;
-    EdtWorkDir.TextHint := 'Optional - ${ProjectDir}, static path, etc.';
+    Dlg.EdtWorkDir := TEdit.Create(Dlg);
+    Dlg.EdtWorkDir.Parent := Dlg;
+    Dlg.EdtWorkDir.Left := 120;
+    Dlg.EdtWorkDir.Top := Y;
+    Dlg.EdtWorkDir.Width := 350;
+    Dlg.EdtWorkDir.Text := ACmd.WorkingDir;
+    Dlg.EdtWorkDir.TextHint := 'Optional - ${ProjectDir}, static path, etc.';
     Inc(Y, 40);
 
     BtnOK := TButton.Create(Dlg);
@@ -327,6 +348,7 @@ begin
     BtnOK.Left := 300;
     BtnOK.Top := Y;
     BtnOK.Width := 80;
+    BtnOK.ModalResult := mrOk;
     BtnOK.Default := True;
 
     BtnCancel := TButton.Create(Dlg);
@@ -348,30 +370,13 @@ begin
     LblVars.Font.Size := LblVars.Font.Size - 1;
     LblVars.Font.Color := TColorRec.Gray;
 
-    Accepted := False;
-    BtnOK.OnClick := procedure(Sender: TObject)
-    begin
-      if ContainsFileVariable(EdtWorkDir.Text) then
-      begin
-        MessageDlg('Working Dir contains a file variable (${ProjectFile}, ${FilePath}, or ${FileName}).' + sLineBreak +
-          'Use a directory variable such as ${ProjectDir} or ${FileDir} instead.', mtWarning, [mbOK], 0);
-        EdtWorkDir.SetFocus;
-      end
-      else
-      begin
-        Accepted := True;
-        Dlg.ModalResult := mrOk;
-      end;
-    end;
-
-    Dlg.ShowModal;
-    if Accepted then
+    if Dlg.ShowModal = mrOk then
     begin
       ACmd.Name := Trim(EdtName.Text);
       if CboShell.ItemIndex >= 0 then
         ACmd.ShellType := TSavedCommandShellType(CboShell.ItemIndex);
       ACmd.Command := EdtCommand.Text;
-      ACmd.WorkingDir := Trim(EdtWorkDir.Text);
+      ACmd.WorkingDir := Trim(Dlg.EdtWorkDir.Text);
       Result := True;
     end;
   finally
