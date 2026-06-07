@@ -45,6 +45,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    class function IsInstanceVisible: Boolean;
     class procedure ShowInstance;
     class procedure ToggleInstance;
     class procedure CleanUp;
@@ -105,6 +106,13 @@ var
 
 class procedure TfrmDelphiTerminalDock.ShowInstance;
 begin
+  if Assigned(FInstance) and FInstance.HandleAllocated and not IsWindowVisible(FInstance.Handle) then
+  begin
+    // The IDE tore down the desktop layout (e.g. welcome page) and the
+    // form's dock site is gone. The VCL Visible flag may still be True
+    // but the Win32 window is not actually visible. Recreate from scratch.
+    FreeAndNil(FInstance);
+  end;
   if not Assigned(FInstance) then
     FInstance := TfrmDelphiTerminalDock.Create(nil);
   FInstance.Show;
@@ -112,15 +120,19 @@ begin
   FInstance.FocusActiveFrame;
 end;
 
+class function TfrmDelphiTerminalDock.IsInstanceVisible: Boolean;
+begin
+  Result := Assigned(FInstance) and FInstance.HandleAllocated and IsWindowVisible(FInstance.Handle);
+end;
+
 class procedure TfrmDelphiTerminalDock.ToggleInstance;
 begin
-  if Assigned(FInstance) and FInstance.Visible then
+  if IsInstanceVisible then
   begin
     if FInstance.Focused or FInstance.ContainsControl(Screen.ActiveControl) then
       FInstance.Hide
     else
     begin
-      FInstance.Show;
       FInstance.BringToFront;
       FInstance.FocusActiveFrame;
     end;

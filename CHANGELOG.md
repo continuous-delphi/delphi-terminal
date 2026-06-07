@@ -3,6 +3,10 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v0.9.32.0
+- Fix close-all when the delphi-terminal window is docked. It remained hidden
+until IDE restart.
+
 ## v0.9.31.0
 - Ctrl+Alt+N keyboard shortcut to toggle the terminal panel (show/focus/hide)
 [#11](https://github.com/continuous-delphi/delphi-terminal/issues/11)
