@@ -20,6 +20,7 @@ implementation
 
 uses
   ToolsAPI,
+  System.SysUtils,
   Delphi.Terminal.Plugin.Wizard,
   Delphi.Terminal.Plugin.OptionsPage,
   Delphi.Terminal.Settings;
@@ -27,9 +28,17 @@ uses
 procedure Register;
 var
   RegKey: string;
+  Services: IOTAServices;
 begin
-  RegKey := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey;
-  TerminalSettings.LoadFromRegistry(RegKey);
+  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
+    RegKey := Services.GetBaseRegistryKey;
+    TerminalSettings.LoadFromRegistry(RegKey);
+  end
+  else
+  begin
+    TerminalSettings.SetDefaults;
+  end;
   TDelphiTerminalWizard.Register;
   TDelphiTerminalOptionsPage.RegisterOptions;
 end;

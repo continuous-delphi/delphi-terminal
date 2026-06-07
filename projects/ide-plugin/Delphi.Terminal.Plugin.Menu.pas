@@ -149,7 +149,7 @@ begin
   if Parent = nil then
     Exit;
 
-  FMenuItem := TMenuItem.Create(nil);
+  FMenuItem := TMenuItem.Create(Parent);
   FMenuItem.Name := CMenuItemName;
   FMenuItem.Caption := CMenuItemCaption;
   FMenuItem.OnClick := HandleClick;

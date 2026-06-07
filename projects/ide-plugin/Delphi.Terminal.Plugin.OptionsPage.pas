@@ -71,12 +71,21 @@ end;
 procedure TDelphiTerminalOptionsPage.DialogClosed(Accepted: Boolean);
 var
   RegKey: string;
+  Services: IOTAServices;
 begin
   if Accepted and (FFrame is TframeDelphiTerminalOptions) then
   begin
     TframeDelphiTerminalOptions(FFrame).SaveSettings;
-    RegKey := (BorlandIDEServices as IOTAServices).GetBaseRegistryKey;
-    TerminalSettings.SaveToRegistry(RegKey);
+
+    if Supports(BorlandIDEServices, IOTAServices, Services) then
+    begin
+      RegKey := Services.GetBaseRegistryKey;
+      TerminalSettings.SaveToRegistry(RegKey);
+    end
+    else
+    begin
+      //toconsider: Likely odd state already, showmessage?
+    end;
   end;
   FFrame := nil;
 end;

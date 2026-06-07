@@ -25,6 +25,8 @@ type
     [Test] procedure NonSGRSequencesAreStripped;
     [Test] procedure PartialSequenceAcrossTwoCalls;
     [Test] procedure PartialEscAtEndOfBuffer;
+    [Test] procedure PartialOscBelSequenceAcrossTwoCalls;
+    [Test] procedure PartialOscStSequenceAcrossTwoCalls;
     [Test] procedure MultipleSGRCodesInSequence;
     [Test] procedure BrightColorsSupported;
     [Test] procedure BackgroundColorSets;
@@ -144,6 +146,34 @@ begin
   Assert.AreEqual(NativeInt(1), Length(Segments));
   Assert.AreEqual('Red', Segments[0].Text);
   Assert.IsTrue(Segments[0].Attr.ForeColor = acRed);
+end;
+
+procedure TTestAnsiParser.PartialOscBelSequenceAcrossTwoCalls;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // OSC title sequence split before BEL should be buffered and stripped.
+  Segments := FParser.Parse('Before'#27']0;Window Title');
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.AreEqual('Before', Segments[0].Text);
+
+  Segments := FParser.Parse(#7'After');
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.AreEqual('After', Segments[0].Text);
+end;
+
+procedure TTestAnsiParser.PartialOscStSequenceAcrossTwoCalls;
+var
+  Segments: TArray<TAnsiSegment>;
+begin
+  // OSC title sequence split between ESC and '\' should keep both bytes buffered.
+  Segments := FParser.Parse('Before'#27']0;Window Title'#27);
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.AreEqual('Before', Segments[0].Text);
+
+  Segments := FParser.Parse('\After');
+  Assert.AreEqual(NativeInt(1), Length(Segments));
+  Assert.AreEqual('After', Segments[0].Text);
 end;
 
 procedure TTestAnsiParser.MultipleSGRCodesInSequence;

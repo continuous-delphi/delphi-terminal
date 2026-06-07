@@ -239,8 +239,10 @@ function TAnsiParser.Parse(const AInput: string): TArray<TAnsiSegment>;
 var
   Input: string;
   I, Len: Integer;
+  SeqStart: Integer;
   PlainText: string;
   SeqParams: string;
+  OscTerminated: Boolean;
   Seg: TAnsiSegment;
 
   procedure FlushPlainText;
@@ -306,18 +308,37 @@ begin
       else if Input[I + 1] = ']' then
       begin
         // OSC sequence: ESC ] ... ST (or BEL)
+        SeqStart := I;
         Inc(I, 2);
-        while (I <= Len) and (Input[I] <> #7) do
+        OscTerminated := False;
+        while I <= Len do
         begin
-          if (Input[I] = #27) and (I + 1 <= Len) and (Input[I + 1] = '\') then
+          if Input[I] = #7 then
           begin
-            Inc(I, 2);
+            Inc(I);
+            OscTerminated := True;
             Break;
+          end
+          else if Input[I] = #27 then
+          begin
+            if I + 1 > Len then
+              Break;
+            if Input[I + 1] = '\' then
+            begin
+              Inc(I, 2);
+              OscTerminated := True;
+              Break;
+            end;
           end;
           Inc(I);
         end;
-        if I <= Len then
-          Inc(I); // skip BEL
+
+        if not OscTerminated then
+        begin
+          FlushPlainText;
+          FPartialSeq := Copy(Input, SeqStart, Len - SeqStart + 1);
+          Exit;
+        end;
         // OSC sequences are stripped
       end
       else

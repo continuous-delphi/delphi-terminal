@@ -2,6 +2,11 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v0.8.23.0
+- OSC sequences now keep buffering in FPartialSeq until the parser sees
+either BEL or ESC \, so split PowerShell title sequences are stripped
+correctly instead of garbled
+[#29](https://github.com/continuous-delphi/delphi-terminal/issues/29)
 
 ## v0.8.22.0
 
