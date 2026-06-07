@@ -5,6 +5,8 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ## v0.8.14.0
 
+- Support ANSI background colors
+
 - Renamed from radTerminal to Delphi-Terminal
   and moved from RAD Programmer to Continuous-Delphi
 [#21](https://github.com/continuous-delphi/delphi-terminal/issues/21)

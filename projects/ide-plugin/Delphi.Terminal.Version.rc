@@ -17,7 +17,7 @@ BEGIN
       VALUE "FileVersion", "0.8.14.0\0"
       VALUE "InternalName", "Delphi.Terminal\0"
       VALUE "LegalCopyright", "Copyright (c) 2026 Darian Miller\0"
-      VALUE "OriginalFilename", "Delphi.Terminal.Plugin370.bpl\0"
+      VALUE "OriginalFilename", "Delphi.Terminal.Plugin.bpl\0"
       VALUE "ProductName", "Delphi-Terminal\0"
       VALUE "ProductVersion", "1.0.0.0\0"
     END

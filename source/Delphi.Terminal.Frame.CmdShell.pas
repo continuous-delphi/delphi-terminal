@@ -15,7 +15,7 @@ unit Delphi.Terminal.Frame.CmdShell;
 interface
 
 uses
-  System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages,
+  System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages, Winapi.RichEdit,
   Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons, Vcl.ComCtrls,
   Delphi.Terminal.CmdShell, Delphi.Terminal.CommandHistory, Delphi.Terminal.AnsiParser, Delphi.Terminal.Settings;
 
@@ -235,6 +235,8 @@ const
     $D6D661,     // acBrightCyan  #61D6D6
     $F2F2F2      // acBrightWhite #F2F2F2
   );
+var
+  CF: TCharFormat2;
 begin
   if AAttr.UseExtForeColor then
     FRichOutput.SelAttributes.Color := TColor(AAttr.ExtForeColor)
@@ -248,6 +250,17 @@ begin
     FRichOutput.SelAttributes.Style := FRichOutput.SelAttributes.Style + [fsUnderline]
   else
     FRichOutput.SelAttributes.Style := FRichOutput.SelAttributes.Style - [fsUnderline];
+
+  FillChar(CF, SizeOf(CF), 0);
+  CF.cbSize := SizeOf(CF);
+  CF.dwMask := CFM_BACKCOLOR;
+  if AAttr.UseExtBackColor then
+    CF.crBackColor := COLORREF(AAttr.ExtBackColor)
+  else if AAttr.BackColor <> acDefault then
+    CF.crBackColor := COLORREF(AnsiColorMap[AAttr.BackColor])
+  else
+    CF.dwEffects := CFE_AUTOBACKCOLOR;
+  SendMessage(FRichOutput.Handle, EM_SETCHARFORMAT, SCF_SELECTION, LPARAM(@CF));
 end;
 
 procedure TframeCmdShell.TrimOutput;

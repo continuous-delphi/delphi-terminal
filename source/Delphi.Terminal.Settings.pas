@@ -85,7 +85,7 @@ var
   Reg: TRegistry;
   Key: string;
 begin
-  Key := ARegKeyBase + '\ContinousDelphi.DelphiTerminal';
+  Key := ARegKeyBase + '\ContinuousDelphi.DelphiTerminal';
   Reg := TRegistry.Create(KEY_READ);
   try
     Reg.RootKey := HKEY_CURRENT_USER;
@@ -116,7 +116,7 @@ var
   Reg: TRegistry;
   Key: string;
 begin
-  Key := ARegKeyBase + '\ContinousDelphi.DelphiTerminal';
+  Key := ARegKeyBase + '\ContinuousDelphi.DelphiTerminal';
   Reg := TRegistry.Create(KEY_WRITE);
   try
     Reg.RootKey := HKEY_CURRENT_USER;

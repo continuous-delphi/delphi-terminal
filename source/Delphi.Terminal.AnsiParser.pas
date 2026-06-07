@@ -110,7 +110,7 @@ const
   // Standard 16 colors (indices 0-15) in BGR
   Base16: array[0..15] of Integer = (
     $000000, $0000AA, $00AA00, $00AAAA, $AA0000, $AA00AA, $AA5500, $AAAAAA,
-    $555555, $5555FF, $55FF55, $55FFFF, $FF5555, $FF55FF, $55FFFF, $FFFFFF
+    $555555, $5555FF, $55FF55, $55FFFF, $FF5555, $FF55FF, $FFFF55, $FFFFFF
   );
 var
   R, G, B, Gray: Integer;

@@ -70,7 +70,7 @@ Optional
 
 ### IDE Plugin
 
-1. Open `projects/ide-plugin/delphi-terminal-Plugin.dpk` in RAD Studio
+1. Open `projects/ide-plugin/Delphi.Terminal.Plugin.dpk` in RAD Studio
 2. Right-click the project in Project Manager > **Install**
 3. Access via **View > delphi-terminal**
 
