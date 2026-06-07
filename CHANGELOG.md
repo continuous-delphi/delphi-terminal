@@ -7,6 +7,7 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 - Fix multi-byte UTF-8 characters splitting across pipe reads, causing replacement characters in non-ASCII output
 [#24](https://github.com/continuous-delphi/delphi-terminal/issues/24)
 - Add Homepage hyperlink to Tools > Options page
+- Minor cleanup (naming, update screenshots, single finalization)
 
 ## v0.9.24.0
 

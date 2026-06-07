@@ -79,11 +79,11 @@ Optional
 After installing, use the `View` menu and select `delphi-terminal`
 Dock the form as desired and optionally save Desktop setting.
 
-Screenshot:
+### Screenshot:
 
 ![delphi-terminal ScreenShot](assets/screenshot1.png)
 
-Config screen:
+### Config screen:
 
 ![delphi-terminal Config ScreenShot](assets/screenshot-config1.png)
 
