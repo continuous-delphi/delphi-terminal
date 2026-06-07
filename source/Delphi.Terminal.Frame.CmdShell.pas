@@ -549,8 +549,6 @@ begin
   FShellUnavailable := False;
   FCmdShell.Start(AShellExe, AWorkDir);
   Lower := LowerCase(ExtractFileName(AShellExe));
-  if Lower.Contains('pwsh') then
-    FCmdShell.SendCommand('$PSStyle.OutputRendering = ''Ansi''');
 end;
 
 procedure TframeCmdShell.ShowStartupError(const AShellExe, AMessage: string);

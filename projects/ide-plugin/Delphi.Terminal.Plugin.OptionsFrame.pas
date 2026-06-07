@@ -16,7 +16,7 @@ interface
 
 uses
   System.SysUtils, System.Classes,
-  Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls,
+  Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Graphics,
   Delphi.Terminal.Settings;
 
 type
@@ -29,8 +29,10 @@ type
     FEdtFontName: TEdit;
     FEdtFontSize: TEdit;
     FCboAutoCd: TComboBox;
+    FLblHomepage: TLabel;
     procedure BuildControls;
     function CreateLabel(AParent: TWinControl; ATop: Integer; const ACaption: string): TLabel;
+    procedure HomepageClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     procedure LoadSettings;
@@ -42,7 +44,7 @@ implementation
 {$R *.dfm}
 
 uses
-  System.UITypes;
+  Winapi.Windows, Winapi.ShellAPI, System.UITypes;
 
 { TframeDelphiTerminalOptions }
 
@@ -150,6 +152,24 @@ begin
   FCboAutoCd.Style := csDropDownList;
   FCboAutoCd.Items.Add('Active tab only');
   FCboAutoCd.Items.Add('All tabs');
+  Inc(Y, 36);
+
+  // --- Homepage link ---
+  CreateLabel(Self, Y + 3, 'Homepage:');
+  FLblHomepage := TLabel.Create(Self);
+  FLblHomepage.Parent := Self;
+  FLblHomepage.Left := Col2;
+  FLblHomepage.Top := Y + 3;
+  FLblHomepage.Caption := 'github.com/continuous-delphi/delphi-terminal';
+  FLblHomepage.Font.Color := clBlue;
+  FLblHomepage.Font.Style := [TFontStyle.fsUnderline];
+  FLblHomepage.Cursor := crHandPoint;
+  FLblHomepage.OnClick := HomepageClick;
+end;
+
+procedure TframeDelphiTerminalOptions.HomepageClick(Sender: TObject);
+begin
+  ShellExecute(0, 'open', 'https://github.com/continuous-delphi/delphi-terminal', nil, nil, SW_SHOWNORMAL);
 end;
 
 procedure TframeDelphiTerminalOptions.LoadSettings;

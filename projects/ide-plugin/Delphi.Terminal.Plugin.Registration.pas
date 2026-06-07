@@ -21,6 +21,7 @@ implementation
 uses
   ToolsAPI,
   System.SysUtils,
+  Delphi.Terminal.Plugin.Lifecycle,
   Delphi.Terminal.Plugin.Wizard,
   Delphi.Terminal.Plugin.OptionsPage,
   Delphi.Terminal.Settings;

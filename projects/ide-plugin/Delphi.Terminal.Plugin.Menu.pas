@@ -13,11 +13,13 @@
 unit Delphi.Terminal.Plugin.Menu;
 
 // Adds a "Delphi-Terminal" item to the IDE View menu and wires it to the
-// dockable terminal form. Lifecycle is handled in unit initialization /
-// finalization -- installing the package adds the menu, uninstalling
-// removes it.
+// dockable terminal form. The menu is installed during unit initialization;
+// explicit plugin shutdown removes it.
 
 interface
+
+procedure InitializeTerminalMenu;
+procedure CleanUpTerminalMenu;
 
 implementation
 
@@ -28,8 +30,8 @@ uses
   Delphi.Terminal.Plugin.DockForm;
 
 const
-  CMenuItemName = 'DelphiTerminalShowItem';
-  CMenuItemCaption = 'Delphi-&Terminal';
+  CMenuItemName = 'DelphiTerminal_ShowItem_Menu';
+  CMenuItemCaption = 'delphi-terminal';
   CViewMenuNames: array[0..1] of string = ('ViewsMenu', 'ViewMenu');
   CToolsMenuNames: array[0..1] of string = ('ToolsMenu', 'ToolsTools');
 
@@ -166,10 +168,18 @@ begin
   TfrmDelphiTerminalDock.ShowInstance;
 end;
 
-initialization
-  GMenu := TDelphiTerminalMenu.Create;
+procedure InitializeTerminalMenu;
+begin
+  if GMenu = nil then
+    GMenu := TDelphiTerminalMenu.Create;
+end;
 
-finalization
+procedure CleanUpTerminalMenu;
+begin
   FreeAndNil(GMenu);
+end;
+
+initialization
+  InitializeTerminalMenu;
 
 end.

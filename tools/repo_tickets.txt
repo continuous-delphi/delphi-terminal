@@ -525,6 +525,7 @@ Acceptance criteria:
 ---
 Title: Shell start failure crashes entire terminal panel
 Issue: #25
+Status: closed
 Labels: bug
 Body:
 If `pwsh.exe` (or `powershell.exe`) is not installed and the user has that

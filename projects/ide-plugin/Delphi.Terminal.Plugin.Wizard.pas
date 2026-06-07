@@ -37,12 +37,12 @@ end;
 
 function TDelphiTerminalWizard.GetIDString: string;
 begin
-  Result := 'continuousdelphi.DelphiTerminal';
+  Result := 'Continuous-Delphi.delphi-terminal';
 end;
 
 function TDelphiTerminalWizard.GetName: string;
 begin
-  Result := 'DelphiTerminal';
+  Result := GetIDString;
 end;
 
 function TDelphiTerminalWizard.GetState: TWizardState;

@@ -110,6 +110,7 @@ TestInsightSettings.ini
 /tools/*.ps1
 *.log
 *.md
+!ConPtyMigrationPlan.md
 /log
 /.claude
 /memory

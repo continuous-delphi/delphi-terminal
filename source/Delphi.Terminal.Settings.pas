@@ -42,6 +42,7 @@ type
   end;
 
 function TerminalSettings: TDelphiTerminalSettings;
+procedure ReleaseTerminalSettings;
 
 implementation
 
@@ -59,6 +60,11 @@ begin
     GSettings.SetDefaults;
   end;
   Result := GSettings;
+end;
+
+procedure ReleaseTerminalSettings;
+begin
+  FreeAndNil(GSettings);
 end;
 
 { TDelphiTerminalSettings }
@@ -85,7 +91,7 @@ var
   Reg: TRegistry;
   Key: string;
 begin
-  Key := ARegKeyBase + '\ContinuousDelphi.DelphiTerminal';
+  Key := ARegKeyBase + '\Continuous-Delphi\delphi-terminal';
   Reg := TRegistry.Create(KEY_READ);
   try
     Reg.RootKey := HKEY_CURRENT_USER;
@@ -116,7 +122,7 @@ var
   Reg: TRegistry;
   Key: string;
 begin
-  Key := ARegKeyBase + '\ContinuousDelphi.DelphiTerminal';
+  Key := ARegKeyBase + '\Continuous-Delphi\delphi-terminal';
   Reg := TRegistry.Create(KEY_WRITE);
   try
     Reg.RootKey := HKEY_CURRENT_USER;
@@ -134,10 +140,5 @@ begin
     Reg.Free;
   end;
 end;
-
-initialization
-
-finalization
-  FreeAndNil(GSettings);
 
 end.

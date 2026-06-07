@@ -1,7 +1,7 @@
 package Delphi.Terminal.Plugin;
 
 {$R *.res}
-{$R Delphi.Terminal.Version.res}
+{$R 'Delphi.Terminal.Version.res'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -10,23 +10,23 @@ package Delphi.Terminal.Plugin;
 {$EXTENDEDSYNTAX ON}
 {$IMPORTEDDATA ON}
 {$IOCHECKS ON}
-{$LOCALSYMBOLS ON}
+{$LOCALSYMBOLS OFF}
 {$LONGSTRINGS ON}
 {$OPENSTRINGS ON}
-{$OPTIMIZATION OFF}
-{$OVERFLOWCHECKS ON}
-{$RANGECHECKS ON}
-{$REFERENCEINFO ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO OFF}
 {$SAFEDIVIDE OFF}
-{$STACKFRAMES ON}
+{$STACKFRAMES OFF}
 {$TYPEDADDRESS OFF}
 {$VARSTRINGCHECKS ON}
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DEFINE DEBUG}
+{$DEFINE RELEASE}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'Delphi-Terminal - Dockable Terminal Window for RAD Studio'}
+{$DESCRIPTION 'Continuous-Delphi: delphi-terminal. A dockable terminal window for RAD Studio (Launch via: View > delphi-terminal)'}
 {$LIBSUFFIX AUTO}
 {$DESIGNONLY}
 {$IMPLICITBUILD ON}
@@ -41,6 +41,7 @@ contains
   Delphi.Terminal.Plugin.DockForm in 'Delphi.Terminal.Plugin.DockForm.pas',
   Delphi.Terminal.Plugin.Wizard in 'Delphi.Terminal.Plugin.Wizard.pas',
   Delphi.Terminal.Plugin.Menu in 'Delphi.Terminal.Plugin.Menu.pas',
+  Delphi.Terminal.Plugin.Lifecycle in 'Delphi.Terminal.Plugin.Lifecycle.pas',
   Delphi.Terminal.Plugin.OptionsPage in 'Delphi.Terminal.Plugin.OptionsPage.pas',
   Delphi.Terminal.Plugin.OptionsFrame in 'Delphi.Terminal.Plugin.OptionsFrame.pas' {frameDelphiTerminalOptions},
   Delphi.Terminal.CommandHistory in '..\..\source\Delphi.Terminal.CommandHistory.pas',

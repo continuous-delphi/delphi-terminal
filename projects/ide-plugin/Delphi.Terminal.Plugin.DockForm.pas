@@ -123,10 +123,10 @@ var
   DefaultIdx, I: Integer;
 begin
   inherited Create(AOwner);
-  DeskSection := 'DelphiTerminal';
+  DeskSection := 'continuous_delphi_delphi_terminal';  //unique identifier for the Delphi IDE's desktop layout manager. INI section name, but lets be safe and use _
   AutoSave := True;
   SaveStateNecessary := True;
-  Caption := 'Delphi-Terminal';
+  Caption := 'delphi-terminal';
   ClientWidth := 800;
   ClientHeight := 400;
   Position := poScreenCenter;
@@ -325,10 +325,5 @@ procedure TfrmDelphiTerminalDock.HandleFormClose(Sender: TObject; var Action: TC
 begin
   Action := caHide;
 end;
-
-initialization
-
-finalization
-  TfrmDelphiTerminalDock.CleanUp;
 
 end.

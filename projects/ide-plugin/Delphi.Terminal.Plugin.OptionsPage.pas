@@ -53,7 +53,7 @@ end;
 
 function TDelphiTerminalOptionsPage.GetCaption: string;
 begin
-  Result := 'DelphiTerminal';
+  Result := 'delphi-terminal';
 end;
 
 function TDelphiTerminalOptionsPage.GetFrameClass: TCustomFrameClass;
@@ -126,10 +126,5 @@ begin
     Svc.UnregisterAddInOptions(GOptionsPage);
   GOptionsPage := nil;
 end;
-
-initialization
-
-finalization
-  TDelphiTerminalOptionsPage.UnregisterOptions;
 
 end.
