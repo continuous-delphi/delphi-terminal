@@ -269,29 +269,40 @@ begin
   end;
 end;
 
-var
-  GCtrlHandlerInstalled: Boolean = False;
-
-function OwnCtrlHandler(dwCtrlType: DWORD): BOOL; stdcall;
+function IgnoreCtrlHandler(dwCtrlType: DWORD): BOOL; stdcall;
 begin
-  Result := True;
+  Result := (dwCtrlType = CTRL_C_EVENT) or (dwCtrlType = CTRL_BREAK_EVENT);
 end;
 
 procedure TCmdShellProcess.SendCtrlC;
+var
+  AttachedHere: Boolean;
 begin
   if not FRunning then
     Exit;
   if FProcessInfo.dwProcessId = 0 then
     Exit;
-  if not GCtrlHandlerInstalled then
+
+  AttachedHere := AttachConsole(FProcessInfo.dwProcessId);
+  if not AttachedHere and (GetLastError <> ERROR_ACCESS_DENIED) then
+    Exit;
+
+  if not SetConsoleCtrlHandler(@IgnoreCtrlHandler, True) then
   begin
-    SetConsoleCtrlHandler(@OwnCtrlHandler, True);
-    GCtrlHandlerInstalled := True;
+    if AttachedHere then
+      FreeConsole;
+    Exit;
   end;
-  if AttachConsole(FProcessInfo.dwProcessId) then
-  begin
-    GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
-    FreeConsole;
+  try
+    // The shell is started as a new process group, so its PID is also the
+    // group id. CTRL_BREAK_EVENT can be targeted at that group; CTRL_C_EVENT
+    // with group 0 broadcasts to this process too and can close the demo app.
+    GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, FProcessInfo.dwProcessId);
+    Sleep(100);
+  finally
+    SetConsoleCtrlHandler(@IgnoreCtrlHandler, False);
+    if AttachedHere then
+      FreeConsole;
   end;
 end;
 
