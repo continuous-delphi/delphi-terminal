@@ -208,7 +208,10 @@ end;
 
 procedure TfrmCommandPalette.HandleListBoxDblClick(Sender: TObject);
 begin
-  AcceptSelected(paEdit);
+  if GetKeyState(VK_CONTROL) < 0 then
+    AcceptSelected(paRun)
+  else
+    AcceptSelected(paEdit);
 end;
 
 procedure TfrmCommandPalette.AcceptSelected(AAction: TCommandPaletteAction);
