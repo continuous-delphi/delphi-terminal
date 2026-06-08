@@ -1,7 +1,7 @@
 # Command Bundles
 
 A command bundle is a JSON file that distributes a set of saved commands
-for delphi-terminal. Bundles let users provided pre-configured
+for delphi-terminal. Bundles let users provide pre-configured
 commands to users.  This would be useful for all members of a dev team
 sharing the same command list.
 
