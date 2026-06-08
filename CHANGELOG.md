@@ -10,6 +10,7 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 - Palette filters commands by active shell tab
 - Working Dir validation prevents file variables (${ProjectFile}, ${FilePath}, ${FileName})
 - Variable reference legend on Add/Edit Command dialog
+- Ctrl-Double Click on the commands lie auto-runs the command (like CTRL+ENTER)
 [#17](https://github.com/continuous-delphi/delphi-terminal/issues/17)
 
 ## v0.9.33.0
