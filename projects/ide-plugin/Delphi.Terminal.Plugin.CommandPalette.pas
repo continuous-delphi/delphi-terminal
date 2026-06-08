@@ -37,6 +37,7 @@ type
     procedure BuildControls;
     procedure HandleFilterChange(Sender: TObject);
     procedure HandleFilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure HandleListBoxKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleListBoxDblClick(Sender: TObject);
     procedure ApplyFilter;
     procedure AcceptSelected(AAction: TCommandPaletteAction);
@@ -103,6 +104,7 @@ begin
   FListBox := TListBox.Create(Self);
   FListBox.Parent := Self;
   FListBox.Align := alClient;
+  FListBox.OnKeyDown := HandleListBoxKeyDown;
   FListBox.OnDblClick := HandleListBoxDblClick;
 end;
 
@@ -169,6 +171,25 @@ begin
         FListBox.ItemIndex := FListBox.ItemIndex - 1;
       Key := 0;
     end;
+    VK_RETURN:
+    begin
+      if ssCtrl in Shift then
+        AcceptSelected(paRun)
+      else
+        AcceptSelected(paEdit);
+      Key := 0;
+    end;
+    VK_ESCAPE:
+    begin
+      ModalResult := mrCancel;
+      Key := 0;
+    end;
+  end;
+end;
+
+procedure TfrmCommandPalette.HandleListBoxKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  case Key of
     VK_RETURN:
     begin
       if ssCtrl in Shift then
