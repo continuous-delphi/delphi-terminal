@@ -30,7 +30,7 @@ and legacy PowerShell sessions directly inside the IDE.
     `${FilePath}`, `${FileName}`, `${radTerminalDir}` -- resolved at
     execution time from IDE context
   - Enter previews the command in the input field for editing;
-    Ctrl+Enter runs immediately
+    Ctrl+Enter runs immediately (or Ctrl+DblClick)
   - Command list filtered by the active shell tab
   - [JSON bundle import](docs/command-bundles.md) for sharing command sets across machines
 - **Keyboard shortcuts**
