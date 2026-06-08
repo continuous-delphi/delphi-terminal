@@ -50,7 +50,6 @@ type
     function GetCurrentFilePath: string;
     function GetCurrentFileName: string;
     function ActiveFrame: TframeCmdShell;
-    function FrameForShellType(AType: Integer): TframeCmdShell;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -406,19 +405,6 @@ begin
   if (FPageControl <> nil) and (FPageControl.ActivePage <> nil) and (FPageControl.ActivePage.ControlCount > 0) then
     if FPageControl.ActivePage.Controls[0] is TframeCmdShell then
       Result := TframeCmdShell(FPageControl.ActivePage.Controls[0]);
-end;
-
-function TfrmDelphiTerminalDock.FrameForShellType(AType: Integer): TframeCmdShell;
-begin
-  case TSavedCommandShellType(AType) of
-    scCmd: Result := FFrameCmd;
-    scPwsh: Result := FFramePwsh;
-    scPowerShell: Result := FFramePowerShell;
-    else
-      Result := ActiveFrame;
-  end;
-  if Result = nil then
-    Result := ActiveFrame;
 end;
 
 function ShellTypeForExe(const AShellExe: string): TSavedCommandShellType;

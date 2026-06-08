@@ -3,6 +3,15 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v0.9.38.0
+- Saved commands with Ctrl+P command palette, variable expansion, and JSON bundle import
+- Commands toolbar button as discoverable entry point for the palette
+- Enter previews command in input field for editing, Ctrl+Enter runs immediately
+- Palette filters commands by active shell tab
+- Working Dir validation prevents file variables (${ProjectFile}, ${FilePath}, ${FileName})
+- Variable reference legend on Add/Edit Command dialog
+[#17](https://github.com/continuous-delphi/delphi-terminal/issues/17)
+
 ## v0.9.32.0
 - Fix close-all when the delphi-terminal window is docked. It remained hidden
 until IDE restart.
