@@ -3,6 +3,10 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v0.9.33.0
+- Fix dockable form not restoring on IDE restart by registering with the desktop layout manager
+[#35](https://github.com/continuous-delphi/delphi-terminal/issues/35)
+
 ## v0.9.32.0
 - Fix close-all when the delphi-terminal window is docked. It remained hidden
 until IDE restart.

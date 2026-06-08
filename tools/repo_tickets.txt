@@ -577,4 +577,67 @@ Acceptance criteria:
 - [ ] Existing tests continue to pass
 
 ---
+Title: Dockable form not restored on IDE restart -- missing desktop registration
+Issue: #35
+Status: closed
+Labels: bug
+Body:
+When the delphi-terminal window is docked and the user saves the default
+desktop, the terminal does not reappear in its docked position after
+restarting RAD Studio. The IDE saves the dock state (via `DeskSection`,
+`AutoSave`, `SaveStateNecessary`) but has no way to recreate the form
+on startup because the class is not registered with the desktop manager.
+
+**Root cause:** The plugin never calls `RegisterDesktopFormClass` or
+`RegisterFieldAddress` (from the `DeskUtil` unit). Without these, the
+IDE records the form's dock state but cannot instantiate it during
+desktop restore.
+
+**Reference implementations:**
+- GExperts `GX_IdeDock.pas` -- wraps both calls in an `IIdeDockManager`
+  interface; sets `DeskSection := Name` so the section matches the
+  form's component name.
+- DTerminal `uMain.pas` (lines 63-68) -- calls both in its `Register`
+  procedure with a stable identifier.
+
+**Required changes:**
+
+1. Add `DeskUtil` to the uses clause of `Delphi.Terminal.Plugin.Registration`.
+2. In `Register`, after the wizard/options/keybinding registration, call:
+   - `RegisterDesktopFormClass(TfrmDelphiTerminalDock, ID, ID)` where
+     `ID` is a stable string matching `DeskSection`.
+   - `RegisterFieldAddress(ID, @FInstance)` -- requires exposing the
+     `FInstance` unit variable (or moving it to a shared location).
+3. In `Delphi.Terminal.Plugin.DockForm`:
+   - Set `Name := ID` in the constructor so the VCL component name
+     matches the desktop section.
+   - Ensure `DeskSection` uses the same identifier (currently
+     `'continuous_delphi_delphi_terminal'` -- keep this value but use
+     it consistently as a named constant).
+   - The constructor must handle IDE-initiated creation (the IDE calls
+     `Create(nil)` with no prior `ShowInstance` call) -- assign
+     `FInstance := Self` inside the constructor so the singleton is set
+     regardless of creation path.
+4. In `Delphi.Terminal.Plugin.Lifecycle`:
+   - Call `UnregisterFieldAddress(@FInstance)` during shutdown, before
+     freeing the form.
+
+**Consistency note:** The `DeskSection` value, the `Name` property, and
+the identifiers passed to `RegisterDesktopFormClass` /
+`RegisterFieldAddress` must all be the same string.
+
+Acceptance criteria:
+- [ ] `RegisterDesktopFormClass` and `RegisterFieldAddress` are called
+      during plugin registration
+- [ ] `UnregisterFieldAddress` is called during plugin shutdown
+- [ ] Form `Name`, `DeskSection`, and registration identifier are the
+      same constant string
+- [ ] Docking the terminal, saving the desktop, and restarting the IDE
+      restores the terminal in its docked position
+- [ ] `ShowInstance` and `ToggleInstance` continue to work correctly
+      after the registration changes
+- [ ] The form constructor handles both user-initiated and IDE-initiated
+      creation paths
+
+---
 

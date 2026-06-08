@@ -21,10 +21,12 @@ implementation
 uses
   ToolsAPI,
   System.SysUtils,
+  DeskUtil,
   Delphi.Terminal.Plugin.Lifecycle,
   Delphi.Terminal.Plugin.Wizard,
   Delphi.Terminal.Plugin.OptionsPage,
   Delphi.Terminal.Plugin.KeyBinding,
+  Delphi.Terminal.Plugin.DockForm,
   Delphi.Terminal.Settings;
 
 procedure Register;
@@ -41,6 +43,10 @@ begin
   begin
     TerminalSettings.SetDefaults;
   end;
+  if Assigned(RegisterFieldAddress) then
+    RegisterFieldAddress(SDelphiTerminalDeskName, TfrmDelphiTerminalDock.InstanceAddress);
+  RegisterDesktopFormClass(TfrmDelphiTerminalDock, SDelphiTerminalDeskName, SDelphiTerminalDeskName);
+
   TDelphiTerminalWizard.Register;
   TDelphiTerminalOptionsPage.RegisterOptions;
   RegisterKeyBinding;

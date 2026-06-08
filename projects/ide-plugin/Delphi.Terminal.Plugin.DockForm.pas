@@ -20,6 +20,9 @@ uses
   DockForm,
   Delphi.Terminal.Frame.CmdShell;
 
+const
+  SDelphiTerminalDeskName = 'delphi_terminal_dock';
+
 type
   TfrmDelphiTerminalDock = class(TDockableForm)
   private
@@ -49,6 +52,7 @@ type
     class procedure ShowInstance;
     class procedure ToggleInstance;
     class procedure CleanUp;
+    class function InstanceAddress: Pointer;
   end;
 
 implementation
@@ -146,6 +150,11 @@ begin
   FreeAndNil(FInstance);
 end;
 
+class function TfrmDelphiTerminalDock.InstanceAddress: Pointer;
+begin
+  Result := @FInstance;
+end;
+
 constructor TfrmDelphiTerminalDock.Create(AOwner: TComponent);
 var
   WorkDir: string;
@@ -153,7 +162,9 @@ var
   DefaultIdx, I: Integer;
 begin
   inherited Create(AOwner);
-  DeskSection := 'continuous_delphi_delphi_terminal';  //unique identifier for the Delphi IDE's desktop layout manager. INI section name, but lets be safe and use _
+  FInstance := Self;
+  Name := SDelphiTerminalDeskName;
+  DeskSection := SDelphiTerminalDeskName;
   AutoSave := True;
   SaveStateNecessary := True;
   Caption := 'delphi-terminal';
