@@ -251,12 +251,12 @@ end;
 
 procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseSetLocationForPwsh;
 begin
-  Assert.AreEqual('Set-Location "C:\test"', TCmdShellProcess.ChangeDirectoryCommand('pwsh.exe', 'C:\test'));
+  Assert.AreEqual('Set-Location ''C:\test''', TCmdShellProcess.ChangeDirectoryCommand('pwsh.exe', 'C:\test'));
 end;
 
 procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseSetLocationForPowerShell;
 begin
-  Assert.AreEqual('Set-Location "C:\test"', TCmdShellProcess.ChangeDirectoryCommand('powershell.exe', 'C:\test'));
+  Assert.AreEqual('Set-Location ''C:\test''', TCmdShellProcess.ChangeDirectoryCommand('powershell.exe', 'C:\test'));
 end;
 
 initialization

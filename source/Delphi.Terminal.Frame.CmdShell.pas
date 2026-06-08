@@ -15,9 +15,22 @@ unit Delphi.Terminal.Frame.CmdShell;
 interface
 
 uses
-  System.SysUtils, System.Classes, Winapi.Windows, Winapi.Messages, Winapi.RichEdit,
-  Vcl.Controls, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Buttons, Vcl.ComCtrls,
-  Delphi.Terminal.CmdShell, Delphi.Terminal.CommandHistory, Delphi.Terminal.AnsiParser, Delphi.Terminal.Settings;
+  System.SysUtils,
+  System.Classes,
+  Winapi.Windows,
+  Winapi.Messages,
+  Winapi.RichEdit,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Graphics,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.Buttons,
+  Vcl.ComCtrls,
+  Delphi.Terminal.CmdShell,
+  Delphi.Terminal.CommandHistory,
+  Delphi.Terminal.AnsiParser,
+  Delphi.Terminal.Settings;
 
 type
   TRequestPathEvent = procedure(Sender: TObject; var APath: string) of object;
@@ -27,6 +40,7 @@ type
     FPanelToolbar: TPanel;
     FBtnProjectDir: TSpeedButton;
     FBtnFileDir: TSpeedButton;
+    FBtnCommands: TSpeedButton;
     FBtnClear: TSpeedButton;
     FBtnStop: TSpeedButton;
     FRichOutput: TRichEdit;
@@ -43,6 +57,7 @@ type
     FShellUnavailable: Boolean;
     FOnRequestProjectDir: TRequestPathEvent;
     FOnRequestFileDir: TRequestPathEvent;
+    FOnCommandPaletteRequested: TNotifyEvent;
 
     procedure HandleOutput(Sender: TObject; const AText: string);
     procedure HandleProcessExit(Sender: TObject);
@@ -50,6 +65,7 @@ type
     procedure HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleProjectDirClick(Sender: TObject);
     procedure HandleFileDirClick(Sender: TObject);
+    procedure HandleCommandsClick(Sender: TObject);
     procedure HandleClearClick(Sender: TObject);
     procedure HandleStopClick(Sender: TObject);
     procedure FlushOutputBuffer;
@@ -69,9 +85,14 @@ type
     procedure SetWorkingDirectory(const APath: string);
     procedure ClearOutput;
     procedure FocusInput;
+    procedure SendUserCommand(const AText: string);
+    procedure InsertCommandText(const AText: string);
+    procedure ShowMessage(const AText: string);
 
+    property ShellExe: string read FShellExe;
     property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
     property OnRequestFileDir: TRequestPathEvent read FOnRequestFileDir write FOnRequestFileDir;
+    property OnCommandPaletteRequested: TNotifyEvent read FOnCommandPaletteRequested write FOnCommandPaletteRequested;
   end;
 
 implementation
@@ -106,8 +127,8 @@ end;
 
 procedure TframeCmdShell.BuildControls;
 const
-  TerminalBg = $0C0C0C;   // Campbell background #0C0C0C
-  TerminalFg = $CCCCCC;   // Campbell foreground #CCCCCC
+  TerminalBg = $0C0C0C; // Campbell background #0C0C0C
+  TerminalFg = $CCCCCC; // Campbell foreground #CCCCCC
 var
   TerminalFont: string;
   TerminalFontSize: Integer;
@@ -137,6 +158,14 @@ begin
   FBtnFileDir.Caption := 'File Dir';
   FBtnFileDir.Flat := True;
   FBtnFileDir.OnClick := HandleFileDirClick;
+
+  FBtnCommands := TSpeedButton.Create(Self);
+  FBtnCommands.Parent := FPanelToolbar;
+  FBtnCommands.Align := alLeft;
+  FBtnCommands.Width := 80;
+  FBtnCommands.Caption := 'Commands';
+  FBtnCommands.Flat := True;
+  FBtnCommands.OnClick := HandleCommandsClick;
 
   FBtnClear := TSpeedButton.Create(Self);
   FBtnClear.Parent := FPanelToolbar;
@@ -267,23 +296,23 @@ end;
 procedure TframeCmdShell.ApplySegmentFormat(const AAttr: TAnsiAttributes);
 const
   // Windows Terminal "Campbell" palette (default)
-  AnsiColorMap: array[TAnsiColor] of TColor = (
-    $CCCCCC,     // acDefault -- Campbell foreground #CCCCCC
-    $000000,     // acBlack
-    $1F0FC5,     // acRed         #C50F1F
-    $0EA113,     // acGreen       #13A10E
-    $009CC1,     // acYellow      #C19C00
-    $DA3700,     // acBlue        #0037DA
-    $981788,     // acMagenta     #881798
-    $DD963A,     // acCyan        #3A96DD
-    $CCCCCC,     // acWhite       #CCCCCC
-    $767676,     // acBrightBlack #767676
-    $5648E7,     // acBrightRed   #E74856
-    $0CC616,     // acBrightGreen #16C60C
-    $A5F1F9,     // acBrightYellow #F9F1A5
-    $FF783B,     // acBrightBlue  #3B78FF
-    $9E00B4,     // acBrightMagenta #B4009E
-    $D6D661,     // acBrightCyan  #61D6D6
+  AnsiColorMap: array [TAnsiColor] of TColor = (
+    $CCCCCC, // acDefault -- Campbell foreground #CCCCCC
+    $000000, // acBlack
+    $1F0FC5, // acRed         #C50F1F
+    $0EA113, // acGreen       #13A10E
+    $009CC1, // acYellow      #C19C00
+    $DA3700, // acBlue        #0037DA
+    $981788, // acMagenta     #881798
+    $DD963A, // acCyan        #3A96DD
+    $CCCCCC, // acWhite       #CCCCCC
+    $767676, // acBrightBlack #767676
+    $5648E7, // acBrightRed   #E74856
+    $0CC616, // acBrightGreen #16C60C
+    $A5F1F9, // acBrightYellow #F9F1A5
+    $FF783B, // acBrightBlue  #3B78FF
+    $9E00B4, // acBrightMagenta #B4009E
+    $D6D661, // acBrightCyan  #61D6D6
     $F2F2F2      // acBrightWhite #F2F2F2
   );
 var
@@ -354,10 +383,7 @@ begin
       StartShell(FShellExe, FWorkDir);
       Exit;
     end;
-    FHistory.Add(FEditInput.Text);
-    FHistory.ResetPosition;
-    FCmdShell.SendCommand(FEditInput.Text);
-    FEditInput.Clear;
+    SendUserCommand(FEditInput.Text);
   end;
 end;
 
@@ -459,7 +485,7 @@ begin
   end
   else if (Key = VK_TAB) and (ssCtrl in Shift) then
     CycleTab(not (ssShift in Shift))
-  else if (ssCtrl in Shift) and (Key in [Ord('1')..Ord('9')]) then
+  else if (ssCtrl in Shift) and (Key in [Ord('1') .. Ord('9')]) then
     SwitchToTab(Key - Ord('1'))
   else if (Key = Ord('L')) and (ssCtrl in Shift) then
   begin
@@ -470,7 +496,19 @@ begin
   begin
     FCmdShell.SendCtrlC;
     Key := 0;
+  end
+  else if (Key = Ord('P')) and (ssCtrl in Shift) then
+  begin
+    if Assigned(FOnCommandPaletteRequested) then
+      FOnCommandPaletteRequested(Self);
+    Key := 0;
   end;
+end;
+
+procedure TframeCmdShell.HandleCommandsClick(Sender: TObject);
+begin
+  if Assigned(FOnCommandPaletteRequested) then
+    FOnCommandPaletteRequested(Self);
 end;
 
 procedure TframeCmdShell.HandleProjectDirClick(Sender: TObject);
@@ -507,8 +545,8 @@ begin
     Exit;
   Cmd := TCmdShellProcess.ChangeDirectoryCommand(FShellExe, APath);
   FCmdShell.SendCommand(Cmd);
-//  FRichOutput.SelStart := FRichOutput.GetTextLen;
-//  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
+  //  FRichOutput.SelStart := FRichOutput.GetTextLen;
+  //  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
   SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
@@ -538,6 +576,28 @@ procedure TframeCmdShell.FocusInput;
 begin
   if FEditInput.CanFocus then
     FEditInput.SetFocus;
+end;
+
+procedure TframeCmdShell.SendUserCommand(const AText: string);
+begin
+  if not FCmdShell.Running then
+    Exit;
+  FHistory.Add(AText);
+  FHistory.ResetPosition;
+  FCmdShell.SendCommand(AText);
+  FEditInput.Clear;
+end;
+
+procedure TframeCmdShell.InsertCommandText(const AText: string);
+begin
+  FEditInput.Text := AText;
+  FEditInput.SelStart := Length(AText);
+  FocusInput;
+end;
+
+procedure TframeCmdShell.ShowMessage(const AText: string);
+begin
+  HandleOutput(Self, AText + #13#10);
 end;
 
 procedure TframeCmdShell.StartShell(const AShellExe: string; const AWorkDir: string);

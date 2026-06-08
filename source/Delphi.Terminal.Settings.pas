@@ -15,7 +15,8 @@ unit Delphi.Terminal.Settings;
 interface
 
 uses
-  System.SysUtils, System.Classes;
+  System.SysUtils, System.Classes,
+  Delphi.Terminal.SavedCommands;
 
 type
   TDelphiTerminalSettings = class
@@ -27,8 +28,10 @@ type
     FFontName: string;
     FFontSize: Integer;
     FAutoCdMode: Integer;  // 0 = active tab only, 1 = all tabs
+    FSavedCommands: TSavedCommandList;
   public
     constructor Create;
+    destructor Destroy; override;
     procedure LoadFromRegistry(const ARegKeyBase: string);
     procedure SaveToRegistry(const ARegKeyBase: string);
     procedure SetDefaults;
@@ -39,6 +42,7 @@ type
     property FontName: string read FFontName write FFontName;
     property FontSize: Integer read FFontSize write FFontSize;
     property AutoCdMode: Integer read FAutoCdMode write FAutoCdMode;
+    property SavedCommands: TSavedCommandList read FSavedCommands;
   end;
 
 function TerminalSettings: TDelphiTerminalSettings;
@@ -72,7 +76,14 @@ end;
 constructor TDelphiTerminalSettings.Create;
 begin
   inherited Create;
+  FSavedCommands := TSavedCommandList.Create;
   SetDefaults;
+end;
+
+destructor TDelphiTerminalSettings.Destroy;
+begin
+  FSavedCommands.Free;
+  inherited;
 end;
 
 procedure TDelphiTerminalSettings.SetDefaults;
@@ -111,6 +122,8 @@ begin
       FFontSize := Reg.ReadInteger('FontSize');
     if Reg.ValueExists('AutoCdMode') then
       FAutoCdMode := Reg.ReadInteger('AutoCdMode');
+    if Reg.ValueExists('SavedCommands') then
+      FSavedCommands.FromJSON(Reg.ReadString('SavedCommands'));
     Reg.CloseKey;
   finally
     Reg.Free;
@@ -135,6 +148,7 @@ begin
     Reg.WriteString('FontName', FFontName);
     Reg.WriteInteger('FontSize', FFontSize);
     Reg.WriteInteger('AutoCdMode', FAutoCdMode);
+    Reg.WriteString('SavedCommands', FSavedCommands.ToJSON);
     Reg.CloseKey;
   finally
     Reg.Free;

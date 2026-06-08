@@ -37,7 +37,11 @@ uses
   Delphi.Terminal.CmdShell in '..\source\Delphi.Terminal.CmdShell.pas',
   Delphi.Terminal.CommandHistory in '..\source\Delphi.Terminal.CommandHistory.pas',
   Delphi.Terminal.AnsiParser in '..\source\Delphi.Terminal.AnsiParser.pas',
-  Delphi.Terminal.Settings in '..\source\Delphi.Terminal.Settings.pas';
+  Delphi.Terminal.Settings in '..\source\Delphi.Terminal.Settings.pas',
+  Delphi.Terminal.SavedCommands in '..\source\Delphi.Terminal.SavedCommands.pas',
+  Delphi.Terminal.VariableExpander in '..\source\Delphi.Terminal.VariableExpander.pas',
+  Test.Delphi.Terminal.SavedCommands in 'Test.Delphi.Terminal.SavedCommands.pas',
+  Test.Delphi.Terminal.VariableExpander in 'Test.Delphi.Terminal.VariableExpander.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

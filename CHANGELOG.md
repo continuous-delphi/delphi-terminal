@@ -3,6 +3,17 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v1.0.38.0
+- Saved commands with Ctrl+P command palette, variable expansion, and JSON bundle import
+- Plus matching `Commands` toolbar button as entry point for the palette
+- <Enter> previews command in input field for editing, <Ctrl><Enter> runs immediately
+- Command list is filtered by active shell tab (some commands are formatted differently on different shells)
+- User responsible for quirky quoting behavior based on whatever command is associated
+- Working Dir validation prevents file variables (${ProjectFile}, ${FilePath}, ${FileName})
+- Variable reference legend on Add/Edit Command dialog
+- <Ctrl><DoubleClick> on the command line auto-runs the command (like <Ctrl><Enter>)
+[#17](https://github.com/continuous-delphi/delphi-terminal/issues/17)
+
 ## v0.9.33.0
 - Fix dockable form not restoring on IDE restart by registering with the desktop layout manager
 [#35](https://github.com/continuous-delphi/delphi-terminal/issues/35)

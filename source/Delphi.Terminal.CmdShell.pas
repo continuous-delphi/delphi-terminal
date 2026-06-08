@@ -43,6 +43,7 @@ type
     class function EncodingForShell(const AShellExe: string): TEncoding;
     class function BuildEnvironmentBlock: TBytes;
     class function ChangeDirectoryCommand(const AShellExe, APath: string): string;
+    class function ChangeDirectoryAndRun(const AShellExe, APath, ACommand: string): string;
     procedure Start(const AShellExe: string; const AWorkDir: string = '');
     procedure SendCommand(const ACommand: string);
     procedure SendCtrlC;
@@ -302,9 +303,20 @@ var
 begin
   Lower := LowerCase(ExtractFileName(AShellExe));
   if Lower.Contains('pwsh') or Lower.Contains('powershell') then
-    Result := 'Set-Location "' + APath + '"'
+    Result := 'Set-Location ''' + StringReplace(APath, '''', '''''', [rfReplaceAll]) + ''''
   else
     Result := 'cd /d "' + APath + '"';
+end;
+
+class function TCmdShellProcess.ChangeDirectoryAndRun(const AShellExe, APath, ACommand: string): string;
+var
+  Lower: string;
+begin
+  Lower := LowerCase(ExtractFileName(AShellExe));
+  if Lower.Contains('pwsh') or Lower.Contains('powershell') then
+    Result := 'Set-Location ''' + StringReplace(APath, '''', '''''', [rfReplaceAll]) + '''; if ($?) { ' + ACommand + ' }'
+  else
+    Result := 'cd /d "' + APath + '" && ' + ACommand;
 end;
 
 procedure TCmdShellProcess.Start(const AShellExe: string; const AWorkDir: string);
