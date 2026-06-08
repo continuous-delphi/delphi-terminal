@@ -27,7 +27,7 @@ and legacy PowerShell sessions directly inside the IDE.
   - Each command has a name, shell type (Active / CMD / pwsh / PowerShell),
     command text, and optional working directory
   - Variable expansion: `${ProjectDir}`, `${ProjectFile}`, `${FileDir}`,
-    `${FilePath}`, `${FileName}`, `${radTerminalDir}` -- resolved at
+    `${FilePath}`, `${FileName}`, `${PluginDir}` -- resolved at
     execution time from IDE context
   - Enter previews the command in the input field for editing;
     Ctrl+Enter runs immediately (or Ctrl+DblClick)

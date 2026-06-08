@@ -478,7 +478,7 @@ begin
   Vars.FileDir := GetCurrentFileDir;
   Vars.FilePath := GetCurrentFilePath;
   Vars.FileName := GetCurrentFileName;
-  Vars.RadTerminalDir := ExtractFilePath(GetModuleName(HInstance));
+  Vars.PluginDir := ExtractFilePath(GetModuleName(HInstance));
 
   ExpandedCmd := ExpandTerminalVariables(PaletteResult.Command.Command, Vars);
   ExpandedDir := ExpandTerminalVariables(PaletteResult.Command.WorkingDir, Vars);

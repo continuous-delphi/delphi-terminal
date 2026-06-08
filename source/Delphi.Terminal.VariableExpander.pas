@@ -21,7 +21,7 @@ type
     FileDir: string;
     FilePath: string;
     FileName: string;
-    RadTerminalDir: string;
+    PluginDir: string;
   end;
 
 function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables): string;
@@ -47,7 +47,7 @@ begin
   Result[2].Token := '${FileDir}';      Result[2].Value := AVars.FileDir;
   Result[3].Token := '${FilePath}';     Result[3].Value := AVars.FilePath;
   Result[4].Token := '${FileName}';     Result[4].Value := AVars.FileName;
-  Result[5].Token := '${radTerminalDir}'; Result[5].Value := AVars.RadTerminalDir;
+  Result[5].Token := '${PluginDir}'; Result[5].Value := AVars.PluginDir;
 end;
 
 function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables): string;
