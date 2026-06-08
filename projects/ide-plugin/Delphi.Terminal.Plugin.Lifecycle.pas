@@ -19,6 +19,7 @@ procedure ShutdownDelphiTerminalPlugin;
 implementation
 
 uses
+  DeskUtil,
   Delphi.Terminal.Plugin.OptionsPage,
   Delphi.Terminal.Plugin.KeyBinding,
   Delphi.Terminal.Plugin.Menu,
@@ -37,6 +38,8 @@ begin
   UnregisterKeyBinding;
   TDelphiTerminalOptionsPage.UnregisterOptions;
   CleanUpTerminalMenu;
+  if Assigned(UnregisterFieldAddress) then
+    UnregisterFieldAddress(TfrmDelphiTerminalDock.InstanceAddress);
   TfrmDelphiTerminalDock.CleanUp;
   ReleaseTerminalSettings;
 end;
