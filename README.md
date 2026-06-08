@@ -100,6 +100,10 @@ Dock the form as desired and optionally save Desktop setting.
 
 ![delphi-terminal Config ScreenShot](assets/screenshot-config1.png)
 
+### Saved commands config:
+
+![delphi-terminal Saved Commands Config ScreenShot](assets/screenshot-savedcommands1.png)
+
 ---
 
 ![continuous-delphi logo](https://continuous-delphi.github.io/assets/logos/continuous-delphi-480x270.png)
