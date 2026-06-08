@@ -21,7 +21,20 @@ and legacy PowerShell sessions directly inside the IDE.
   the demo app.)
 - **Process exit detection** -- shows a restart prompt when the shell
   exits: `press Enter to restart`
+- **Saved commands** -- store frequently used commands and recall them
+  instantly with a Ctrl+P command palette or the Commands toolbar button
+  - Add, edit, delete, and reorder commands via the editor dialog
+  - Each command has a name, shell type (Active / CMD / pwsh / PowerShell),
+    command text, and optional working directory
+  - Variable expansion: `${ProjectDir}`, `${ProjectFile}`, `${FileDir}`,
+    `${FilePath}`, `${FileName}`, `${radTerminalDir}` -- resolved at
+    execution time from IDE context
+  - Enter previews the command in the input field for editing;
+    Ctrl+Enter runs immediately
+  - Command list filtered by the active shell tab
+  - [JSON bundle import](docs/command-bundles.md) for sharing command sets across machines
 - **Keyboard shortcuts**
+  - Ctrl+P -- open the saved-command palette
   - Ctrl+Tab / Ctrl+Shift+Tab -- cycle through shell tabs
   - Ctrl+1, Ctrl+2, Ctrl+3 -- jump to CMD, pwsh, or PowerShell tab
   - Up / Down -- navigate command history
