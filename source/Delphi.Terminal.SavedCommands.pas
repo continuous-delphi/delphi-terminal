@@ -40,11 +40,13 @@ type
     procedure Delete(AIndex: Integer);
     procedure Move(AOldIndex, ANewIndex: Integer);
     procedure Clear;
+    function Contains(const ACmd: TSavedCommand): Boolean;
     procedure Assign(ASource: TSavedCommandList);
     function ToJSON: string;
     procedure FromJSON(const AJSON: string);
     procedure ImportBundle(const AJSON: string);
     procedure DeleteByPrefix(const APrefix: string);
+    function ToBundleJSON(const APrefix, ADescription: string): string;
     class function ParseBundlePrefix(const AJSON: string): string;
     class function ParseBundleDescription(const AJSON: string): string;
     class function ShellTypeToString(AType: TSavedCommandShellType): string;
@@ -114,6 +116,20 @@ end;
 procedure TSavedCommandList.Clear;
 begin
   FItems.Clear;
+end;
+
+function TSavedCommandList.Contains(const ACmd: TSavedCommand): Boolean;
+var
+  I: Integer;
+  Existing: TSavedCommand;
+begin
+  for I := 0 to FItems.Count - 1 do
+  begin
+    Existing := FItems[I];
+    if SameText(Existing.Name, ACmd.Name) and (Existing.ShellType = ACmd.ShellType) and (Existing.Command = ACmd.Command) and SameText(Existing.WorkingDir, ACmd.WorkingDir) then
+      Exit(True);
+  end;
+  Result := False;
 end;
 
 procedure TSavedCommandList.Assign(ASource: TSavedCommandList);
@@ -261,16 +277,16 @@ begin
       Exit;
     Root := TJSONObject(Val);
     Pair := Root.Get('prefix');
-    if Pair = nil then
-      Exit;
-    Prefix := Pair.JsonValue.Value;
-    if Prefix = '' then
-      Exit;
+    if Pair <> nil then
+      Prefix := Pair.JsonValue.Value
+    else
+      Prefix := '';
     Pair := Root.Get('commands');
     if (Pair = nil) or not (Pair.JsonValue is TJSONArray) then
       Exit;
     Arr := TJSONArray(Pair.JsonValue);
-    DeleteByPrefix(Prefix);
+    if Prefix <> '' then
+      DeleteByPrefix(Prefix);
     for I := 0 to Arr.Count - 1 do
     begin
       if not (Arr.Items[I] is TJSONObject) then
@@ -289,10 +305,44 @@ begin
       Pair := Obj.Get('workdir');
       if Pair <> nil then
         Cmd.WorkingDir := Pair.JsonValue.Value;
-      FItems.Add(Cmd);
+      if not Contains(Cmd) then
+        FItems.Add(Cmd);
     end;
   finally
     Val.Free;
+  end;
+end;
+
+function TSavedCommandList.ToBundleJSON(const APrefix, ADescription: string): string;
+var
+  Root: TJSONObject;
+  Arr: TJSONArray;
+  Obj: TJSONObject;
+  I: Integer;
+  Cmd: TSavedCommand;
+begin
+  Root := TJSONObject.Create;
+  try
+    Root.AddPair('prefix', APrefix);
+    Root.AddPair('description', ADescription);
+    Arr := TJSONArray.Create;
+    Root.AddPair('commands', Arr);
+    for I := 0 to FItems.Count - 1 do
+    begin
+      Cmd := FItems[I];
+      if (APrefix <> '') and not Cmd.Name.StartsWith(APrefix, True) then
+        Continue;
+      Obj := TJSONObject.Create;
+      Obj.AddPair('name', Cmd.Name);
+      Obj.AddPair('shell', ShellTypeToString(Cmd.ShellType));
+      Obj.AddPair('command', Cmd.Command);
+      if Cmd.WorkingDir <> '' then
+        Obj.AddPair('workdir', Cmd.WorkingDir);
+      Arr.AddElement(Obj);
+    end;
+    Result := Root.Format(2);
+  finally
+    Root.Free;
   end;
 end;
 

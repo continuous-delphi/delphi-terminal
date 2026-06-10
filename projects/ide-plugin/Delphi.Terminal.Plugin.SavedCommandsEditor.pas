@@ -29,6 +29,7 @@ type
     FBtnMoveUp: TButton;
     FBtnMoveDown: TButton;
     FBtnImport: TButton;
+    FBtnExport: TButton;
     FBtnOK: TButton;
     FBtnCancel: TButton;
     FCommands: TSavedCommandList;
@@ -40,6 +41,7 @@ type
     procedure HandleMoveUp(Sender: TObject);
     procedure HandleMoveDown(Sender: TObject);
     procedure HandleImport(Sender: TObject);
+    procedure HandleExport(Sender: TObject);
     procedure HandleListViewDblClick(Sender: TObject);
     function EditCommand(var ACmd: TSavedCommand; AIsNew: Boolean): Boolean;
     function PrefixMatchCount(const APrefix: string): Integer;
@@ -177,6 +179,14 @@ begin
   FBtnImport.Top := 184;
   FBtnImport.Width := 80;
   FBtnImport.OnClick := HandleImport;
+
+  FBtnExport := TButton.Create(Self);
+  FBtnExport.Parent := PanelButtons;
+  FBtnExport.Caption := 'Export...';
+  FBtnExport.Left := 10;
+  FBtnExport.Top := 216;
+  FBtnExport.Width := 80;
+  FBtnExport.OnClick := HandleExport;
 
   FListView := TListView.Create(Self);
   FListView.Parent := Self;
@@ -495,25 +505,148 @@ begin
   end;
 
   Prefix := TSavedCommandList.ParseBundlePrefix(JSON);
-  if Prefix = '' then
-  begin
-    MessageDlg('Invalid bundle file: no "prefix" field found.', mtError, [mbOK], 0);
-    Exit;
-  end;
-
   Desc := TSavedCommandList.ParseBundleDescription(JSON);
-  Existing := PrefixMatchCount(Prefix);
 
-  if Existing > 0 then
-    Msg := Format('Import bundle "%s"'#13#10'%s'#13#10#13#10'This will replace %d existing %s* command(s).', [Prefix, Desc, Existing, Prefix])
+  if Prefix <> '' then
+  begin
+    Existing := PrefixMatchCount(Prefix);
+    if Existing > 0 then
+      Msg := Format('Import bundle "%s"'#13#10'%s'#13#10#13#10'This will replace %d existing %s* command(s).', [Prefix, Desc, Existing, Prefix])
+    else
+      Msg := Format('Import bundle "%s"'#13#10'%s', [Prefix, Desc]);
+  end
   else
-    Msg := Format('Import bundle "%s"'#13#10'%s', [Prefix, Desc]);
+    Msg := Format('Import commands'#13#10'%s', [Desc]);
 
   if MessageDlg(Msg, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
     Exit;
 
   FCommands.ImportBundle(JSON);
   RefreshListView;
+end;
+
+procedure TfrmSavedCommandsEditor.HandleExport(Sender: TObject);
+var
+  PrefixDlg: TForm;
+  EdtPrefix, EdtDesc: TEdit;
+  BtnOK, BtnCancel: TButton;
+  Y: Integer;
+  Prefix, Desc, JSON: string;
+  MatchCount: Integer;
+  SaveDlg: TSaveDialog;
+  Stream: TStringList;
+
+  procedure AddLabel(AParent: TWinControl; ATop: Integer; const ACaption: string);
+  var
+    Lbl: TLabel;
+  begin
+    Lbl := TLabel.Create(PrefixDlg);
+    Lbl.Parent := AParent;
+    Lbl.Left := 12;
+    Lbl.Top := ATop;
+    Lbl.Caption := ACaption;
+  end;
+
+begin
+  if FCommands.Count = 0 then
+  begin
+    MessageDlg('No commands to export.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  PrefixDlg := TForm.CreateNew(Self);
+  try
+    PrefixDlg.Caption := 'Export Command Bundle';
+    PrefixDlg.Width := 450;
+    PrefixDlg.Height := 190;
+    PrefixDlg.Position := poOwnerFormCenter;
+    PrefixDlg.BorderStyle := bsDialog;
+
+    Y := 12;
+
+    AddLabel(PrefixDlg, Y, 'Prefix:');
+    EdtPrefix := TEdit.Create(PrefixDlg);
+    EdtPrefix.Parent := PrefixDlg;
+    EdtPrefix.Left := 100;
+    EdtPrefix.Top := Y;
+    EdtPrefix.Width := 320;
+    EdtPrefix.TextHint := 'Leave blank to export all commands';
+    Inc(Y, 32);
+
+    AddLabel(PrefixDlg, Y, 'Description:');
+    EdtDesc := TEdit.Create(PrefixDlg);
+    EdtDesc.Parent := PrefixDlg;
+    EdtDesc.Left := 100;
+    EdtDesc.Top := Y;
+    EdtDesc.Width := 320;
+    EdtDesc.TextHint := 'Human-readable bundle description';
+    Inc(Y, 40);
+
+    BtnOK := TButton.Create(PrefixDlg);
+    BtnOK.Parent := PrefixDlg;
+    BtnOK.Caption := 'OK';
+    BtnOK.Left := 250;
+    BtnOK.Top := Y;
+    BtnOK.Width := 80;
+    BtnOK.ModalResult := mrOk;
+    BtnOK.Default := True;
+
+    BtnCancel := TButton.Create(PrefixDlg);
+    BtnCancel.Parent := PrefixDlg;
+    BtnCancel.Caption := 'Cancel';
+    BtnCancel.Left := 340;
+    BtnCancel.Top := Y;
+    BtnCancel.Width := 80;
+    BtnCancel.ModalResult := mrCancel;
+    BtnCancel.Cancel := True;
+
+    if PrefixDlg.ShowModal <> mrOk then
+      Exit;
+
+    Prefix := Trim(EdtPrefix.Text);
+    Desc := Trim(EdtDesc.Text);
+  finally
+    PrefixDlg.Free;
+  end;
+
+  if Desc = '' then
+  begin
+    MessageDlg('Description is required.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  if Prefix <> '' then
+    MatchCount := PrefixMatchCount(Prefix)
+  else
+    MatchCount := FCommands.Count;
+  if MatchCount = 0 then
+  begin
+    MessageDlg(Format('No commands match the prefix "%s".', [Prefix]), mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  JSON := FCommands.ToBundleJSON(Prefix, Desc);
+
+  SaveDlg := TSaveDialog.Create(Self);
+  try
+    SaveDlg.Title := 'Export Command Bundle';
+    SaveDlg.Filter := 'JSON files (*.json)|*.json|All files (*.*)|*.*';
+    SaveDlg.DefaultExt := 'json';
+    SaveDlg.Options := SaveDlg.Options + [ofOverwritePrompt];
+    if not SaveDlg.Execute then
+      Exit;
+    Stream := TStringList.Create;
+    try
+      Stream.Text := JSON;
+      Stream.SaveToFile(SaveDlg.FileName, TEncoding.UTF8);
+    finally
+      Stream.Free;
+    end;
+  finally
+    SaveDlg.Free;
+  end;
+
+  MessageDlg(Format('Exported %d command(s) to bundle.', [MatchCount]), mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSavedCommandsEditor.HandleListViewDblClick(Sender: TObject);

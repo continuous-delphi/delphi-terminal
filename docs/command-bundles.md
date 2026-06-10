@@ -101,10 +101,24 @@ error message is displayed in the terminal output.
 To update a bundle, simply import the same file (or a newer version)
 again. All commands matching the prefix are replaced.
 
+## Exporting a bundle
+
+1. Open **Tools > Options > Third Party > delphi-terminal**
+2. Click **Saved Commands...**
+3. Click **Export...**
+4. Enter the prefix that identifies the commands to export (e.g. `cd.`)
+5. Enter a human-readable description for the bundle
+6. Choose a file location and save
+
+Only commands whose name starts with the given prefix are included in
+the exported bundle. The resulting `.json` file is in the standard bundle
+format and can be imported on other machines or shared with team members.
+
 ## Creating your own bundle
 
 1. Choose a prefix that identifies your tool or team (e.g. `mytools.`)
-2. Create a JSON file following the format above
+2. Create a JSON file following the format above, or use **Export...** to
+   generate one from existing commands
 3. Name every command starting with your prefix
 4. Test the commands manually in delphi-terminal first
 5. Distribute the `.json` file alongside your tools

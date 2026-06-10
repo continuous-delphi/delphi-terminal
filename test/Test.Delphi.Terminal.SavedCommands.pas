@@ -38,7 +38,14 @@ type
     [Test] procedure ParseBundlePrefixShouldExtractPrefix;
     [Test] procedure ParseBundleDescriptionShouldExtractDescription;
     [Test] procedure ImportBundleMalformedShouldDoNothing;
-    [Test] procedure ImportBundleNoPrefixShouldDoNothing;
+    [Test] procedure ImportBundleNoPrefixShouldAppend;
+    [Test] procedure ImportBundleShouldSkipExactDuplicates;
+
+    [Test] procedure ToBundleJSONShouldProduceValidBundle;
+    [Test] procedure ToBundleJSONShouldOnlyIncludePrefixMatches;
+    [Test] procedure ToBundleJSONShouldRoundTripViaImport;
+    [Test] procedure ToBundleJSONShouldOmitEmptyWorkDir;
+    [Test] procedure ToBundleJSONEmptyPrefixShouldExportAll;
   end;
 
 implementation
@@ -281,11 +288,114 @@ begin
   Assert.AreEqual('keep', FList[0].Name);
 end;
 
-procedure TTestSavedCommandList.ImportBundleNoPrefixShouldDoNothing;
+procedure TTestSavedCommandList.ImportBundleNoPrefixShouldAppend;
 begin
   FList.Add(MakeCmd('keep', 'this'));
   FList.ImportBundle('{"commands":[{"name":"x","shell":"active","command":"y"}]}');
-  Assert.AreEqual(NativeInt(1), NativeInt(FList.Count));
+  Assert.AreEqual(NativeInt(2), NativeInt(FList.Count));
+  Assert.AreEqual('keep', FList[0].Name);
+  Assert.AreEqual('x', FList[1].Name);
+end;
+
+procedure TTestSavedCommandList.ImportBundleShouldSkipExactDuplicates;
+begin
+  FList.Add(MakeCmd('build', 'msbuild MyProj.dproj', scPwsh, '${ProjectDir}'));
+  FList.Add(MakeCmd('clean', 'delphi-clean', scPwsh));
+  FList.ImportBundle(
+    '{"commands":[' +
+    '{"name":"build","shell":"pwsh","command":"msbuild MyProj.dproj","workdir":"${ProjectDir}"},' +
+    '{"name":"clean","shell":"pwsh","command":"delphi-clean"},' +
+    '{"name":"test","shell":"cmd","command":"run-tests"}' +
+    ']}');
+  Assert.AreEqual(NativeInt(3), NativeInt(FList.Count), 'Duplicates should not be added');
+  Assert.AreEqual('build', FList[0].Name);
+  Assert.AreEqual('clean', FList[1].Name);
+  Assert.AreEqual('test', FList[2].Name);
+end;
+
+{ ToBundleJSON tests }
+
+procedure TTestSavedCommandList.ToBundleJSONShouldProduceValidBundle;
+var
+  JSON, Prefix, Desc: string;
+begin
+  FList.Add(MakeCmd('cd.clean', 'delphi-clean', scPwsh, '${ProjectDir}'));
+  FList.Add(MakeCmd('cd.build', 'Invoke-DelphiBuild', scPwsh));
+  JSON := FList.ToBundleJSON('cd.', 'Test bundle');
+  Prefix := TSavedCommandList.ParseBundlePrefix(JSON);
+  Desc := TSavedCommandList.ParseBundleDescription(JSON);
+  Assert.AreEqual('cd.', Prefix);
+  Assert.AreEqual('Test bundle', Desc);
+  Assert.IsTrue(JSON.Contains('"cd.clean"'), 'Should contain cd.clean');
+  Assert.IsTrue(JSON.Contains('"cd.build"'), 'Should contain cd.build');
+end;
+
+procedure TTestSavedCommandList.ToBundleJSONShouldOnlyIncludePrefixMatches;
+var
+  JSON: string;
+  Restored: TSavedCommandList;
+begin
+  FList.Add(MakeCmd('cd.clean', 'delphi-clean', scPwsh));
+  FList.Add(MakeCmd('my.other', 'other cmd', scCmd));
+  FList.Add(MakeCmd('cd.build', 'build cmd', scPwsh));
+  JSON := FList.ToBundleJSON('cd.', 'Only cd');
+  Restored := TSavedCommandList.Create;
+  try
+    Restored.ImportBundle(JSON);
+    Assert.AreEqual(NativeInt(2), NativeInt(Restored.Count));
+    Assert.AreEqual('cd.clean', Restored[0].Name);
+    Assert.AreEqual('cd.build', Restored[1].Name);
+  finally
+    Restored.Free;
+  end;
+end;
+
+procedure TTestSavedCommandList.ToBundleJSONShouldRoundTripViaImport;
+var
+  JSON: string;
+  Restored: TSavedCommandList;
+begin
+  FList.Add(MakeCmd('t.alpha', 'echo alpha', scCmd, '${ProjectDir}'));
+  FList.Add(MakeCmd('t.beta', 'echo beta', scPwsh));
+  JSON := FList.ToBundleJSON('t.', 'Round trip test');
+  Restored := TSavedCommandList.Create;
+  try
+    Restored.ImportBundle(JSON);
+    Assert.AreEqual(NativeInt(2), NativeInt(Restored.Count));
+    Assert.AreEqual('t.alpha', Restored[0].Name);
+    Assert.AreEqual('echo alpha', Restored[0].Command);
+    Assert.IsTrue(Restored[0].ShellType = scCmd, 'Shell type should be cmd');
+    Assert.AreEqual('${ProjectDir}', Restored[0].WorkingDir);
+    Assert.AreEqual('t.beta', Restored[1].Name);
+    Assert.AreEqual('echo beta', Restored[1].Command);
+    Assert.IsTrue(Restored[1].ShellType = scPwsh, 'Shell type should be pwsh');
+    Assert.AreEqual('', Restored[1].WorkingDir);
+  finally
+    Restored.Free;
+  end;
+end;
+
+procedure TTestSavedCommandList.ToBundleJSONShouldOmitEmptyWorkDir;
+var
+  JSON: string;
+begin
+  FList.Add(MakeCmd('p.test', 'echo test', scActive));
+  JSON := FList.ToBundleJSON('p.', 'Test bundle');
+  Assert.IsFalse(JSON.Contains('"workdir"'), 'Should not contain workdir key');
+end;
+
+procedure TTestSavedCommandList.ToBundleJSONEmptyPrefixShouldExportAll;
+var
+  JSON: string;
+begin
+  FList.Add(MakeCmd('cd.clean', 'delphi-clean', scPwsh));
+  FList.Add(MakeCmd('my.other', 'other cmd', scCmd));
+  FList.Add(MakeCmd('solo', 'solo cmd', scActive));
+  JSON := FList.ToBundleJSON('', 'All commands');
+  Assert.IsTrue(JSON.Contains('"cd.clean"'), 'Should contain cd.clean');
+  Assert.IsTrue(JSON.Contains('"my.other"'), 'Should contain my.other');
+  Assert.IsTrue(JSON.Contains('"solo"'), 'Should contain solo');
+  Assert.AreEqual('All commands', TSavedCommandList.ParseBundleDescription(JSON));
 end;
 
 initialization

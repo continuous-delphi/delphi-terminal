@@ -640,4 +640,26 @@ Acceptance criteria:
       creation paths
 
 ---
+Title: Add "Export..." button to Saved Commands window
+Issue: #40
+Status: closed
+Labels: enhancement
+Body:
+Add an Export button to the Saved Commands editor dialog that exports
+commands matching a user-specified prefix to a JSON bundle file. The
+exported file uses the standard bundle format (prefix, description,
+commands array) and can be imported on other machines.
+
+Current workaround is to access
+HKCU\Software\Embarcadero\BDS\{ver}\Continuous-Delphi\delphi-terminal\SavedCommands
+REG_SZ key directly.
+
+Acceptance criteria:
+- [ ] Export button appears in the Saved Commands editor
+- [ ] User is prompted for prefix and description
+- [ ] Only commands matching the prefix are exported
+- [ ] Output file is valid bundle JSON (importable via Import)
+- [ ] Unit tests cover ToBundleJSON round-trip and prefix filtering
+
+---
 

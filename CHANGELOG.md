@@ -3,6 +3,12 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
 
+## v1.0.45.0
+- Add "Export..." button to Saved Commands editor for exporting commands as reusable JSON bundles
+- Prefix is now optional for both export and import -- omit to export/import all commands
+- Import skips exact duplicates instead of adding them again
+[#40](https://github.com/continuous-delphi/delphi-terminal/issues/40)
+
 ## v1.0.38.0
 - Saved commands with Ctrl+P command palette, variable expansion, and JSON bundle import
 - Plus matching `Commands` toolbar button as entry point for the palette

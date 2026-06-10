@@ -40,7 +40,7 @@ begin
   Result.FileDir := AFileDir;
   Result.FilePath := AFilePath;
   Result.FileName := AFileName;
-  Result.RadTerminalDir := ARadDir;
+  Result.PluginDir := ARadDir;
 end;
 
 procedure TTestVariableExpander.NoTokensShouldReturnUnchanged;
@@ -75,7 +75,7 @@ end;
 
 procedure TTestVariableExpander.RadTerminalDirShouldExpand;
 begin
-  Assert.AreEqual('run C:\plugin', ExpandTerminalVariables('run ${radTerminalDir}', MakeVars('', '', '', '', '', 'C:\plugin')));
+  Assert.AreEqual('run C:\plugin', ExpandTerminalVariables('run ${PluginDir}', MakeVars('', '', '', '', '', 'C:\plugin')));
 end;
 
 procedure TTestVariableExpander.MultipleVariablesShouldAllExpand;
