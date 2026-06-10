@@ -31,6 +31,7 @@ type
     FCboAutoCd: TComboBox;
     FBtnSavedCommands: TButton;
     FLblHomepage: TLabel;
+    FLblVersion: TLabel;
     procedure BuildControls;
     function CreateLabel(AParent: TWinControl; ATop: Integer; const ACaption: string): TLabel;
     procedure HomepageClick(Sender: TObject);
@@ -48,6 +49,34 @@ implementation
 uses
   Winapi.Windows, Winapi.ShellAPI, System.UITypes,
   Delphi.Terminal.Plugin.SavedCommandsEditor;
+
+function GetPluginVersion: string;
+var
+  Stream: TResourceStream;
+  Block: TMemoryStream;
+  Info: PVSFixedFileInfo;
+  Len: UINT;
+begin
+  Result := '';
+  try
+    Block := TMemoryStream.Create;
+    try
+      Stream := TResourceStream.CreateFromID(HInstance, VS_VERSION_INFO, RT_VERSION);
+      try
+        Block.CopyFrom(Stream, Stream.Size);
+      finally
+        Stream.Free;
+      end;
+      Block.Position := 0;
+      if VerQueryValue(Block.Memory, '\', Pointer(Info), Len) then
+        Result := Format('%d.%d.%d.%d', [Info.dwFileVersionMS shr 16, Info.dwFileVersionMS and $FFFF, Info.dwFileVersionLS shr 16, Info.dwFileVersionLS and $FFFF]);
+    finally
+      Block.Free;
+    end;
+  except
+    Result := '';
+  end;
+end;
 
 { TframeDelphiTerminalOptions }
 
@@ -182,6 +211,14 @@ begin
   FLblHomepage.Font.Style := [TFontStyle.fsUnderline];
   FLblHomepage.Cursor := crHandPoint;
   FLblHomepage.OnClick := HomepageClick;
+  Inc(Y, 24);
+
+  FLblVersion := TLabel.Create(Self);
+  FLblVersion.Parent := Self;
+  FLblVersion.Left := 16;
+  FLblVersion.Top := Y;
+  FLblVersion.Caption := 'Version: ' + GetPluginVersion;
+  FLblVersion.Font.Color := TColorRec.Gray;
 end;
 
 procedure TframeDelphiTerminalOptions.HandleSavedCommandsClick(Sender: TObject);

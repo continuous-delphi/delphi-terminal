@@ -662,4 +662,17 @@ Acceptance criteria:
 - [ ] Unit tests cover ToBundleJSON round-trip and prefix filtering
 
 ---
+Title: Add version number display within the IDE
+Issue: #36
+Status: closed
+Labels: enhancement
+Body:
+Display the plugin version number within the IDE, either in the
+dockable terminal form and/or in the config screen.
+
+Acceptance criteria:
+- [ ] Version number is visible in the Tools > Options config screen
+- [ ] Version is read from the BPL VERSIONINFO resource at runtime
+
+---
 
