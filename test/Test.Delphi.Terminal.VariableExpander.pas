@@ -33,6 +33,10 @@ type
     [Test] procedure ContainsProjectVariableShouldDetectBuildConfig;
     [Test] procedure ContainsProjectVariableShouldDetectPlatform;
     [Test] procedure ContainsProjectVariableShouldReturnFalseForOthers;
+    [Test] procedure ContainsFileVariableShouldDetectFileDir;
+    [Test] procedure ContainsFileVariableShouldDetectFilePath;
+    [Test] procedure ContainsFileVariableShouldDetectFileName;
+    [Test] procedure ContainsFileVariableShouldReturnFalseForOthers;
   end;
 
 implementation
@@ -158,6 +162,28 @@ procedure TTestVariableExpander.ContainsProjectVariableShouldReturnFalseForOther
 begin
   Assert.IsFalse(ContainsProjectVariable('cd ${ProjectDir}'));
   Assert.IsFalse(ContainsProjectVariable('echo hello'));
+end;
+
+procedure TTestVariableExpander.ContainsFileVariableShouldDetectFileDir;
+begin
+  Assert.IsTrue(ContainsFileVariable('cd ${FileDir}'));
+end;
+
+procedure TTestVariableExpander.ContainsFileVariableShouldDetectFilePath;
+begin
+  Assert.IsTrue(ContainsFileVariable('edit ${FilePath}'));
+end;
+
+procedure TTestVariableExpander.ContainsFileVariableShouldDetectFileName;
+begin
+  Assert.IsTrue(ContainsFileVariable('echo ${FileName}'));
+end;
+
+procedure TTestVariableExpander.ContainsFileVariableShouldReturnFalseForOthers;
+begin
+  Assert.IsFalse(ContainsFileVariable('cd ${ProjectDir}'));
+  Assert.IsFalse(ContainsFileVariable('${BuildConfig}\app.exe'));
+  Assert.IsFalse(ContainsFileVariable('echo hello'));
 end;
 
 initialization

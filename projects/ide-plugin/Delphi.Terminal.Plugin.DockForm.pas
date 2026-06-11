@@ -468,6 +468,11 @@ begin
   Result := ContainsProjectVariable(ACmd.Command) or ContainsProjectVariable(ACmd.WorkingDir);
 end;
 
+function CommandUsesFileVariable(const ACmd: TSavedCommand): Boolean;
+begin
+  Result := ContainsFileVariable(ACmd.Command) or ContainsFileVariable(ACmd.WorkingDir);
+end;
+
 procedure TfrmDelphiTerminalDock.HandleCommandPaletteRequested(Sender: TObject);
 var
   AllCommands, Filtered, ProjectCommands: TSavedCommandList;
@@ -476,9 +481,9 @@ var
   PaletteResult: TCommandPaletteResult;
   Vars: TTerminalVariables;
   ExpandedCmd, ExpandedDir, CompoundCmd, Unresolved: string;
-  ProjectFile, BundlePath, ProjectPrefix: string;
+  ProjectFile, ActiveFilePath, BundlePath, ProjectPrefix: string;
   TargetFrame: TframeCmdShell;
-  HasProject: Boolean;
+  HasProject, HasFile: Boolean;
   I: Integer;
 begin
   TargetFrame := ActiveFrame;
@@ -488,6 +493,8 @@ begin
   ActiveShell := ShellTypeForExe(TargetFrame.ShellExe);
   ProjectFile := GetActiveProjectFile;
   HasProject := ProjectFile <> '';
+  ActiveFilePath := GetCurrentFilePath;
+  HasFile := ActiveFilePath <> '';
 
   Filtered := TSavedCommandList.Create;
   try
@@ -498,6 +505,8 @@ begin
         Continue;
       if (not HasProject) and CommandUsesProjectVariable(AllCommands[I]) then
         Continue;
+      if (not HasFile) and CommandUsesFileVariable(AllCommands[I]) then
+        Continue;
       Filtered.Add(AllCommands[I]);
     end;
     if HasProject then
@@ -507,8 +516,13 @@ begin
       ProjectCommands := TSavedCommandList.LoadBundleFile(BundlePath, ProjectPrefix);
       try
         for I := 0 to ProjectCommands.Count - 1 do
-          if (ProjectCommands[I].ShellType = scActive) or (ProjectCommands[I].ShellType = ActiveShell) then
-            Filtered.Add(ProjectCommands[I]);
+        begin
+          if not ((ProjectCommands[I].ShellType = scActive) or (ProjectCommands[I].ShellType = ActiveShell)) then
+            Continue;
+          if (not HasFile) and CommandUsesFileVariable(ProjectCommands[I]) then
+            Continue;
+          Filtered.Add(ProjectCommands[I]);
+        end;
       finally
         ProjectCommands.Free;
       end;

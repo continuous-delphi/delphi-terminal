@@ -716,4 +716,35 @@ Acceptance criteria:
 - [ ] Documentation updated with new variable tokens
 
 ---
+Title: Filter commands with file-variables when no file is open
+Issue: #42
+Status: closed
+Labels: enhancement
+Body:
+Commands containing `${FileDir}`, `${FilePath}`, or `${FileName}` should
+be hidden from the command palette when no editor file is currently open,
+matching the existing behavior for project-variables (`${BuildConfig}`,
+`${Platform}`) which are hidden when no project is active.
+
+Implementation notes:
+- Add a `ContainsFileVariable` function to `Delphi.Terminal.VariableExpander`
+  (similar to the existing `ContainsProjectVariable`)
+- In `HandleCommandPaletteRequested`, check whether an active file exists
+  (i.e. `GetCurrentFilePath` returns non-empty) and skip commands that
+  reference file-variables when it does not
+- Apply the same filtering to both global and per-project commands
+
+Note: `ContainsFileVariable` already exists as a local function in
+`Delphi.Terminal.Plugin.SavedCommandsEditor.pas` for working-dir
+validation. Consider promoting it to the shared VariableExpander unit
+and removing the local duplicate.
+
+Acceptance criteria:
+- [ ] Commands with `${FileDir}`, `${FilePath}`, or `${FileName}` are
+      hidden from the palette when no editor file is open
+- [ ] Commands without file-variables are unaffected
+- [ ] Unit tests cover `ContainsFileVariable` detection
+- [ ] Documentation updated
+
+---
 

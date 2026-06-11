@@ -30,6 +30,7 @@ function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVari
 function HasUnresolvedVariables(const AText: string): Boolean;
 function FindUnresolvedVariable(const AText: string): string;
 function ContainsProjectVariable(const AText: string): Boolean;
+function ContainsFileVariable(const AText: string): Boolean;
 
 implementation
 
@@ -94,6 +95,14 @@ var
 begin
   Lower := LowerCase(AText);
   Result := Lower.Contains('${buildconfig}') or Lower.Contains('${platform}');
+end;
+
+function ContainsFileVariable(const AText: string): Boolean;
+var
+  Lower: string;
+begin
+  Lower := LowerCase(AText);
+  Result := Lower.Contains('${filedir}') or Lower.Contains('${filepath}') or Lower.Contains('${filename}');
 end;
 
 end.

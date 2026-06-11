@@ -14,6 +14,8 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 [#33](https://github.com/continuous-delphi/delphi-terminal/issues/33)
 - New `${BuildConfig}` and `${Platform}` variables for active build configuration and target platform; commands using them are hidden when no project is open
 [#41](https://github.com/continuous-delphi/delphi-terminal/issues/41)
+- Commands with file-variables (`${FileDir}`, `${FilePath}`, `${FileName}`) are hidden from the palette when no editor file is open
+[#42](https://github.com/continuous-delphi/delphi-terminal/issues/42)
 
 ## v1.0.38.0
 - Saved commands with Ctrl+P command palette, variable expansion, and JSON bundle import

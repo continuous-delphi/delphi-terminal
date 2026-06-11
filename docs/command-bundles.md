@@ -91,7 +91,9 @@ Variables are case-insensitive. If a variable cannot be resolved (e.g.
 error message is displayed in the terminal output.
 
 Commands containing `${BuildConfig}` or `${Platform}` are automatically
-hidden from the command palette when no project is open.
+hidden from the command palette when no project is open. Likewise,
+commands containing `${FileDir}`, `${FilePath}`, or `${FileName}` are
+hidden when no editor file is open.
 
 ## Importing a bundle
 
