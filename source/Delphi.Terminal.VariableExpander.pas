@@ -22,11 +22,14 @@ type
     FilePath: string;
     FileName: string;
     PluginDir: string;
+    BuildConfig: string;
+    Platform: string;
   end;
 
 function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables): string;
 function HasUnresolvedVariables(const AText: string): Boolean;
 function FindUnresolvedVariable(const AText: string): string;
+function ContainsProjectVariable(const AText: string): Boolean;
 
 implementation
 
@@ -41,13 +44,15 @@ type
 
 function BuildMappings(const AVars: TTerminalVariables): TArray<TVarMapping>;
 begin
-  SetLength(Result, 6);
+  SetLength(Result, 8);
   Result[0].Token := '${ProjectDir}';   Result[0].Value := AVars.ProjectDir;
   Result[1].Token := '${ProjectFile}';  Result[1].Value := AVars.ProjectFile;
   Result[2].Token := '${FileDir}';      Result[2].Value := AVars.FileDir;
   Result[3].Token := '${FilePath}';     Result[3].Value := AVars.FilePath;
   Result[4].Token := '${FileName}';     Result[4].Value := AVars.FileName;
-  Result[5].Token := '${PluginDir}'; Result[5].Value := AVars.PluginDir;
+  Result[5].Token := '${PluginDir}';    Result[5].Value := AVars.PluginDir;
+  Result[6].Token := '${BuildConfig}';  Result[6].Value := AVars.BuildConfig;
+  Result[7].Token := '${Platform}';     Result[7].Value := AVars.Platform;
 end;
 
 function ExpandTerminalVariables(const AText: string; const AVars: TTerminalVariables): string;
@@ -81,6 +86,14 @@ begin
   if EndPos = 0 then
     Exit;
   Result := Copy(AText, StartPos, EndPos - StartPos + 1);
+end;
+
+function ContainsProjectVariable(const AText: string): Boolean;
+var
+  Lower: string;
+begin
+  Lower := LowerCase(AText);
+  Result := Lower.Contains('${buildconfig}') or Lower.Contains('${platform}');
 end;
 
 end.

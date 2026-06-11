@@ -284,15 +284,21 @@ var
   LblVars: TLabel;
   Y: Integer;
 
-  procedure AddLabel(AParent: TWinControl; ATop: Integer; const ACaption: string);
+  procedure AddLabel(AParent: TWinControl; ATop: Integer; const ACaption: string; const Left:Integer = 12; const Gray:Boolean=False);
   var
     Lbl: TLabel;
   begin
     Lbl := TLabel.Create(Dlg);
     Lbl.Parent := AParent;
-    Lbl.Left := 12;
+    Lbl.Left := Left;
     Lbl.Top := ATop;
     Lbl.Caption := ACaption;
+
+    if Gray then
+    begin
+      Lbl.Font.Size := Lbl.Font.Size - 1;
+      Lbl.Font.Color := TColorRec.Gray;
+    end;
   end;
 
 begin
@@ -371,14 +377,12 @@ begin
     BtnCancel.Cancel := True;
     Inc(Y, 40);
 
-    LblVars := TLabel.Create(Dlg);
-    LblVars.Parent := Dlg;
-    LblVars.Left := 12;
-    LblVars.Top := Y;
-    LblVars.Caption :=
-      'Variables:  ${ProjectDir}  ${ProjectFile}  ${FileDir}  ${FilePath}  ${FileName}  ${radTerminalDir}';
-    LblVars.Font.Size := LblVars.Font.Size - 1;
-    LblVars.Font.Color := TColorRec.Gray;
+
+    AddLabel(Dlg, Y, 'Project Variables:');
+    AddLabel(Dlg, Y, '${ProjectDir}  ${ProjectFile}  ${BuildConfig}  ${Platform}', {Left=}107, {Gray=}True);
+    Inc(Y, 20);
+    AddLabel(Dlg, Y, 'Editor Variables:');
+    AddLabel(Dlg, Y, '${FileDir}  ${FilePath}  ${FileName}', {Left=}107, {Gray=}True);
 
     if Dlg.ShowModal = mrOk then
     begin

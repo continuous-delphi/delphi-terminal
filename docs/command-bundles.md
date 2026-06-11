@@ -82,11 +82,16 @@ expanded at execution time:
 | `${FileDir}`        | Directory of the currently focused editor file |
 | `${FilePath}`       | Full path of the currently focused editor file |
 | `${FileName}`       | File name only of the currently focused editor file |
-| `${radTerminalDir}` | Directory where the delphi-terminal plugin is installed |
+| `${PluginDir}`      | Directory where the delphi-terminal plugin is installed |
+| `${BuildConfig}`    | Active build configuration (e.g. `Debug`, `Release`) |
+| `${Platform}`       | Active target platform (e.g. `Win32`, `Win64`) |
 
 Variables are case-insensitive. If a variable cannot be resolved (e.g.
 `${ProjectDir}` when no project is open), the command is aborted and an
 error message is displayed in the terminal output.
+
+Commands containing `${BuildConfig}` or `${Platform}` are automatically
+hidden from the command palette when no project is open.
 
 ## Importing a bundle
 

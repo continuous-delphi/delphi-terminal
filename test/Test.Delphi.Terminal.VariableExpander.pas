@@ -28,6 +28,11 @@ type
     [Test] procedure HasUnresolvedShouldReturnFalseWhenClean;
     [Test] procedure FindUnresolvedShouldReturnFirstToken;
     [Test] procedure FindUnresolvedShouldReturnEmptyWhenClean;
+    [Test] procedure BuildConfigShouldExpand;
+    [Test] procedure PlatformShouldExpand;
+    [Test] procedure ContainsProjectVariableShouldDetectBuildConfig;
+    [Test] procedure ContainsProjectVariableShouldDetectPlatform;
+    [Test] procedure ContainsProjectVariableShouldReturnFalseForOthers;
   end;
 
 implementation
@@ -119,6 +124,40 @@ end;
 procedure TTestVariableExpander.FindUnresolvedShouldReturnEmptyWhenClean;
 begin
   Assert.AreEqual('', FindUnresolvedVariable('no tokens here'));
+end;
+
+procedure TTestVariableExpander.BuildConfigShouldExpand;
+var
+  V: TTerminalVariables;
+begin
+  V := Default(TTerminalVariables);
+  V.BuildConfig := 'Debug';
+  Assert.AreEqual('cd Debug', ExpandTerminalVariables('cd ${BuildConfig}', V));
+end;
+
+procedure TTestVariableExpander.PlatformShouldExpand;
+var
+  V: TTerminalVariables;
+begin
+  V := Default(TTerminalVariables);
+  V.Platform := 'Win32';
+  Assert.AreEqual('cd Win32', ExpandTerminalVariables('cd ${Platform}', V));
+end;
+
+procedure TTestVariableExpander.ContainsProjectVariableShouldDetectBuildConfig;
+begin
+  Assert.IsTrue(ContainsProjectVariable('copy ${BuildConfig}\app.exe'));
+end;
+
+procedure TTestVariableExpander.ContainsProjectVariableShouldDetectPlatform;
+begin
+  Assert.IsTrue(ContainsProjectVariable('${Platform}\Release\app.exe'));
+end;
+
+procedure TTestVariableExpander.ContainsProjectVariableShouldReturnFalseForOthers;
+begin
+  Assert.IsFalse(ContainsProjectVariable('cd ${ProjectDir}'));
+  Assert.IsFalse(ContainsProjectVariable('echo hello'));
 end;
 
 initialization

@@ -52,6 +52,8 @@ type
     function GetActiveProjectFile: string;
     function GetCurrentFilePath: string;
     function GetCurrentFileName: string;
+    function GetActiveBuildConfig: string;
+    function GetActivePlatform: string;
     function ActiveFrame: TframeCmdShell;
   public
     constructor Create(AOwner: TComponent); override;
@@ -410,6 +412,36 @@ begin
   Result := ExtractFileName(GetCurrentFilePath);
 end;
 
+function TfrmDelphiTerminalDock.GetActiveBuildConfig: string;
+var
+  ModuleServices: IOTAModuleServices;
+  Project: IOTAProject;
+  Configs: IOTAProjectOptionsConfigurations;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
+  begin
+    Project := ModuleServices.GetActiveProject;
+    if Assigned(Project) and Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configs) then
+      Result := Configs.ActiveConfiguration.Name;
+  end;
+end;
+
+function TfrmDelphiTerminalDock.GetActivePlatform: string;
+var
+  ModuleServices: IOTAModuleServices;
+  Project: IOTAProject;
+  Configs: IOTAProjectOptionsConfigurations;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAModuleServices, ModuleServices) then
+  begin
+    Project := ModuleServices.GetActiveProject;
+    if Assigned(Project) and Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configs) then
+      Result := Configs.ActiveConfiguration.Platform;
+  end;
+end;
+
 function TfrmDelphiTerminalDock.ActiveFrame: TframeCmdShell;
 begin
   Result := nil;
@@ -431,6 +463,11 @@ begin
     Result := scCmd;
 end;
 
+function CommandUsesProjectVariable(const ACmd: TSavedCommand): Boolean;
+begin
+  Result := ContainsProjectVariable(ACmd.Command) or ContainsProjectVariable(ACmd.WorkingDir);
+end;
+
 procedure TfrmDelphiTerminalDock.HandleCommandPaletteRequested(Sender: TObject);
 var
   AllCommands, Filtered, ProjectCommands: TSavedCommandList;
@@ -441,6 +478,7 @@ var
   ExpandedCmd, ExpandedDir, CompoundCmd, Unresolved: string;
   ProjectFile, BundlePath, ProjectPrefix: string;
   TargetFrame: TframeCmdShell;
+  HasProject: Boolean;
   I: Integer;
 begin
   TargetFrame := ActiveFrame;
@@ -448,15 +486,21 @@ begin
     Exit;
 
   ActiveShell := ShellTypeForExe(TargetFrame.ShellExe);
+  ProjectFile := GetActiveProjectFile;
+  HasProject := ProjectFile <> '';
+
   Filtered := TSavedCommandList.Create;
   try
     AllCommands := TerminalSettings.SavedCommands;
     for I := 0 to AllCommands.Count - 1 do
-      if (AllCommands[I].ShellType = scActive) or (AllCommands[I].ShellType = ActiveShell) then
-        Filtered.Add(AllCommands[I]);
-
-    ProjectFile := GetActiveProjectFile;
-    if ProjectFile <> '' then
+    begin
+      if not ((AllCommands[I].ShellType = scActive) or (AllCommands[I].ShellType = ActiveShell)) then
+        Continue;
+      if (not HasProject) and CommandUsesProjectVariable(AllCommands[I]) then
+        Continue;
+      Filtered.Add(AllCommands[I]);
+    end;
+    if HasProject then
     begin
       BundlePath := ExtractFilePath(ProjectFile) + '.delphi-terminal.json';
       ProjectPrefix := 'project:' + ChangeFileExt(ExtractFileName(ProjectFile), '') + '.';
@@ -487,10 +531,12 @@ begin
 
   Vars := Default(TTerminalVariables);
   Vars.ProjectDir := GetActiveProjectDir;
-  Vars.ProjectFile := GetActiveProjectFile;
+  Vars.ProjectFile := ProjectFile;
   Vars.FileDir := GetCurrentFileDir;
   Vars.FilePath := GetCurrentFilePath;
   Vars.FileName := GetCurrentFileName;
+  Vars.BuildConfig := GetActiveBuildConfig;
+  Vars.Platform := GetActivePlatform;
   Vars.PluginDir := ExtractFilePath(GetModuleName(HInstance));
 
   ExpandedCmd := ExpandTerminalVariables(PaletteResult.Command.Command, Vars);

@@ -12,6 +12,8 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 [#36](https://github.com/continuous-delphi/delphi-terminal/issues/36)
 - Per-project saved commands via `.delphi-terminal.json` next to the `.dproj`, auto-prefixed with `project:<name>.`
 [#33](https://github.com/continuous-delphi/delphi-terminal/issues/33)
+- New `${BuildConfig}` and `${Platform}` variables for active build configuration and target platform; commands using them are hidden when no project is open
+[#41](https://github.com/continuous-delphi/delphi-terminal/issues/41)
 
 ## v1.0.38.0
 - Saved commands with Ctrl+P command palette, variable expansion, and JSON bundle import

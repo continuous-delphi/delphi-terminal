@@ -695,4 +695,25 @@ Acceptance criteria:
 - [ ] Unit tests cover LoadBundleFile
 
 ---
+Title: New variables needed for selected Build Config and selected Platform
+Issue: #41
+Status: closed
+Labels: enhancement
+Body:
+Add ${BuildConfig} and ${Platform} variable tokens to the variable
+expander. ${BuildConfig} resolves to the active build configuration
+(Debug, Release) and ${Platform} resolves to the active target platform
+(Win32, Win64, etc.) from ToolsAPI. Commands containing these variables
+are automatically filtered out of the command palette when no project
+is open.
+
+Acceptance criteria:
+- [ ] ${BuildConfig} expands to the active build configuration name
+- [ ] ${Platform} expands to the active target platform name
+- [ ] Commands using these variables are hidden from palette when no project is open
+- [ ] Variable legend in the editor dialog includes the new variables
+- [ ] Unit tests cover expansion and ContainsProjectVariable detection
+- [ ] Documentation updated with new variable tokens
+
+---
 
