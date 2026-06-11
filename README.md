@@ -32,7 +32,10 @@ and legacy PowerShell sessions directly inside the IDE.
   - Enter previews the command in the input field for editing;
     Ctrl+Enter runs immediately (or Ctrl+DblClick)
   - Command list filtered by the active shell tab
-  - [JSON bundle import](docs/command-bundles.md) for sharing command sets across machines
+  - [JSON bundle import/export](docs/command-bundles.md) for sharing command sets across machines
+  - **Per-project commands** -- place a `.delphi-terminal.json` bundle file
+    next to a `.dproj` to add project-specific commands that only appear
+    when that project is active ([format details](docs/command-bundles.md#per-project-commands))
 - **Keyboard shortcuts**
   - Ctrl+P -- open the saved-command palette
   - Ctrl+Tab / Ctrl+Shift+Tab -- cycle through shell tabs
