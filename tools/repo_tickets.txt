@@ -675,4 +675,24 @@ Acceptance criteria:
 - [ ] Version is read from the BPL VERSIONINFO resource at runtime
 
 ---
+Title: Per-project saved command lists
+Issue: #33
+Status: closed
+Labels: enhancement
+Body:
+Auto-detect and load commands from a .delphi-terminal.json file next to
+the active project's .dproj. Project commands are auto-prefixed with
+project:<dprojBaseName>. and only appear in the command palette when
+that project is active. No UI editor -- users create/edit the JSON file
+manually or use Export to generate a starting point.
+
+Acceptance criteria:
+- [ ] .delphi-terminal.json next to .dproj is auto-loaded on palette open
+- [ ] Project commands are prefixed with project:<name>.
+- [ ] Commands only appear when the corresponding project is active
+- [ ] Shell type filtering applies to project commands
+- [ ] Missing or malformed file is handled gracefully
+- [ ] Unit tests cover LoadBundleFile
+
+---
 

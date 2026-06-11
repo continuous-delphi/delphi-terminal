@@ -433,12 +433,13 @@ end;
 
 procedure TfrmDelphiTerminalDock.HandleCommandPaletteRequested(Sender: TObject);
 var
-  AllCommands, Filtered: TSavedCommandList;
+  AllCommands, Filtered, ProjectCommands: TSavedCommandList;
   ActiveShell: TSavedCommandShellType;
   ScreenPt: TPoint;
   PaletteResult: TCommandPaletteResult;
   Vars: TTerminalVariables;
   ExpandedCmd, ExpandedDir, CompoundCmd, Unresolved: string;
+  ProjectFile, BundlePath, ProjectPrefix: string;
   TargetFrame: TframeCmdShell;
   I: Integer;
 begin
@@ -446,16 +447,28 @@ begin
   if TargetFrame = nil then
     Exit;
 
-  AllCommands := TerminalSettings.SavedCommands;
-  if AllCommands.Count = 0 then
-    Exit;
-
   ActiveShell := ShellTypeForExe(TargetFrame.ShellExe);
   Filtered := TSavedCommandList.Create;
   try
+    AllCommands := TerminalSettings.SavedCommands;
     for I := 0 to AllCommands.Count - 1 do
       if (AllCommands[I].ShellType = scActive) or (AllCommands[I].ShellType = ActiveShell) then
         Filtered.Add(AllCommands[I]);
+
+    ProjectFile := GetActiveProjectFile;
+    if ProjectFile <> '' then
+    begin
+      BundlePath := ExtractFilePath(ProjectFile) + '.delphi-terminal.json';
+      ProjectPrefix := 'project:' + ChangeFileExt(ExtractFileName(ProjectFile), '') + '.';
+      ProjectCommands := TSavedCommandList.LoadBundleFile(BundlePath, ProjectPrefix);
+      try
+        for I := 0 to ProjectCommands.Count - 1 do
+          if (ProjectCommands[I].ShellType = scActive) or (ProjectCommands[I].ShellType = ActiveShell) then
+            Filtered.Add(ProjectCommands[I]);
+      finally
+        ProjectCommands.Free;
+      end;
+    end;
 
     if Filtered.Count = 0 then
       Exit;

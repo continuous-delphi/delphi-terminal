@@ -114,6 +114,44 @@ Only commands whose name starts with the given prefix are included in
 the exported bundle. The resulting `.json` file is in the standard bundle
 format and can be imported on other machines or shared with team members.
 
+## Per-project commands
+
+You can create a `.delphi-terminal.json` file next to any `.dproj` file
+to define commands that only appear when that project is active.
+
+The file uses the same bundle format:
+
+```json
+{
+  "description": "Commands for MyApp",
+  "commands": [
+    {
+      "name": "deploy",
+      "shell": "pwsh",
+      "command": "Copy-Item ${ProjectDir}\\Win32\\Release\\MyApp.exe C:\\deploy\\",
+      "workdir": "${ProjectDir}"
+    },
+    {
+      "name": "run",
+      "shell": "cmd",
+      "command": "Win32\\Release\\MyApp.exe",
+      "workdir": "${ProjectDir}"
+    }
+  ]
+}
+```
+
+When the command palette opens, project commands are automatically loaded
+and prefixed with `project:<dprojName>.` (e.g. `project:MyApp.deploy`).
+This prevents name collisions with global commands.
+
+- The `prefix` field is optional in per-project files
+- Commands are only visible when that project is the active project
+- No UI editor -- create and edit the JSON file manually, or use
+  **Export...** to generate a starting point
+- The file can be committed to source control for team-shared commands,
+  or added to `.gitignore` for per-developer commands
+
 ## Creating your own bundle
 
 1. Choose a prefix that identifies your tool or team (e.g. `mytools.`)

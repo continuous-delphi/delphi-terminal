@@ -10,6 +10,8 @@ Home repo: https://github.com/continuous-delphi/delphi-terminal
 [#40](https://github.com/continuous-delphi/delphi-terminal/issues/40)
 - Display plugin version on the Tools > Options config screen, read from BPL VERSIONINFO resource
 [#36](https://github.com/continuous-delphi/delphi-terminal/issues/36)
+- Per-project saved commands via `.delphi-terminal.json` next to the `.dproj`, auto-prefixed with `project:<name>.`
+[#33](https://github.com/continuous-delphi/delphi-terminal/issues/33)
 
 ## v1.0.38.0
 - Saved commands with Ctrl+P command palette, variable expansion, and JSON bundle import

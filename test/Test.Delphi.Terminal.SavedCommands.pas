@@ -46,12 +46,17 @@ type
     [Test] procedure ToBundleJSONShouldRoundTripViaImport;
     [Test] procedure ToBundleJSONShouldOmitEmptyWorkDir;
     [Test] procedure ToBundleJSONEmptyPrefixShouldExportAll;
+
+    [Test] procedure LoadBundleFileShouldLoadWithPrefix;
+    [Test] procedure LoadBundleFileMissingFileShouldReturnEmpty;
+    [Test] procedure LoadBundleFileMalformedShouldReturnEmpty;
+    [Test] procedure LoadBundleFileEmptyPrefixShouldLoadUnprefixed;
   end;
 
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils, System.Classes, System.IOUtils;
 
 function TTestSavedCommandList.MakeCmd(const AName, ACommand: string; AShell: TSavedCommandShellType; const AWorkDir: string): TSavedCommand;
 begin
@@ -396,6 +401,105 @@ begin
   Assert.IsTrue(JSON.Contains('"my.other"'), 'Should contain my.other');
   Assert.IsTrue(JSON.Contains('"solo"'), 'Should contain solo');
   Assert.AreEqual('All commands', TSavedCommandList.ParseBundleDescription(JSON));
+end;
+
+{ LoadBundleFile tests }
+
+procedure TTestSavedCommandList.LoadBundleFileShouldLoadWithPrefix;
+var
+  TmpFile: string;
+  Loaded: TSavedCommandList;
+  Lines: TStringList;
+begin
+  TmpFile := TPath.GetTempFileName;
+  try
+    Lines := TStringList.Create;
+    try
+      Lines.Text := CBundleJSON;
+      Lines.SaveToFile(TmpFile, TEncoding.UTF8);
+    finally
+      Lines.Free;
+    end;
+    Loaded := TSavedCommandList.LoadBundleFile(TmpFile, 'project:myapp.');
+    try
+      Assert.AreEqual(NativeInt(2), NativeInt(Loaded.Count));
+      Assert.AreEqual('project:myapp.cd.clean', Loaded[0].Name);
+      Assert.AreEqual('project:myapp.cd.build', Loaded[1].Name);
+      Assert.AreEqual('delphi-clean', Loaded[0].Command);
+      Assert.IsTrue(Loaded[0].ShellType = scPwsh, 'Shell type should be pwsh');
+      Assert.AreEqual('${ProjectDir}', Loaded[0].WorkingDir);
+    finally
+      Loaded.Free;
+    end;
+  finally
+    TFile.Delete(TmpFile);
+  end;
+end;
+
+procedure TTestSavedCommandList.LoadBundleFileMissingFileShouldReturnEmpty;
+var
+  Loaded: TSavedCommandList;
+begin
+  Loaded := TSavedCommandList.LoadBundleFile('C:\nonexistent\file.json', 'prefix.');
+  try
+    Assert.AreEqual(NativeInt(0), NativeInt(Loaded.Count));
+  finally
+    Loaded.Free;
+  end;
+end;
+
+procedure TTestSavedCommandList.LoadBundleFileMalformedShouldReturnEmpty;
+var
+  TmpFile: string;
+  Loaded: TSavedCommandList;
+  Lines: TStringList;
+begin
+  TmpFile := TPath.GetTempFileName;
+  try
+    Lines := TStringList.Create;
+    try
+      Lines.Text := 'not valid json at all';
+      Lines.SaveToFile(TmpFile, TEncoding.UTF8);
+    finally
+      Lines.Free;
+    end;
+    Loaded := TSavedCommandList.LoadBundleFile(TmpFile, 'prefix.');
+    try
+      Assert.AreEqual(NativeInt(0), NativeInt(Loaded.Count));
+    finally
+      Loaded.Free;
+    end;
+  finally
+    TFile.Delete(TmpFile);
+  end;
+end;
+
+procedure TTestSavedCommandList.LoadBundleFileEmptyPrefixShouldLoadUnprefixed;
+var
+  TmpFile: string;
+  Loaded: TSavedCommandList;
+  Lines: TStringList;
+begin
+  TmpFile := TPath.GetTempFileName;
+  try
+    Lines := TStringList.Create;
+    try
+      Lines.Text := CBundleJSON;
+      Lines.SaveToFile(TmpFile, TEncoding.UTF8);
+    finally
+      Lines.Free;
+    end;
+    Loaded := TSavedCommandList.LoadBundleFile(TmpFile, '');
+    try
+      Assert.AreEqual(NativeInt(2), NativeInt(Loaded.Count));
+      Assert.AreEqual('cd.clean', Loaded[0].Name);
+      Assert.AreEqual('cd.build', Loaded[1].Name);
+    finally
+      Loaded.Free;
+    end;
+  finally
+    TFile.Delete(TmpFile);
+  end;
 end;
 
 initialization

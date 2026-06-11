@@ -49,6 +49,7 @@ type
     function ToBundleJSON(const APrefix, ADescription: string): string;
     class function ParseBundlePrefix(const AJSON: string): string;
     class function ParseBundleDescription(const AJSON: string): string;
+    class function LoadBundleFile(const AFilePath, ANamePrefix: string): TSavedCommandList;
     class function ShellTypeToString(AType: TSavedCommandShellType): string;
     class function StringToShellType(const AValue: string): TSavedCommandShellType;
     property Items[AIndex: Integer]: TSavedCommand read GetItem write SetItem; default;
@@ -343,6 +344,74 @@ begin
     Result := Root.Format(2);
   finally
     Root.Free;
+  end;
+end;
+
+class function TSavedCommandList.LoadBundleFile(const AFilePath, ANamePrefix: string): TSavedCommandList;
+var
+  Lines: TStringList;
+  JSON: string;
+  Val: TJSONValue;
+  Root: TJSONObject;
+  Arr: TJSONArray;
+  Obj: TJSONObject;
+  I: Integer;
+  Cmd: TSavedCommand;
+  Pair: TJSONPair;
+begin
+  Result := TSavedCommandList.Create;
+  if not FileExists(AFilePath) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(AFilePath);
+    except
+      Exit;
+    end;
+    JSON := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+  if JSON = '' then
+    Exit;
+  try
+    Val := TJSONObject.ParseJSONValue(JSON);
+  except
+    Exit;
+  end;
+  if Val = nil then
+    Exit;
+  try
+    if not (Val is TJSONObject) then
+      Exit;
+    Root := TJSONObject(Val);
+    Pair := Root.Get('commands');
+    if (Pair = nil) or not (Pair.JsonValue is TJSONArray) then
+      Exit;
+    Arr := TJSONArray(Pair.JsonValue);
+    for I := 0 to Arr.Count - 1 do
+    begin
+      if not (Arr.Items[I] is TJSONObject) then
+        Continue;
+      Obj := TJSONObject(Arr.Items[I]);
+      Cmd := Default(TSavedCommand);
+      Pair := Obj.Get('name');
+      if Pair <> nil then
+        Cmd.Name := ANamePrefix + Pair.JsonValue.Value;
+      Pair := Obj.Get('shell');
+      if Pair <> nil then
+        Cmd.ShellType := StringToShellType(Pair.JsonValue.Value);
+      Pair := Obj.Get('command');
+      if Pair <> nil then
+        Cmd.Command := Pair.JsonValue.Value;
+      Pair := Obj.Get('workdir');
+      if Pair <> nil then
+        Cmd.WorkingDir := Pair.JsonValue.Value;
+      Result.Add(Cmd);
+    end;
+  finally
+    Val.Free;
   end;
 end;
 
