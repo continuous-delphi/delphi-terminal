@@ -26,9 +26,8 @@ and legacy PowerShell sessions directly inside the IDE.
   - Add, edit, delete, and reorder commands via the editor dialog
   - Each command has a name, shell type (Active / CMD / pwsh / PowerShell),
     command text, and optional working directory
-  - Variable expansion: `${ProjectDir}`, `${ProjectFile}`, `${FileDir}`,
-    `${FilePath}`, `${FileName}`, `${PluginDir}` -- resolved at
-    execution time from IDE context
+  - Variable expansion: `${ProjectDir}`, `${ProjectFile}`, `${BuildConfig}`, `${Platform}`,
+    `${FileDir}`, `${FilePath}`, `${FileName}` -- resolved at execution time from IDE context
   - Enter previews the command in the input field for editing;
     Ctrl+Enter runs immediately (or Ctrl+DblClick)
   - Command list filtered by the active shell tab
