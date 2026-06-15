@@ -183,7 +183,7 @@ begin
   DeskSection := SDelphiTerminalDeskName;
   AutoSave := True;
   SaveStateNecessary := True;
-  Caption := 'delphi-terminal-xxxx';
+  Caption := 'delphi-terminal';
   ClientWidth := 800;
   ClientHeight := 400;
   Position := poScreenCenter;
