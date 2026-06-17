@@ -2,6 +2,11 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.1.57.0
+
+- Support older versions by only referencing `TJSONAncestor.Format` in 10.3 or later
+[#43](https://github.com/continuous-delphi/delphi-terminal/issues/43)
+
 ## v1.1.55.0
 
 - Support older versions by only referencing `ofnBeginProjectGroupOpen` and `ofnEndProjectGroupOpen`

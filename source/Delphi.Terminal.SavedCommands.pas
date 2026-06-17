@@ -12,6 +12,8 @@
 *)
 unit Delphi.Terminal.SavedCommands;
 
+{$INCLUDE DELPHI_COMPILER_VERSIONS.inc}
+
 interface
 
 uses
@@ -341,7 +343,11 @@ begin
         Obj.AddPair('workdir', Cmd.WorkingDir);
       Arr.AddElement(Obj);
     end;
-    Result := Root.Format(2);
+    {$IFDEF CD_DELPHI_10_3_OR_LATER}
+    Result := Root.Format({Indentation=} 2);
+    {$ELSE}
+    Result := Root.ToString;
+    {$ENDIF}
   finally
     Root.Free;
   end;

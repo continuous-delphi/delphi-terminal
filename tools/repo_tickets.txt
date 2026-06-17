@@ -763,4 +763,12 @@ Body:
 Support older versions by only referencing `ofnBeginProjectGroupOpen` and `ofnEndProjectGroupOpen`
 in 10.4 or later.  Added DELPHI_COMPILER_VERSIONS.inc to project and added Source to search path
 v1.1.55
+---
+Title: TJSONAncestor.Format not available in 10.2
+Issue: #43
+Status: closed
+Labels: "older version support"
+Body:
+Delphi.Terminal.SavedCommands.pas references Result := Root.Format(2);
+v1.1.57
 
