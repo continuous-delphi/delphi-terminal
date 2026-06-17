@@ -33,5 +33,9 @@ object frmMain: TfrmMain
       Caption = 'PowerShell'
       ImageIndex = 2
     end
+    object tabWSL: TTabSheet
+      Caption = 'WSL'
+      ImageIndex = 3
+    end
   end
 end

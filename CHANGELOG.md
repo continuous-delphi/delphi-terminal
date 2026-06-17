@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.63.0
+- Added Windows Subsystem for Linux (WSL) terminal option
+[#39](https://github.com/continuous-delphi/delphi-terminal/issues/39)
+
 ## v1.2.62.0
 - Minor code review enhancements
 - CMD terminal should use "COMSPEC" environment variable instead of hardcoding cmd.exe

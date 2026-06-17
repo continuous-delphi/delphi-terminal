@@ -26,12 +26,14 @@ type
     tabCmdShell: TTabSheet;
     tabPwsh: TTabSheet;
     tabPowerShell: TTabSheet;
+    tabWSL: TTabSheet;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
   private
     FFrameCmdShell: TframeCmdShell;
     FFramePwsh: TframeCmdShell;
     FFramePowerShell: TframeCmdShell;
+    FFrameWSL:TframeCmdShell;
     procedure HandleRequestDir(Sender: TObject; var APath: string);
   end;
 
@@ -42,7 +44,8 @@ implementation
 
 uses
   Vcl.FileCtrl,
-  Delphi.Terminal.CmdShell;
+  Delphi.Terminal.CmdShell,
+  Delphi.Terminal.Settings;
 
 {$R *.dfm}
 
@@ -77,6 +80,14 @@ begin
   FFramePowerShell.OnRequestProjectDir := HandleRequestDir;
   FFramePowerShell.OnRequestFileDir := HandleRequestDir;
   FFramePowerShell.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), ExeDir);
+
+  FFrameWSL := TframeCmdShell.Create(Self);
+  FFrameWSL.Name := 'WSLFrame';
+  FFrameWSL.Parent := tabWSL;
+  FFrameWSL.Align := alClient;
+  FFrameWSL.OnRequestProjectDir := HandleRequestDir;
+  FFrameWSL.OnRequestFileDir := HandleRequestDir;
+  FFrameWSL.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.wsl), ExeDir);
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
@@ -84,6 +95,7 @@ begin
   FFramePowerShell.StopShell;
   FFramePwsh.StopShell;
   FFrameCmdShell.StopShell;
+  FFrameWSL.StopShell;
 end;
 
 procedure TfrmMain.HandleRequestDir(Sender: TObject; var APath: string);
@@ -94,5 +106,9 @@ begin
   if SelectDirectory('Select Directory', '', Dir) then
     APath := Dir;
 end;
+
+initialization
+finalization
+ReleaseTerminalSettings;
 
 end.

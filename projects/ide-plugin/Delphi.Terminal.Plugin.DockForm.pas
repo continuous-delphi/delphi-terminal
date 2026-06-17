@@ -36,6 +36,7 @@ type
     FFrameCmd: TframeCmdShell;
     FFramePwsh: TframeCmdShell;
     FFramePowerShell: TframeCmdShell;
+    FFrameWSL:TFrameCmdShell;
     FNotifierIndex: Integer;
     FGroupOpening: Boolean;
     FLastProjectDir: string;
@@ -217,6 +218,11 @@ begin
     CreateTerminalTab('PowerShell', FFramePowerShell);
     StartTerminalShell(FFramePowerShell, TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), WorkDir);
   end;
+  if S.ShowWSLTab then
+  begin
+    CreateTerminalTab('WSL', FFrameWSL);
+    StartTerminalShell(FFrameWSL, TCmdUtils.CreateCmdShellInfo(TCmdShellType.wsl), WorkDir);
+  end;
 
   // Activate the default shell tab
   DefaultIdx := -1;
@@ -241,11 +247,13 @@ begin
   UnregisterIDENotifier;
   if FInstance = Self then
     FInstance := nil;
-  if FFramePowerShell <> nil then
+  if Assigned(FFrameWSL) then
+    FFrameWSL.StopShell;
+  if Assigned(FFramePowerShell) then
     FFramePowerShell.StopShell;
-  if FFramePwsh <> nil then
+  if Assigned(FFramePwsh) then
     FFramePwsh.StopShell;
-  if FFrameCmd <> nil then
+  if Assigned(FFrameCmd) then
     FFrameCmd.StopShell;
   inherited;
 end;

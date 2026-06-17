@@ -24,6 +24,7 @@ type
     FShowCmdTab: Boolean;
     FShowPwshTab: Boolean;
     FShowPowerShellTab: Boolean;
+    FShowWSLTab:Boolean;
     FDefaultShell: string;
     FFontName: string;
     FFontSize: Integer;
@@ -38,6 +39,7 @@ type
     property ShowCmdTab: Boolean read FShowCmdTab write FShowCmdTab;
     property ShowPwshTab: Boolean read FShowPwshTab write FShowPwshTab;
     property ShowPowerShellTab: Boolean read FShowPowerShellTab write FShowPowerShellTab;
+    property ShowWSLTab: Boolean read FShowWSLTab write FShowWSLTab;
     property DefaultShell: string read FDefaultShell write FDefaultShell;
     property FontName: string read FFontName write FFontName;
     property FontSize: Integer read FFontSize write FFontSize;
@@ -91,6 +93,7 @@ begin
   FShowCmdTab := True;
   FShowPwshTab := True;
   FShowPowerShellTab := True;
+  FShowWSLTab := False;
   FDefaultShell := 'pwsh.exe';
   FFontName := 'Cascadia Mono';
   FFontSize := 12;
@@ -114,6 +117,8 @@ begin
       FShowPwshTab := Reg.ReadBool('ShowPwshTab');
     if Reg.ValueExists('ShowPowerShellTab') then
       FShowPowerShellTab := Reg.ReadBool('ShowPowerShellTab');
+    if Reg.ValueExists('ShowWSLTab') then
+      FShowWSLTab := Reg.ReadBool('ShowWSLTab');
     if Reg.ValueExists('DefaultShell') then
       FDefaultShell := Reg.ReadString('DefaultShell');
     if Reg.ValueExists('FontName') then
@@ -144,6 +149,7 @@ begin
     Reg.WriteBool('ShowCmdTab', FShowCmdTab);
     Reg.WriteBool('ShowPwshTab', FShowPwshTab);
     Reg.WriteBool('ShowPowerShellTab', FShowPowerShellTab);
+    Reg.WriteBool('ShowWSLTab', FShowWSLTab);
     Reg.WriteString('DefaultShell', FDefaultShell);
     Reg.WriteString('FontName', FFontName);
     Reg.WriteInteger('FontSize', FFontSize);

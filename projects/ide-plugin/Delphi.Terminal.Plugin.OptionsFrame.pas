@@ -25,6 +25,7 @@ type
     FChkCmd: TCheckBox;
     FChkPwsh: TCheckBox;
     FChkPowerShell: TCheckBox;
+    FChkWSL:TCheckBox;
     FCboDefaultShell: TComboBox;
     FEdtFontName: TEdit;
     FEdtFontSize: TEdit;
@@ -105,7 +106,7 @@ begin
   Width := 500;
   Height := 420;
 
-  Y := 16;
+  Y := 10;
 
   // --- Visible Tabs section ---
   Lbl := CreateLabel(Self, Y, 'Visible Tabs (on next restart)');
@@ -134,6 +135,14 @@ begin
   FChkPowerShell.Top := Y;
   FChkPowerShell.Caption := 'PowerShell (legacy)';
   FChkPowerShell.Width := 200;
+  Inc(Y, 24);
+
+  FChkWSL := TCheckBox.Create(Self);
+  FChkWSL.Parent := Self;
+  FChkWSL.Left := 32;
+  FChkWSL.Top := Y;
+  FChkWSL.Caption := 'Windows Subsystem for Linux (WSL)';
+  FChkWSL.Width := 220;
   Inc(Y, 32);
 
   // --- Default Shell ---
@@ -147,6 +156,7 @@ begin
   FCboDefaultShell.Items.Add('cmd.exe');
   FCboDefaultShell.Items.Add('pwsh.exe');
   FCboDefaultShell.Items.Add('powershell.exe');
+  FCboDefaultShell.Items.Add('wsl.exe');
   Inc(Y, 36);
 
   // --- Font ---
@@ -240,6 +250,7 @@ begin
   FChkCmd.Checked := S.ShowCmdTab;
   FChkPwsh.Checked := S.ShowPwshTab;
   FChkPowerShell.Checked := S.ShowPowerShellTab;
+  FChkWSL.Checked := S.ShowWSLTab;
   Idx := FCboDefaultShell.Items.IndexOf(S.DefaultShell);
   if Idx >= 0 then
     FCboDefaultShell.ItemIndex := Idx
@@ -258,6 +269,7 @@ begin
   S.ShowCmdTab := FChkCmd.Checked;
   S.ShowPwshTab := FChkPwsh.Checked;
   S.ShowPowerShellTab := FChkPowerShell.Checked;
+  S.ShowWSLTab := FChkWSL.Checked;
   if FCboDefaultShell.ItemIndex >= 0 then
     S.DefaultShell := FCboDefaultShell.Items[FCboDefaultShell.ItemIndex];
   S.FontName := FEdtFontName.Text;

@@ -19,7 +19,7 @@ uses
 
 type
 
-  TCmdShellType = (Unknown, CMD, PowerShell, pwsh);
+  TCmdShellType = (Unknown, CMD, PowerShell, pwsh, wsl);
 
   TCmdShellInfo = record
     ShellType:TCmdShellType;
@@ -32,6 +32,7 @@ type
     class function ChangeDirectoryCommand(const ACmdShellType:TCmdShellType; const APath: string): string;
     class function GetCDAndRunCommand(const ACmdShellType:TCmdShellType; const APath, ACommand: string): string;
     class function EncodingForShell(const ACmdShellType:TCmdShellType): TEncoding;
+    class function WslConvertPath(const WindowsPath: string): string;
   end;
 
   TOutputEvent = procedure(Sender: TObject; const AText: string) of object;
@@ -530,6 +531,11 @@ begin
         Result.Exe := 'pwsh.exe';
         Result.Parameters := '-NoLogo';
       end;
+    TCmdShellType.wsl:
+      begin
+        Result.Exe := 'wsl.exe';
+        Result.Parameters := '-e /bin/bash -il';   //full interactive login shell
+      end;
     else
       raise Exception.CreateFmt('CreateCmdShellRec: Unhandled TCmdShellType %d', [Ord(ACmdShellType)]);
   end;
@@ -542,18 +548,52 @@ begin
   begin
     Result := 'cd /d "' + APath + '" && ' + ACommand;
   end
+  else if ACmdShellType = TCmdShellType.WSL then
+  begin
+    Result := 'cd "' + WslConvertPath(APath) + '" && ' + ACommand;
+  end
   else //pwsh or Powershell
   begin
     Result := 'Set-Location ''' + StringReplace(APath, '''', '''''', [rfReplaceAll]) + '''; if ($?) { ' + ACommand + ' }'
   end;
 end;
 
+class function TCmdUtils.WslConvertPath(const WindowsPath: string): string;
+var
+  Drive: string;
+  Path: string;
+begin
+  if WindowsPath = '' then
+    Exit('');
+
+  // Handle drive letter (C:\ -> /mnt/c/)
+  if (Length(WindowsPath) > 2) and (WindowsPath[2] = ':') then
+  begin
+    Drive := LowerCase(WindowsPath[1]);
+    Path := Copy(WindowsPath, 3, MaxInt);           // remove "C:"
+    Path := StringReplace(Path, '\', '/', [rfReplaceAll]);
+    Result := '/mnt/' + Drive + Path;
+  end
+  else
+  begin
+    // Already a Linux path or UNC path (limited support)
+    Result := StringReplace(WindowsPath, '\', '/', [rfReplaceAll]);
+  end;
+
+  // Clean up multiple slashes
+  while Pos('//', Result) > 0 do
+    Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
+end;
 
 class function TCmdUtils.ChangeDirectoryCommand(const ACmdShellType:TCmdShellType; const APath: string): string;
 begin
   if ACmdShellType = TCmdShellType.CMD then
   begin
     Result :=  'cd /d "' + APath + '"';
+  end
+  else if ACmdShellType = TCmdShellType.WSL then
+  begin
+    Result := 'cd "' + WslConvertPath(APath) + '"';
   end
   else //pwsh or Powershell
   begin
@@ -567,7 +607,7 @@ begin
   begin
     Result := TEncoding.GetEncoding(GetOEMCP);
   end
-  else //pwsh or Powershell
+  else //pwsh or Powershell or wsl
   begin
     Result := TEncoding.GetEncoding(65001);
   end;

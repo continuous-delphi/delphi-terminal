@@ -787,3 +787,13 @@ Labels: "enhancement"
 Body:
 Currently hardcoded to cmd.exe
 v1.2.62
+---
+Title: Add support for WSL
+Issue: #39
+Status: closed
+Labels: "enhancement"
+Body:
+wsl starts, but:
+The output does not appear in the console
+Any command will result in an error message: "-bash: line 1: $'dir\r': command not found", probably because it does not like CR/LF line ends.
+v1.3.63
