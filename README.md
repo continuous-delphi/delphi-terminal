@@ -2,7 +2,7 @@
 
 ![delphi-terminal logo](https://continuous-delphi.github.io/assets/logos/delphi-terminal-480x270.png)
 
-[![Delphi](https://img.shields.io/badge/delphi-red)](https://www.embarcadero.com/products/delphi)
+[![Supports Delphi XE6 or later](https://img.shields.io/badge/supports-Delphi%20XE6%2B-red?logo=delphi&logoColor=white)](https://www.embarcadero.com/products/delphi)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/continuous-delphi/delphi-terminal)
 [![Continuous Delphi](https://img.shields.io/badge/org-continuous--delphi-red)](https://github.com/continuous-delphi)
@@ -88,6 +88,15 @@ Optional
 1. Open `projects/ide-plugin/Delphi.Terminal.Plugin.dpk` in RAD Studio
 2. Right-click the project in Project Manager > **Install**
 3. Access via **View > delphi-terminal**
+
+NOTE: `LIBSUFFIX 'AUTO'` was used to add automatic version suffix
+to the BPL. To support older versions this was wrapped in a $IFDEF test.
+Tweaking a DPK is fragile and this LIBSUFFIX AUTO option was also a little
+fragile when first introduced in 10.4.  Opening the .DPK and building/installing
+the package was verified back to XE6 but there may be lingering side effects,
+especially for older versions. Specifically - to keep the single DPK approach, 
+to install the package into multiple older copies of RAD Studio on the same machine
+you will have to manage the BPL suffix yourself.
 
 ## Usage
 

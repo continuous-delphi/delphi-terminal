@@ -2,6 +2,15 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.2.61.0
+
+- Support older versions by wrapping LIBSUFFIX 'AUTO' in $IFDEF for Ticket #44
+Also support older versions by using .ToString instead of .ToJSON for XE6
+for ticket #45
+
+- Verified that the package was built and installed using `Delphi XE6`
+(Supporting older versions would require at least changing Sytem.Json usage)
+
 ## v1.1.57.0
 
 - Support older versions by only referencing `TJSONAncestor.Format` in 10.3 or later
@@ -25,11 +34,14 @@ in 10.4 or later.  Added DELPHI_COMPILER_VERSIONS.inc to project and added Sourc
 [#40](https://github.com/continuous-delphi/delphi-terminal/issues/40)
 - Display plugin version on the Tools > Options config screen, read from BPL VERSIONINFO resource
 [#36](https://github.com/continuous-delphi/delphi-terminal/issues/36)
-- Per-project saved commands via `.delphi-terminal.json` next to the `.dproj`, auto-prefixed with `project:<name>.`
+- Per-project saved commands via `.delphi-terminal.json` next to the `.dproj`, auto-prefixed with 
+`project:<name>.`
 [#33](https://github.com/continuous-delphi/delphi-terminal/issues/33)
-- New `${BuildConfig}` and `${Platform}` variables for active build configuration and target platform; commands using them are hidden when no project is open
+- New `${BuildConfig}` and `${Platform}` variables for active build configuration and target platform; 
+commands using them are hidden when no project is open
 [#41](https://github.com/continuous-delphi/delphi-terminal/issues/41)
-- Commands with file-variables (`${FileDir}`, `${FilePath}`, `${FileName}`) are hidden from the palette when no editor file is open
+- Commands with file-variables (`${FileDir}`, `${FilePath}`, `${FileName}`) are hidden from the palette when 
+no editor file is open
 [#42](https://github.com/continuous-delphi/delphi-terminal/issues/42)
 
 ## v1.0.38.0
@@ -55,16 +67,19 @@ until IDE restart.
 - Ctrl+Alt+N keyboard shortcut to toggle the terminal panel (show/focus/hide)
 [#11](https://github.com/continuous-delphi/delphi-terminal/issues/11)
 
+## v1.1.57.0
 ## v0.9.29.0
-- Fix multi-byte UTF-8 characters splitting across pipe reads, causing replacement characters in non-ASCII output
-[#24](https://github.com/continuous-delphi/delphi-terminal/issues/24)
+- Fix multi-byte UTF-8 characters splitting across pipe reads, causing replacement characters in non-ASCII 
+output
+//github.com/continuous-delphi/delphi-terminal/issues/24)
 - Add Homepage hyperlink to Tools > Options page
 - Minor cleanup (naming, update screenshots, single finalization)
 
 ## v0.9.24.0
 
 - Some optimizations
-PlainText now uses TStringBuilder, segments are accumulated in TList<TAnsiSegment> and converted once with ToArray, and CSI params are copied once instead of appended char-by-char.
+PlainText now uses TStringBuilder, segments are accumulated in TList<TAnsiSegment> and converted once with 
+ToArray, and CSI params are copied once instead of appended char-by-char.
 
 ## v0.8.23.0
 - OSC sequences now keep buffering in FPartialSeq until the parser sees
