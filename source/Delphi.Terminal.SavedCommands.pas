@@ -191,7 +191,11 @@ begin
         Obj.AddPair('workdir', Cmd.WorkingDir);
       Arr.AddElement(Obj);
     end;
-    Result := Arr.ToJSON;
+    {$IFDEF CD_DELPHI_XE7_OR_LATER}
+    Result := Arr.ToJson;
+    {$ELSE}
+    Result := Arr.ToString;
+    {$ENDIF}
   finally
     Arr.Free;
   end;
