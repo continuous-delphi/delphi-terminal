@@ -2,6 +2,12 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.1.55.0
+
+- Support older versions by only referencing `ofnBeginProjectGroupOpen` and `ofnEndProjectGroupOpen`
+in 10.4 or later.  Added DELPHI_COMPILER_VERSIONS.inc to project and added Source to search path
+[#38](https://github.com/continuous-delphi/delphi-terminal/issues/38)
+
 ## v1.1.54.0
 
 - Support older versions by defining `AttachConsole` as needed

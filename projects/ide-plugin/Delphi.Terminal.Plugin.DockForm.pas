@@ -12,6 +12,8 @@
 *)
 unit Delphi.Terminal.Plugin.DockForm;
 
+{$INCLUDE DELPHI_COMPILER_VERSIONS.inc}
+
 interface
 
 uses
@@ -98,6 +100,7 @@ end;
 procedure TDelphiTerminalIDENotifier.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
 begin
   case NotifyCode of
+    {$IFDEF CD_DELPHI_10_4_OR_LATER}  //ofnBeginProjectGroupOpen + ofnEndProjectGroupOpen defined in TOOLSAPI starting in 10.4 Sydney
     ofnBeginProjectGroupOpen:
       FOwner.FGroupOpening := True;
     ofnEndProjectGroupOpen:
@@ -105,6 +108,7 @@ begin
         FOwner.FGroupOpening := False;
         FOwner.HandleActiveProjectChanged;
       end;
+   {$ENDIF}
     ofnActiveProjectChanged:
       if not FOwner.FGroupOpening then
         FOwner.HandleActiveProjectChanged;

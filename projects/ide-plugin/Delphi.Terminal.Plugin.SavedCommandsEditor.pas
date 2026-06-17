@@ -281,7 +281,6 @@ var
   EdtName, EdtCommand: TEdit;
   CboShell: TComboBox;
   BtnOK, BtnCancel: TButton;
-  LblVars: TLabel;
   Y: Integer;
 
   procedure AddLabel(AParent: TWinControl; ATop: Integer; const ACaption: string; const Left:Integer = 12; const Gray:Boolean=False);

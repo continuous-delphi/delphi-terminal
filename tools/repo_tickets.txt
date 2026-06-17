@@ -754,3 +754,13 @@ Labels: "older version support"
 Body:
 AttachConsole ? something above d10.2.3?
 
+---
+Title: TOTAFileNotification in Delphi 10.2 does not have ofnBeginProjectGroupOpen and ofnEndProjectGroupOpen
+Issue: #38
+Status: closed
+Labels: "older version support"
+Body:
+Support older versions by only referencing `ofnBeginProjectGroupOpen` and `ofnEndProjectGroupOpen`
+in 10.4 or later.  Added DELPHI_COMPILER_VERSIONS.inc to project and added Source to search path
+v1.1.55
+
