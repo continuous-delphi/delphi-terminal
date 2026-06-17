@@ -41,7 +41,8 @@ var
 implementation
 
 uses
-  Vcl.FileCtrl;
+  Vcl.FileCtrl,
+  Delphi.Terminal.CmdShell;
 
 {$R *.dfm}
 
@@ -59,7 +60,7 @@ begin
   FFrameCmdShell.Align := alClient;
   FFrameCmdShell.OnRequestProjectDir := HandleRequestDir;
   FFrameCmdShell.OnRequestFileDir := HandleRequestDir;
-  FFrameCmdShell.StartShell('cmd.exe', ExeDir);
+  FFrameCmdShell.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), ExeDir);
 
   FFramePwsh := TframeCmdShell.Create(Self);
   FFramePwsh.Name := 'PWSHFrame';
@@ -67,7 +68,7 @@ begin
   FFramePwsh.Align := alClient;
   FFramePwsh.OnRequestProjectDir := HandleRequestDir;
   FFramePwsh.OnRequestFileDir := HandleRequestDir;
-  FFramePwsh.StartShell('pwsh.exe', ExeDir);
+  FFramePwsh.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), ExeDir);
 
   FFramePowerShell := TframeCmdShell.Create(Self);
   FFramePowerShell.Name := 'PowerShellFrame';
@@ -75,7 +76,7 @@ begin
   FFramePowerShell.Align := alClient;
   FFramePowerShell.OnRequestProjectDir := HandleRequestDir;
   FFramePowerShell.OnRequestFileDir := HandleRequestDir;
-  FFramePowerShell.StartShell('powershell.exe', ExeDir);
+  FFramePowerShell.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), ExeDir);
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);

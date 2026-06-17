@@ -47,12 +47,12 @@ type
     FPanelInput: TPanel;
     FCmdLabel: TEdit;
     FEditInput: TEdit;
-    FCmdShell: TCmdShellProcess;
+    FCmdShellProcess: TCmdShellProcess;
     FHistory: TCommandHistory;
     FAnsiParser: TAnsiParser;
     FOutputBuffer: TStringBuilder;
     FOutputRenderPending: Boolean;
-    FShellExe: string;
+    FCmdShellInfo: TCmdShellInfo;
     FWorkDir: string;
     FShellUnavailable: Boolean;
     FOnRequestProjectDir: TRequestPathEvent;
@@ -72,15 +72,16 @@ type
     procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
     procedure TrimOutput;
     procedure BuildControls;
+    function GetShellType:TCmdShellType;
   protected
     procedure WndProc(var Message: TMessage); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    procedure StartShell(const AShellExe: string; const AWorkDir: string = '');
+    procedure StartShell(const ACmdShellInfo: TCmdShellInfo;const AWorkDir: string = '');
     procedure StopShell;
-    procedure ShowStartupError(const AShellExe, AMessage: string);
+    procedure ShowStartupError(const ACmdShellInfo: TCmdShellInfo; const AMessage: string);
 
     procedure SetWorkingDirectory(const APath: string);
     procedure ClearOutput;
@@ -89,7 +90,7 @@ type
     procedure InsertCommandText(const AText: string);
     procedure ShowMessage(const AText: string);
 
-    property ShellExe: string read FShellExe;
+    property ShellType:TCmdShellType read GetShellType;
     property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
     property OnRequestFileDir: TRequestPathEvent read FOnRequestFileDir write FOnRequestFileDir;
     property OnCommandPaletteRequested: TNotifyEvent read FOnCommandPaletteRequested write FOnCommandPaletteRequested;
@@ -111,14 +112,14 @@ begin
   FHistory := TCommandHistory.Create;
   FAnsiParser := TAnsiParser.Create;
   FOutputBuffer := TStringBuilder.Create;
-  FCmdShell := TCmdShellProcess.Create;
-  FCmdShell.OnOutput := HandleOutput;
-  FCmdShell.OnProcessExit := HandleProcessExit;
+  FCmdShellProcess := TCmdShellProcess.Create;
+  FCmdShellProcess.OnOutput := HandleOutput;
+  FCmdShellProcess.OnProcessExit := HandleProcessExit;
 end;
 
 destructor TframeCmdShell.Destroy;
 begin
-  FCmdShell.Free;
+  FCmdShellProcess.Free;
   FOutputBuffer.Free;
   FAnsiParser.Free;
   FHistory.Free;
@@ -372,7 +373,7 @@ begin
   if Key = #13 then
   begin
     Key := #0;
-    if not FCmdShell.Running then
+    if not FCmdShellProcess.Running then
     begin
       if FShellUnavailable then
         Exit;
@@ -380,7 +381,7 @@ begin
       FEditInput.TextHint := '';
       FRichOutput.Clear;
       FAnsiParser.Reset;
-      StartShell(FShellExe, FWorkDir);
+      StartShell(FCmdShellInfo, FWorkDir);
       Exit;
     end;
     SendUserCommand(FEditInput.Text);
@@ -494,7 +495,7 @@ begin
   end
   else if (Key = Ord('C')) and (ssCtrl in Shift) and (FEditInput.SelLength = 0) then
   begin
-    FCmdShell.SendCtrlC;
+    FCmdShellProcess.SendCtrlC;
     Key := 0;
   end
   else if (Key = Ord('P')) and (ssCtrl in Shift) then
@@ -541,10 +542,10 @@ procedure TframeCmdShell.SetWorkingDirectory(const APath: string);
 var
   Cmd: string;
 begin
-  if not FCmdShell.Running then
+  if not FCmdShellProcess.Running then
     Exit;
-  Cmd := TCmdShellProcess.ChangeDirectoryCommand(FShellExe, APath);
-  FCmdShell.SendCommand(Cmd);
+  Cmd := TCmdUtils.ChangeDirectoryCommand(FCmdShellInfo.ShellType, APath);
+  FCmdShellProcess.SendCommand(Cmd);
   //  FRichOutput.SelStart := FRichOutput.GetTextLen;
   //  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
   SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
@@ -557,11 +558,11 @@ end;
 
 procedure TframeCmdShell.HandleStopClick(Sender: TObject);
 begin
-  FCmdShell.DiscardQueuedOutput;
+  FCmdShellProcess.DiscardQueuedOutput;
   FOutputBuffer.Clear;
   FOutputRenderPending := False;
   FAnsiParser.Reset;
-  FCmdShell.SendCtrlC;
+  FCmdShellProcess.SendCtrlC;
 end;
 
 procedure TframeCmdShell.ClearOutput;
@@ -580,11 +581,11 @@ end;
 
 procedure TframeCmdShell.SendUserCommand(const AText: string);
 begin
-  if not FCmdShell.Running then
+  if not FCmdShellProcess.Running then
     Exit;
   FHistory.Add(AText);
   FHistory.ResetPosition;
-  FCmdShell.SendCommand(AText);
+  FCmdShellProcess.SendCommand(AText);
   FEditInput.Clear;
 end;
 
@@ -600,31 +601,33 @@ begin
   HandleOutput(Self, AText + #13#10);
 end;
 
-procedure TframeCmdShell.StartShell(const AShellExe: string; const AWorkDir: string);
-var
-  Lower: string;
+procedure TframeCmdShell.StartShell(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
 begin
-  FShellExe := AShellExe;
+  FCmdShellInfo := ACmdShellInfo;
   FWorkDir := AWorkDir;
   FShellUnavailable := False;
-  FCmdShell.Start(AShellExe, AWorkDir);
-  Lower := LowerCase(ExtractFileName(AShellExe));
+  FCmdShellProcess.Start(ACmdShellInfo, AWorkDir);
 end;
 
-procedure TframeCmdShell.ShowStartupError(const AShellExe, AMessage: string);
+procedure TframeCmdShell.ShowStartupError(const ACmdShellInfo: TCmdShellInfo; const AMessage: string);
 begin
-  FShellExe := AShellExe;
+  FCmdShellInfo := ACmdShellInfo;
   FShellUnavailable := True;
   FEditInput.ReadOnly := True;
   FEditInput.Text := '';
   FEditInput.TextHint := 'Shell unavailable';
   ClearOutput;
-  HandleOutput(Self, Format('[%s not found]'#13#10'%s'#13#10, [AShellExe, AMessage]));
+  HandleOutput(Self, Format('[%s not found]'#13#10'%s'#13#10, [ACmdShellInfo.Exe, AMessage]));
 end;
 
 procedure TframeCmdShell.StopShell;
 begin
-  FCmdShell.Terminate;
+  FCmdShellProcess.Terminate;
+end;
+
+function TframeCmdShell.GetShellType:TCmdShellType;
+begin
+  Result := FCmdShellInfo.ShellType;
 end;
 
 end.

@@ -17,7 +17,7 @@ unit Delphi.Terminal.SavedCommands;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Generics.Collections, Vcl.Menus;
+  System.SysUtils, System.Classes, System.Generics.Collections, Vcl.Menus, Delphi.Terminal.CmdShell;
 
 type
   TSavedCommandShellType = (scActive, scCmd, scPwsh, scPowerShell);
@@ -56,6 +56,9 @@ type
     class function StringToShellType(const AValue: string): TSavedCommandShellType;
     property Items[AIndex: Integer]: TSavedCommand read GetItem write SetItem; default;
   end;
+
+
+  function GetSavedCommandShellType(const ACmdShellType:TCmdShellType):TSavedCommandShellType;
 
 implementation
 
@@ -476,6 +479,18 @@ begin
     end;
   finally
     Val.Free;
+  end;
+end;
+
+
+function GetSavedCommandShellType(const ACmdShellType:TCmdShellType):TSavedCommandShellType;
+begin
+  case ACmdShellType of
+    TCmdShellType.CMD : Result := TSavedCommandShellType.scCmd;
+    TCmdShellType.PowerShell : Result := TSavedCommandShellType.scPowerShell;
+    TCmdShellType.pwsh : Result := TSavedCommandShellType.scPwsh;
+    else
+      raise Exception.CreateFmt('GetSavedCommandShellType: Unhandled CmdShellType of %d', [Ord(ACmdShellType)]);
   end;
 end;
 

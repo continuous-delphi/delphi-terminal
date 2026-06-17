@@ -771,4 +771,19 @@ Labels: "older version support"
 Body:
 Delphi.Terminal.SavedCommands.pas references Result := Root.Format(2);
 v1.1.57
-
+---
+Title: PowerShell terminals should start without the banner
+Issue: #46
+Status: closed
+Labels: "enhancement"
+Body:
+Can start pwsh with the -NoLogo switch to suppress
+v1.2.62
+---
+Title: CMD.exe should use 'COMSPEC' environment variable
+Issue: #47
+Status: closed
+Labels: "enhancement"
+Body:
+Currently hardcoded to cmd.exe
+v1.2.62

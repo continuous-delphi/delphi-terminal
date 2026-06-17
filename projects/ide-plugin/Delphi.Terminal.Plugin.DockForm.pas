@@ -23,6 +23,7 @@ uses
   Vcl.Forms,
   Vcl.ComCtrls,
   DockForm,
+  Delphi.Terminal.CmdShell,
   Delphi.Terminal.Frame.CmdShell;
 
 const
@@ -38,8 +39,8 @@ type
     FNotifierIndex: Integer;
     FGroupOpening: Boolean;
     FLastProjectDir: string;
-    procedure CreateTerminalTab(const ACaption, AShellExe: string; var AFrame: TframeCmdShell);
-    procedure StartTerminalShell(AFrame: TframeCmdShell; const AShellExe, AWorkDir: string);
+    procedure CreateTerminalTab(const ACaption: string; var AFrame: TframeCmdShell);
+    procedure StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo:TCmdShellInfo; const AWorkDir: string);
     procedure HandleRequestProjectDir(Sender: TObject; var APath: string);
     procedure HandleRequestFileDir(Sender: TObject; var APath: string);
     function GetActiveProjectDir: string;
@@ -72,7 +73,6 @@ implementation
 uses
   Winapi.Windows,
   ToolsAPI,
-  Delphi.Terminal.CmdShell,
   Delphi.Terminal.Settings,
   Delphi.Terminal.SavedCommands,
   Delphi.Terminal.VariableExpander,
@@ -204,18 +204,18 @@ begin
 
   if S.ShowCmdTab then
   begin
-    CreateTerminalTab('CMD', 'cmd.exe', FFrameCmd);
-    StartTerminalShell(FFrameCmd, 'cmd.exe', WorkDir);
+    CreateTerminalTab('CMD', FFrameCmd);
+    StartTerminalShell(FFrameCmd, TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), WorkDir);
   end;
   if S.ShowPwshTab then
   begin
-    CreateTerminalTab('pwsh', 'pwsh.exe', FFramePwsh);
-    StartTerminalShell(FFramePwsh, 'pwsh.exe', WorkDir);
+    CreateTerminalTab('pwsh', FFramePwsh);
+    StartTerminalShell(FFramePwsh, TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), WorkDir);
   end;
   if S.ShowPowerShellTab then
   begin
-    CreateTerminalTab('PowerShell', 'powershell.exe', FFramePowerShell);
-    StartTerminalShell(FFramePowerShell, 'powershell.exe', WorkDir);
+    CreateTerminalTab('PowerShell', FFramePowerShell);
+    StartTerminalShell(FFramePowerShell, TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), WorkDir);
   end;
 
   // Activate the default shell tab
@@ -250,7 +250,7 @@ begin
   inherited;
 end;
 
-procedure TfrmDelphiTerminalDock.CreateTerminalTab(const ACaption, AShellExe: string; var AFrame: TframeCmdShell);
+procedure TfrmDelphiTerminalDock.CreateTerminalTab(const ACaption: string; var AFrame: TframeCmdShell);
 var
   Tab: TTabSheet;
 begin
@@ -266,13 +266,13 @@ begin
   AFrame.OnCommandPaletteRequested := HandleCommandPaletteRequested;
 end;
 
-procedure TfrmDelphiTerminalDock.StartTerminalShell(AFrame: TframeCmdShell; const AShellExe, AWorkDir: string);
+procedure TfrmDelphiTerminalDock.StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo:TCmdShellInfo; const AWorkDir: string);
 begin
   try
-    AFrame.StartShell(AShellExe, AWorkDir);
+    AFrame.StartShell(ACmdShellInfo, AWorkDir);
   except
     on E: Exception do
-      AFrame.ShowStartupError(AShellExe, E.Message);
+      AFrame.ShowStartupError(ACmdShellInfo, E.Message);
   end;
 end;
 
@@ -454,19 +454,6 @@ begin
       Result := TframeCmdShell(FPageControl.ActivePage.Controls[0]);
 end;
 
-function ShellTypeForExe(const AShellExe: string): TSavedCommandShellType;
-var
-  Lower: string;
-begin
-  Lower := LowerCase(ExtractFileName(AShellExe));
-  if Lower.Contains('pwsh') then
-    Result := scPwsh
-  else if Lower.Contains('powershell') then
-    Result := scPowerShell
-  else
-    Result := scCmd;
-end;
-
 function CommandUsesProjectVariable(const ACmd: TSavedCommand): Boolean;
 begin
   Result := ContainsProjectVariable(ACmd.Command) or ContainsProjectVariable(ACmd.WorkingDir);
@@ -494,7 +481,7 @@ begin
   if TargetFrame = nil then
     Exit;
 
-  ActiveShell := ShellTypeForExe(TargetFrame.ShellExe);
+  ActiveShell := GetSavedCommandShellType(TargetFrame.ShellType);
   ProjectFile := GetActiveProjectFile;
   HasProject := ProjectFile <> '';
   ActiveFilePath := GetCurrentFilePath;
@@ -574,7 +561,7 @@ begin
   end;
 
   if ExpandedDir <> '' then
-    CompoundCmd := TCmdShellProcess.ChangeDirectoryAndRun(TargetFrame.ShellExe, ExpandedDir, ExpandedCmd)
+    CompoundCmd := TCmdUtils.GetCDAndRunCommand(TargetFrame.ShellType, ExpandedDir, ExpandedCmd)
   else
     CompoundCmd := ExpandedCmd;
 

@@ -2,6 +2,14 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.2.62.0
+- Minor code review enhancements
+- CMD terminal should use "COMSPEC" environment variable instead of hardcoding cmd.exe
+[#47](https://github.com/continuous-delphi/delphi-terminal/issues/47)
+
+- power shell terminals should start without the banner
+[#46](https://github.com/continuous-delphi/delphi-terminal/issues/46)
+
 ## v1.2.61.0
 
 - Support older versions by wrapping LIBSUFFIX 'AUTO' in $IFDEF for Ticket #44

@@ -18,6 +18,22 @@ uses
   System.SysUtils, System.Classes, Winapi.Windows;
 
 type
+
+  TCmdShellType = (Unknown, CMD, PowerShell, pwsh);
+
+  TCmdShellInfo = record
+    ShellType:TCmdShellType;
+    Exe:string;
+    Parameters:string;
+  end;
+
+  TCmdUtils = class
+    class function CreateCmdShellInfo(const ACmdShellType:TCmdShellType):TCmdShellInfo;
+    class function ChangeDirectoryCommand(const ACmdShellType:TCmdShellType; const APath: string): string;
+    class function GetCDAndRunCommand(const ACmdShellType:TCmdShellType; const APath, ACommand: string): string;
+    class function EncodingForShell(const ACmdShellType:TCmdShellType): TEncoding;
+  end;
+
   TOutputEvent = procedure(Sender: TObject; const AText: string) of object;
 
   TCmdShellProcess = class
@@ -40,11 +56,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    class function EncodingForShell(const AShellExe: string): TEncoding;
     class function BuildEnvironmentBlock: TBytes;
-    class function ChangeDirectoryCommand(const AShellExe, APath: string): string;
-    class function ChangeDirectoryAndRun(const AShellExe, APath, ACommand: string): string;
-    procedure Start(const AShellExe: string; const AWorkDir: string = '');
+    procedure Start(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string = '');
     procedure SendCommand(const ACommand: string);
     procedure SendCtrlC;
     procedure DiscardQueuedOutput;
@@ -53,6 +66,7 @@ type
     property OnOutput: TOutputEvent read FOnOutput write FOnOutput;
     property OnProcessExit: TNotifyEvent read FOnProcessExit write FOnProcessExit;
   end;
+
 
 implementation
 
@@ -261,17 +275,6 @@ begin
   end;
 end;
 
-class function TCmdShellProcess.EncodingForShell(const AShellExe: string): TEncoding;
-var
-  Lower: string;
-begin
-  Lower := LowerCase(ExtractFileName(AShellExe));
-  if Lower.Contains('pwsh') or Lower.Contains('powershell') then
-    Result := TEncoding.GetEncoding(65001)
-  else
-    Result := TEncoding.GetEncoding(GetOEMCP);
-end;
-
 class function TCmdShellProcess.BuildEnvironmentBlock: TBytes;
 var
   EnvStrings: PChar;
@@ -297,29 +300,7 @@ begin
   end;
 end;
 
-class function TCmdShellProcess.ChangeDirectoryCommand(const AShellExe, APath: string): string;
-var
-  Lower: string;
-begin
-  Lower := LowerCase(ExtractFileName(AShellExe));
-  if Lower.Contains('pwsh') or Lower.Contains('powershell') then
-    Result := 'Set-Location ''' + StringReplace(APath, '''', '''''', [rfReplaceAll]) + ''''
-  else
-    Result := 'cd /d "' + APath + '"';
-end;
-
-class function TCmdShellProcess.ChangeDirectoryAndRun(const AShellExe, APath, ACommand: string): string;
-var
-  Lower: string;
-begin
-  Lower := LowerCase(ExtractFileName(AShellExe));
-  if Lower.Contains('pwsh') or Lower.Contains('powershell') then
-    Result := 'Set-Location ''' + StringReplace(APath, '''', '''''', [rfReplaceAll]) + '''; if ($?) { ' + ACommand + ' }'
-  else
-    Result := 'cd /d "' + APath + '" && ' + ACommand;
-end;
-
-procedure TCmdShellProcess.Start(const AShellExe: string; const AWorkDir: string);
+procedure TCmdShellProcess.Start(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
 var
   SA: TSecurityAttributes;
   StdOutWrite, StdInRead: THandle;
@@ -332,7 +313,7 @@ begin
     Exit;
 
   FreeAndNil(FEncoding);
-  FEncoding := EncodingForShell(AShellExe);
+  FEncoding := TCmdUtils.EncodingForShell(ACmdShellInfo.ShellType);
 
   SA.nLength := SizeOf(SA);
   SA.bInheritHandle := True;
@@ -359,8 +340,8 @@ begin
   StartInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
   StartInfo.wShowWindow := SW_HIDE;
 
-  CmdLine := AShellExe;
-  UniqueString(CmdLine);
+  CmdLine := (ACmdShellInfo.Exe + ' ' + ACmdShellInfo.Parameters).Trim;
+
   if AWorkDir <> '' then
     WorkDir := PChar(AWorkDir)
   else
@@ -524,4 +505,74 @@ begin
   FTerminating := False;
 end;
 
+
+class function TCmdUtils.CreateCmdShellInfo(const ACmdShellType:TCmdShellType):TCmdShellInfo;
+begin
+  Result := Default(TCmdShellInfo);
+  Result.ShellType := ACmdShellType;
+
+  case ACmdShellType of
+    TCmdShellType.CMD:
+      begin
+        Result.Exe := GetEnvironmentVariable('COMSPEC');
+        if Result.Exe.Trim.IsEmpty then
+        begin
+          Result.Exe := 'cmd.exe';
+        end;
+      end;
+    TCmdShellType.PowerShell:
+      begin
+        Result.Exe := 'PowerShell.exe';
+        Result.Parameters := '-NoLogo';
+      end;
+    TCmdShellType.pwsh:
+      begin
+        Result.Exe := 'pwsh.exe';
+        Result.Parameters := '-NoLogo';
+      end;
+    else
+      raise Exception.CreateFmt('CreateCmdShellRec: Unhandled TCmdShellType %d', [Ord(ACmdShellType)]);
+  end;
+end;
+
+
+class function TCmdUtils.GetCDAndRunCommand(const ACmdShellType:TCmdShellType; const APath, ACommand: string): string;
+begin
+  if ACmdShellType = TCmdShellType.CMD then
+  begin
+    Result := 'cd /d "' + APath + '" && ' + ACommand;
+  end
+  else //pwsh or Powershell
+  begin
+    Result := 'Set-Location ''' + StringReplace(APath, '''', '''''', [rfReplaceAll]) + '''; if ($?) { ' + ACommand + ' }'
+  end;
+end;
+
+
+class function TCmdUtils.ChangeDirectoryCommand(const ACmdShellType:TCmdShellType; const APath: string): string;
+begin
+  if ACmdShellType = TCmdShellType.CMD then
+  begin
+    Result :=  'cd /d "' + APath + '"';
+  end
+  else //pwsh or Powershell
+  begin
+    Result := 'Set-Location "' + APath + '"'
+  end;
+end;
+
+class function TCmdUtils.EncodingForShell(const ACmdShellType:TCmdShellType): TEncoding;
+begin
+  if ACmdShellType = TCmdShellType.CMD then
+  begin
+    Result := TEncoding.GetEncoding(GetOEMCP);
+  end
+  else //pwsh or Powershell
+  begin
+    Result := TEncoding.GetEncoding(65001);
+  end;
+end;
+
+
 end.
+
