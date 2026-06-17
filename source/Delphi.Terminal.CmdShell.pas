@@ -406,6 +406,16 @@ begin
   Result := (dwCtrlType = CTRL_C_EVENT) or (dwCtrlType = CTRL_BREAK_EVENT);
 end;
 
+//Defined in 10.4+   needed for earlier versions
+{$IF not Declared(ATTACH_PARENT_PROCESS)}
+const
+  ATTACH_PARENT_PROCESS = DWORD(-1);
+{$IFEND}
+
+{$IF not Declared(AttachConsole)}
+function AttachConsole(dwProcessId: DWORD): BOOL; stdcall; external kernel32 name 'AttachConsole';
+{$IFEND}
+
 procedure TCmdShellProcess.SendCtrlC;
 var
   AttachedToShellConsole: Boolean;

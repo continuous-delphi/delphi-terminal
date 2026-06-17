@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.1.54.0
+
+- Support older versions by defining `AttachConsole` as needed
+[#37](https://github.com/continuous-delphi/delphi-terminal/issues/37)
 
 ## v1.1.46.0
 - Add "Export..." button to Saved Commands editor for exporting commands as reusable JSON bundles

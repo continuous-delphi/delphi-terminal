@@ -747,4 +747,10 @@ Acceptance criteria:
 - [ ] Documentation updated
 
 ---
+Title: AttachConsole undefined in Delphi 10.2
+Issue: #37
+Status: closed
+Labels: "older version support"
+Body:
+AttachConsole ? something above d10.2.3?
 
