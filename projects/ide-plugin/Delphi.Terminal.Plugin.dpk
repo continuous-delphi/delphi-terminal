@@ -1,5 +1,8 @@
 package Delphi.Terminal.Plugin;
 
+{$INCLUDE ..\..\source\DELPHI_COMPILER_VERSIONS.inc}
+
+
 {$R *.res}
 {$R 'Delphi.Terminal.Version.res'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
@@ -27,9 +30,12 @@ package Delphi.Terminal.Plugin;
 {$DEFINE RELEASE}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'Continuous-Delphi: delphi-terminal. A dockable terminal window for RAD Studio (Launch via: View > delphi-terminal)'}
-{$LIBSUFFIX AUTO}
 {$DESIGNONLY}
 {$IMPLICITBUILD ON}
+
+{$IFDEF CD_DELPHI_10_4_OR_LATER}  
+{$LIBSUFFIX AUTO}  //When you use this flag, the compiler automatically appends its version number to the resulting package (BPL) files
+{$ENDIF}
 
 requires
   rtl,
