@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.65.0
+- VCL demo app should not crash on startup when optional shells (pwsh, WSL) are not installed
+[#49](https://github.com/continuous-delphi/delphi-terminal/issues/49)
+
 ## v1.3.63.0
 - Added Windows Subsystem for Linux (WSL) terminal option
 [#39](https://github.com/continuous-delphi/delphi-terminal/issues/39)

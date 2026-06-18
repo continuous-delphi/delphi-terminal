@@ -16,6 +16,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, Vcl.Controls, Vcl.Forms, Vcl.ComCtrls,
+  Delphi.Terminal.CmdShell,
   Delphi.Terminal.Frame.CmdShell;
 
 type
@@ -34,6 +35,7 @@ type
     FFramePwsh: TframeCmdShell;
     FFramePowerShell: TframeCmdShell;
     FFrameWSL:TframeCmdShell;
+    procedure StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
     procedure HandleRequestDir(Sender: TObject; var APath: string);
   end;
 
@@ -44,10 +46,19 @@ implementation
 
 uses
   Vcl.FileCtrl,
-  Delphi.Terminal.CmdShell,
   Delphi.Terminal.Settings;
 
 {$R *.dfm}
+
+procedure TfrmMain.StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
+begin
+  try
+    AFrame.StartShell(ACmdShellInfo, AWorkDir);
+  except
+    on E: Exception do
+      AFrame.ShowStartupError(ACmdShellInfo, E.Message);
+  end;
+end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 var
@@ -63,7 +74,7 @@ begin
   FFrameCmdShell.Align := alClient;
   FFrameCmdShell.OnRequestProjectDir := HandleRequestDir;
   FFrameCmdShell.OnRequestFileDir := HandleRequestDir;
-  FFrameCmdShell.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), ExeDir);
+  StartTerminalShell(FFrameCmdShell, TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), ExeDir);
 
   FFramePwsh := TframeCmdShell.Create(Self);
   FFramePwsh.Name := 'PWSHFrame';
@@ -71,7 +82,7 @@ begin
   FFramePwsh.Align := alClient;
   FFramePwsh.OnRequestProjectDir := HandleRequestDir;
   FFramePwsh.OnRequestFileDir := HandleRequestDir;
-  FFramePwsh.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), ExeDir);
+  StartTerminalShell(FFramePwsh, TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), ExeDir);
 
   FFramePowerShell := TframeCmdShell.Create(Self);
   FFramePowerShell.Name := 'PowerShellFrame';
@@ -79,7 +90,7 @@ begin
   FFramePowerShell.Align := alClient;
   FFramePowerShell.OnRequestProjectDir := HandleRequestDir;
   FFramePowerShell.OnRequestFileDir := HandleRequestDir;
-  FFramePowerShell.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), ExeDir);
+  StartTerminalShell(FFramePowerShell, TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), ExeDir);
 
   FFrameWSL := TframeCmdShell.Create(Self);
   FFrameWSL.Name := 'WSLFrame';
@@ -87,7 +98,7 @@ begin
   FFrameWSL.Align := alClient;
   FFrameWSL.OnRequestProjectDir := HandleRequestDir;
   FFrameWSL.OnRequestFileDir := HandleRequestDir;
-  FFrameWSL.StartShell(TCmdUtils.CreateCmdShellInfo(TCmdShellType.wsl), ExeDir);
+  StartTerminalShell(FFrameWSL, TCmdUtils.CreateCmdShellInfo(TCmdShellType.wsl), ExeDir);
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);

@@ -797,3 +797,27 @@ wsl starts, but:
 The output does not appear in the console
 Any command will result in an error message: "-bash: line 1: $'dir\r': command not found", probably because it does not like CR/LF line ends.
 v1.3.63
+---
+Title: VCL demo crashes on startup if optional shell is not installed
+Issue: #49
+Status: closed
+Labels: bug
+Body:
+The VCL demo app (`Delphi.Terminal.VCLDemo.exe`) unconditionally launches
+all four shell types (CMD, pwsh, PowerShell, WSL) in `FormCreate`. If any
+shell executable is not installed (e.g. `pwsh.exe` or `wsl.exe`),
+`CreateProcess` fails and `RaiseLastOSError` raises an unhandled `EOSError`
+(code 2 -- file not found), crashing the app on startup.
+
+The IDE plugin already handles this correctly -- `StartTerminalShell` wraps
+each `StartShell` call in try/except and calls `ShowStartupError` on failure
+(`Delphi.Terminal.Plugin.DockForm.pas` lines 279-284). The VCL demo needs
+the same pattern.
+
+Fix: wrap each `StartShell` call in `Form.Main.pas` with try/except and
+call `ShowStartupError` on failure, matching the IDE plugin approach.
+
+Acceptance criteria:
+- [ ] VCL demo opens even if pwsh.exe, wsl.exe, or powershell.exe is missing
+- [ ] Failed tabs show a descriptive error message in the output area
+- [ ] Working tabs are unaffected by a sibling tab's failure
