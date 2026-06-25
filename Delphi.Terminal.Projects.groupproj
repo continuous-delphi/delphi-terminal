@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{B6E20CCC-0054-468A-99D8-A218EE9BB64C}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="projects\demo-vcl\Delphi.Terminal.VCLDemo.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="projects\ide-plugin\Delphi.Terminal.Plugin.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Delphi_Terminal_VCLDemo">
+        <MSBuild Projects="projects\demo-vcl\Delphi.Terminal.VCLDemo.dproj"/>
+    </Target>
+    <Target Name="Delphi_Terminal_VCLDemo:Clean">
+        <MSBuild Projects="projects\demo-vcl\Delphi.Terminal.VCLDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Delphi_Terminal_VCLDemo:Make">
+        <MSBuild Projects="projects\demo-vcl\Delphi.Terminal.VCLDemo.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Delphi_Terminal_Plugin">
+        <MSBuild Projects="projects\ide-plugin\Delphi.Terminal.Plugin.dproj"/>
+    </Target>
+    <Target Name="Delphi_Terminal_Plugin:Clean">
+        <MSBuild Projects="projects\ide-plugin\Delphi.Terminal.Plugin.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Delphi_Terminal_Plugin:Make">
+        <MSBuild Projects="projects\ide-plugin\Delphi.Terminal.Plugin.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Delphi_Terminal_VCLDemo;Delphi_Terminal_Plugin"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Delphi_Terminal_VCLDemo:Clean;Delphi_Terminal_Plugin:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Delphi_Terminal_VCLDemo:Make;Delphi_Terminal_Plugin:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

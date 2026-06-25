@@ -87,11 +87,6 @@
         <DCCReference Include="..\..\source\Delphi.Terminal.AnsiParser.pas"/>
         <DCCReference Include="..\..\source\Delphi.Terminal.CmdShell.pas"/>
         <DCCReference Include="..\..\source\Delphi.Terminal.CommandHistory.pas"/>
-        <DCCReference Include="..\ide-plugin\Delphi.Terminal.Plugin.OptionsFrame.pas">
-            <Form>frameDelphiTerminalOptions</Form>
-            <FormType>dfm</FormType>
-            <DesignClass>TFrame</DesignClass>
-        </DCCReference>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

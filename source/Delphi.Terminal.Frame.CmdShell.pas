@@ -207,7 +207,7 @@ begin
   FCmdLabel.ReadOnly := True;
   FCmdLabel.BorderStyle := bsNone;
   FCmdLabel.TabStop := False;
-  FCmdLabel.Width := 80;
+  FCmdLabel.Width := 85;
   FCmdLabel.StyleElements := [];
 
   FEditInput := TEdit.Create(Self);
