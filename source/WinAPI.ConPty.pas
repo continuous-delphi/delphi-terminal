@@ -19,6 +19,8 @@ uses
 
 type
 
+  HPCON = THandle;
+
   (*
   https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-startupinfoexw
 
@@ -34,48 +36,54 @@ type
   end;
 
 
+  /// <summary>Creates a new pseudoconsole object for the calling process.</summary>
+  /// <see>https://learn.microsoft.com/en-us/windows/console/createpseudoconsole</see>
+  /// <c>
+  ///   HRESULT WINAPI CreatePseudoConsole(
+  ///     _In_ COORD size,
+  ///     _In_ HANDLE hInput,
+  ///     _In_ HANDLE hOutput,
+  ///     _In_ DWORD dwFlags,
+  ///     _Out_ HPCON* phPC
+  ///   );
+  /// </c>
+  TCreatePseudoConsoleFunc = function(size: TCoord;
+                                      hInput: THandle;
+                                      hOutput: THandle;
+                                      dwFlags: DWORD;
+                                      out phPC: HPCON): HRESULT; stdcall;
 
-  type
+  /// <summary>Resizes the internal buffers for a pseudoconsole to the given size.</summary>
+  /// <see>https://learn.microsoft.com/en-us/windows/console/resizepseudoconsole</see>
+  /// <c>
+  ///   HRESULT WINAPI ResizePseudoConsole(
+  ///       _In_ HPCON hPC ,
+  ///       _In_ COORD size
+  ///   );
+  /// </c>
+  TResizePseudoConsoleFunc = function(hPC: HPCON; size: TCoord): HRESULT; stdcall;
 
-  (*
-  CreatePseudoConsole function
 
-  Creates a new pseudoconsole object for the calling process.
-
-  https://learn.microsoft.com/en-us/windows/console/createpseudoconsole
-
-  HRESULT WINAPI CreatePseudoConsole(
-    _In_ COORD size,
-    _In_ HANDLE hInput,
-    _In_ HANDLE hOutput,
-    _In_ DWORD dwFlags,
-    _Out_ HPCON* phPC
-  );
-  *)
-  HPCON = THandle;
-
-  TCreatePseudoConsole = function(size: TCoord;
-                                  hInput: THandle;
-                                  hOutput: THandle;
-                                  dwFlags: DWORD;
-                                  out phPC: HPCON): HRESULT; stdcall;
-
-  (*
-  ResizePseudoConsole function
-
-  Resizes the internal buffers for a pseudoconsole to the given size.
-
-  https://learn.microsoft.com/en-us/windows/console/resizepseudoconsole
-
-  HRESULT WINAPI ResizePseudoConsole(
-      _In_ HPCON hPC ,
-      _In_ COORD size
-  );
-  *)
+  /// <summary>Shuts down and releases resources associated with the given pseudoconsole.</summary>
+  /// <see>https://learn.microsoft.com/en-us/windows/console/closepseudoconsole</see>
+  /// <c>
+  ///   void WINAPI ClosePseudoConsole(
+  ///       _In_ HPCON hPC
+  ///   );
+  /// </c>
+  TClosePseudoConsoleFunc = procedure(hPC: HPCON); stdcall;
 
 
   TConPty = record
-    IsAvailable:Boolean;
+  private
+    FCreatePseudoConsole: TCreatePseudoConsoleFunc;
+    FResizePseudoConsole: TResizePseudoConsoleFunc;
+    FClosePseudoConsole: TClosePseudoConsoleFunc;
+
+    procedure DoInitialization;
+    procedure DoFinalization;
+  public
+    function IsAvailable: Boolean;
   end;
 
 var
@@ -86,35 +94,37 @@ uses
   System.SysUtils;
 
 
-procedure DoInitialization;
+procedure TConPty.DoInitialization;
 var
   hModule: HINST;
 begin
-  gConPty.IsAvailable := False;
+  Self := Default(TConPty);
 
   if System.SysUtils.Win32MajorVersion >= 10 then
   begin
     hModule:= GetModuleHandle(WinAPI.Windows.Kernel32);
 
-    //CreatePseudoConsole := GetProcAddress(hModule, 'CreatePseudoConsole');
-    //gConPty.IsAvailable := Assigned(CreatePseudoConsole);
-
-    if gConPty.IsAvailable then
-    begin
-    end;
+    FCreatePseudoConsole := TCreatePseudoConsoleFunc(GetProcAddress(hModule, 'CreatePseudoConsole'));
+    FResizePseudoConsole := TResizePseudoConsoleFunc(GetProcAddress(hModule, 'ResizePseudoConsole'));
+    FClosePseudoConsole := TClosePseudoConsoleFunc(GetProcAddress(hModule, 'ClosePseudoConsole'));
   end;
 end;
 
+function TConPty.IsAvailable: Boolean;
+begin
+  Result := Assigned(FCreatePseudoConsole) and Assigned(FResizePseudoConsole) and Assigned(FClosePseudoConsole);
+end;
 
-procedure DoFinalization;
+
+procedure TConPty.DoFinalization;
 begin
 
 end;
 
 initialization
-  DoInitialization;
+  gConPty.DoInitialization;
 
 finalization
-  DoFinalization;
+  gConPty.DoFinalization;
 
 end.
