@@ -9,6 +9,9 @@
         <Projects Include="projects\ide-plugin\Delphi.Terminal.Plugin.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="projects\spike-pty\ptyspike.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -35,14 +38,23 @@
     <Target Name="Delphi_Terminal_Plugin:Make">
         <MSBuild Projects="projects\ide-plugin\Delphi.Terminal.Plugin.dproj" Targets="Make"/>
     </Target>
+    <Target Name="ptyspike">
+        <MSBuild Projects="projects\spike-pty\ptyspike.dproj"/>
+    </Target>
+    <Target Name="ptyspike:Clean">
+        <MSBuild Projects="projects\spike-pty\ptyspike.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="ptyspike:Make">
+        <MSBuild Projects="projects\spike-pty\ptyspike.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="Delphi_Terminal_VCLDemo;Delphi_Terminal_Plugin"/>
+        <CallTarget Targets="Delphi_Terminal_VCLDemo;Delphi_Terminal_Plugin;ptyspike"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Delphi_Terminal_VCLDemo:Clean;Delphi_Terminal_Plugin:Clean"/>
+        <CallTarget Targets="Delphi_Terminal_VCLDemo:Clean;Delphi_Terminal_Plugin:Clean;ptyspike:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Delphi_Terminal_VCLDemo:Make;Delphi_Terminal_Plugin:Make"/>
+        <CallTarget Targets="Delphi_Terminal_VCLDemo:Make;Delphi_Terminal_Plugin:Make;ptyspike:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
