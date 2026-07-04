@@ -133,8 +133,11 @@ begin
       else
         Result := tbLegacyPipe;   // forced ConPTY, but unavailable -> fall back to legacy
     bsAuto:
-      // Auto stays on the legacy backend until the ConPTY renderer ships (#72).
-      Result := tbLegacyPipe;
+      // Auto prefers ConPTY on supported systems (Windows 10 1903+), else legacy.
+      if AConPtyAvailable then
+        Result := tbConPty
+      else
+        Result := tbLegacyPipe;
   else
     Result := tbLegacyPipe;       // bsLegacyPipe
   end;

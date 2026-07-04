@@ -1223,6 +1223,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: flip Auto to ConPTY on supported systems
 Issue: #73
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 8. Effort: S. Verify: manual.

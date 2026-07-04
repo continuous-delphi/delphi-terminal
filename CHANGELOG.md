@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.100.0
+- The Automatic backend setting now selects ConPTY on supported systems (Windows 10 1903+) and falls back to legacy pipes elsewhere -- so the modern terminal is the default out of the box, with the runtime fallback intact.
+[#73](https://github.com/continuous-delphi/delphi-terminal/issues/73)
+
 ## v1.3.99.0
 - Interrupt / restart semantics: Stop (or Ctrl+C) interrupts the foreground app; a second Stop within a short window -- or Stop/Enter after the shell has exited -- restarts the session, clearing the output queue, parser, and screen. Teardown already stops all terminals before releasing settings on IDE close / package unload.
 [#72](https://github.com/continuous-delphi/delphi-terminal/issues/72)

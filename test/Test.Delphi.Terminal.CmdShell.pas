@@ -56,7 +56,8 @@ type
     [Test] procedure Legacy_AlwaysResolvesToLegacy;
     [Test] procedure ConPty_ResolvesToConPtyWhenAvailable;
     [Test] procedure ConPty_FallsBackToLegacyWhenUnavailable;
-    [Test] procedure Auto_ResolvesToLegacyForNow;
+    [Test] procedure Auto_ResolvesToConPtyWhenAvailable;
+    [Test] procedure Auto_FallsBackToLegacyWhenUnavailable;
   end;
 
 implementation
@@ -300,10 +301,14 @@ begin
   Assert.IsTrue(ResolveTerminalBackend(bsConPty, False) = tbLegacyPipe, 'Forced ConPTY must fall back to legacy when ConPTY is unavailable');
 end;
 
-procedure TBackendResolutionTests.Auto_ResolvesToLegacyForNow;
+procedure TBackendResolutionTests.Auto_ResolvesToConPtyWhenAvailable;
 begin
-  Assert.IsTrue(ResolveTerminalBackend(bsAuto, True) = tbLegacyPipe, 'Auto must resolve to legacy for now, even when ConPTY is available');
-  Assert.IsTrue(ResolveTerminalBackend(bsAuto, False) = tbLegacyPipe, 'Auto must resolve to legacy when ConPTY is unavailable');
+  Assert.IsTrue(ResolveTerminalBackend(bsAuto, True) = tbConPty, 'Auto must resolve to ConPTY when it is available');
+end;
+
+procedure TBackendResolutionTests.Auto_FallsBackToLegacyWhenUnavailable;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsAuto, False) = tbLegacyPipe, 'Auto must fall back to legacy when ConPTY is unavailable');
 end;
 
 initialization
