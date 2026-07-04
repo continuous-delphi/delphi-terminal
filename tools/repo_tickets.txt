@@ -1041,6 +1041,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: VT parser core (C0 controls, SGR, escape-boundary buffering)
 Issue: #63
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 4. Consumes string chunks from the reader and mutates `TScreenBuffer`.

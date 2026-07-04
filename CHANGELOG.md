@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.87.0
+- Added the VT parser core (TVTParser): a stateful state machine driving TScreenBuffer with C0 controls and SGR (16 / 256 / 24-bit truecolor), handling escape sequences split across chunks and swallowing unknown/OSC sequences harmlessly
+[#63](https://github.com/continuous-delphi/delphi-terminal/issues/63)
+
 ## v1.3.86.0
 - Extended the screen model with scroll regions, alternate screen, scrollback, resize (content-preserving, cursor-clamping), and dirty-row tracking
 [#62](https://github.com/continuous-delphi/delphi-terminal/issues/62)
