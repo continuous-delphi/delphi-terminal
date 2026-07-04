@@ -112,7 +112,9 @@
         <DCCReference Include="..\source\Delphi.Terminal.Pty.pas"/>
         <DCCReference Include="..\source\Delphi.Terminal.ConPtyReader.pas"/>
         <DCCReference Include="..\source\Delphi.Terminal.ConPtyShell.pas"/>
+        <DCCReference Include="..\source\Delphi.Terminal.ScreenBuffer.pas"/>
         <DCCReference Include="Test.Delphi.Terminal.ConPty.pas"/>
+        <DCCReference Include="Test.Delphi.Terminal.ScreenBuffer.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

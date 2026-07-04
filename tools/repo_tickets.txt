@@ -1004,6 +1004,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: TScreenBuffer core (cells, cursor, attributes, write, erase)
 Issue: #61
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 3. Pure cell-grid model. Effort: M. Verify: unit.

@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.85.0
+- Added the terminal screen model (TScreenBuffer): a pure cell grid with per-cell colour/style, cursor, current attributes, write, and erase-in-line/display
+[#61](https://github.com/continuous-delphi/delphi-terminal/issues/61)
+
 ## v1.3.83.0
 - Added a terminal backend setting (Automatic / ConPTY / Legacy pipes) on the Tools > Options page, persisted to the registry; the dock form resolves it and applies it to each terminal tab
 [#60](https://github.com/continuous-delphi/delphi-terminal/issues/60)

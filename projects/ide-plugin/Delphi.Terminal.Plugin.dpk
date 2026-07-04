@@ -63,6 +63,7 @@ contains
   Delphi.Terminal.Pty in '..\..\source\Delphi.Terminal.Pty.pas',
   Delphi.Terminal.ConPtyReader in '..\..\source\Delphi.Terminal.ConPtyReader.pas',
   Delphi.Terminal.ConPtyShell in '..\..\source\Delphi.Terminal.ConPtyShell.pas',
+  Delphi.Terminal.ScreenBuffer in '..\..\source\Delphi.Terminal.ScreenBuffer.pas',
   Delphi.Terminal.Plugin.SavedCommandsEditor in 'Delphi.Terminal.Plugin.SavedCommandsEditor.pas',
   Delphi.Terminal.Plugin.CommandPalette in 'Delphi.Terminal.Plugin.CommandPalette.pas';
 
