@@ -84,11 +84,11 @@ type
   ///<see>https://learn.microsoft.com/en-us/windows/console/createpseudoconsole</see>
   ///<c>
   ///  HRESULT WINAPI CreatePseudoConsole(
-  ///    _In_ COORD size,
-  ///    _In_ HANDLE hInput,
-  ///    _In_ HANDLE hOutput,
-  ///    _In_ DWORD dwFlags,
-  ///    _Out_ HPCON* phPC
+  ///    _In_ COORD size,                     The dimensions of the window/buffer in count of characters that will be used on initial creation of the pseudoconsole. This can be adjusted later with ResizePseudoConsole.
+  ///    _In_ HANDLE hInput,                  An open handle to a stream of data that represents user input to the device. This is currently restricted to synchronous I/O.
+  ///    _In_ HANDLE hOutput,                 An open handle to a stream of data that represents application output from the device. This is currently restricted to synchronous I/O.
+  ///    _In_ DWORD dwFlags,                  The value can be one of the following: 0	Perform a standard pseudoconsole creation.   PSEUDOCONSOLE_INHERIT_CURSOR (DWORD)	The created pseudoconsole session will attempt to inherit the cursor position of the parent console.
+  ///    _Out_ HPCON* phPC                    Pointer to a location that will receive a handle to the new pseudoconsole device.
   ///  );
   ///</c>
   TCreatePseudoConsoleFunc = function(size: TCoord;
@@ -166,7 +166,55 @@ type
   TDeleteProcThreadAttributeListFunc = procedure(lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST); stdcall;
 
 
-implementation
+  TConPtyAPI = record
+  public
+    CreatePseudoConsole: TCreatePseudoConsoleFunc;
+    ResizePseudoConsole: TResizePseudoConsoleFunc;
+    ClosePseudoConsole: TClosePseudoConsoleFunc;
+    InitializeProcThreadAttributeList: TInitializeProcThreadAttributeListFunc;
+    UpdateProcThreadAttribute: TUpdateProcThreadAttributeFunc;
+    DeleteProcThreadAttributeList: TDeleteProcThreadAttributeListFunc;
 
+    function Initialize: Boolean;
+    function IsAvailable: Boolean;
+  end;
+
+
+implementation
+uses
+  System.SysUtils;
+
+
+function TConPtyAPI.Initialize: Boolean;
+var
+  hModule: HINST;
+begin
+  Self := Default(TConPtyAPI);
+
+  if System.SysUtils.Win32MajorVersion >= 10 then
+  begin
+    hModule:= GetModuleHandle(WinAPI.Windows.Kernel32);
+
+    CreatePseudoConsole := TCreatePseudoConsoleFunc(GetProcAddress(hModule, 'CreatePseudoConsole'));
+    ResizePseudoConsole := TResizePseudoConsoleFunc(GetProcAddress(hModule, 'ResizePseudoConsole'));
+    ClosePseudoConsole := TClosePseudoConsoleFunc(GetProcAddress(hModule, 'ClosePseudoConsole'));
+    InitializeProcThreadAttributeList := TInitializeProcThreadAttributeListFunc(GetProcAddress(hModule, 'InitializeProcThreadAttributeList'));
+    UpdateProcThreadAttribute := TUpdateProcThreadAttributeFunc(GetProcAddress(hModule, 'UpdateProcThreadAttribute'));
+    DeleteProcThreadAttributeList := TDeleteProcThreadAttributeListFunc(GetProcAddress(hModule, 'DeleteProcThreadAttributeList'));
+  end;
+
+  Result := IsAvailable;
+end;
+
+
+function TConPtyAPI.IsAvailable: Boolean;
+begin
+  Result := Assigned(CreatePseudoConsole) and
+            Assigned(ResizePseudoConsole) and
+            Assigned(ClosePseudoConsole) and
+            Assigned(InitializeProcThreadAttributeList) and
+            Assigned(UpdateProcThreadAttribute) and
+            Assigned(DeleteProcThreadAttributeList);
+end;
 
 end.
