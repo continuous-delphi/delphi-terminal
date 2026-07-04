@@ -15,6 +15,9 @@ type
     ///<summary>Deliberate teardown of an interactive session must join the reader and close without hanging.</summary>
     [Test]
     procedure DeliberateTeardown_DoesNotHang;
+    ///<summary>The child process must be assigned to TConPty's kill-on-close Job Object (so descendants die on Close).</summary>
+    [Test]
+    procedure ChildIsAssignedToJob;
   end;
 
 implementation
@@ -25,6 +28,11 @@ uses
   Winapi.Windows,
   Delphi.Terminal.Pty,
   Delphi.Terminal.ConPtyReader;
+
+// IsProcessInJob with its out parameter bound as a 4-byte BOOL. The RTL declares
+// it as ByteBool, but the Win32 API writes a full BOOL, so use our own binding.
+function IsProcessInJobBOOL(ProcessHandle, JobHandle: THandle; var Result: BOOL): BOOL; stdcall;
+  external kernel32 name 'IsProcessInJob';
 
 type
   TOutputCollector = class
@@ -125,6 +133,64 @@ begin
     end;
 
     Assert.IsFalse(LPty.IsRunning, 'Session should not be running after Close');
+  finally
+    LPty.Free;
+  end;
+end;
+
+procedure TConPtyTests.ChildIsAssignedToJob;
+var
+  LPty: TConPty;
+  LReader: TConPtyReader;
+  LCollector: TOutputCollector;
+  LInJob: BOOL;
+  LPid: DWORD;
+  LProbe: THandle;
+  LExitCode: DWORD;
+begin
+  LPty := TConPty.Create;
+  try
+    if not LPty.IsAvailable then
+    begin
+      Assert.Pass('ConPTY not available on this OS (requires Windows 10 1809+); skipping.');
+      Exit;
+    end;
+
+    LCollector := TOutputCollector.Create;
+    LReader := nil;
+    try
+      Assert.IsTrue(LPty.Start('cmd.exe', ''), 'TConPty.Start failed');
+      LReader := TConPtyReader.Create(LPty.OutputRead, LCollector.HandleOutput, LCollector.HandleExit);
+      LPty.RegisterReader(LReader);
+
+      // Job created and the child assigned to it. (Own binding for IsProcessInJob:
+      // the RTL declares the out param as ByteBool but the Win32 API writes a
+      // 4-byte BOOL, so pass a real BOOL here.)
+      Assert.IsTrue(LPty.JobHandle <> 0, 'A Job Object should have been created');
+      LInJob := False;
+      Assert.IsTrue(IsProcessInJobBOOL(LPty.ProcessHandle, LPty.JobHandle, LInJob), 'IsProcessInJob call failed');
+      Assert.IsTrue(LInJob, 'Child process should be assigned to the ConPTY job');
+
+      LPid := GetProcessId(LPty.ProcessHandle);
+
+      LReader.Terminate;
+      LPty.Close;
+    finally
+      LReader.Free;
+      LCollector.Free;
+    end;
+
+    Assert.IsFalse(LPty.IsRunning, 'Session should not be running after Close');
+
+    // The child must be gone after Close (job kill / teardown).
+    LProbe := OpenProcess(PROCESS_QUERY_INFORMATION, False, LPid);
+    if LProbe <> 0 then
+    begin
+      LExitCode := STILL_ACTIVE;
+      GetExitCodeProcess(LProbe, LExitCode);
+      CloseHandle(LProbe);
+      Assert.AreNotEqual(DWORD(STILL_ACTIVE), LExitCode, 'Child process should have terminated after Close');
+    end;
   finally
     LPty.Free;
   end;

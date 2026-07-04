@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.77.0
+- ConPTY sessions assign the child to a kill-on-close Job Object so the whole process tree (shell + descendants) is terminated on teardown
+[#54](https://github.com/continuous-delphi/delphi-terminal/issues/54)
+
 ## v1.3.76.0
 - ConPTY foundation wired into the plugin package and test project, with a TConPty/TConPtyReader round-trip smoke test; DUnitX suite unblocked and repaired
 [#52](https://github.com/continuous-delphi/delphi-terminal/issues/52) [#53](https://github.com/continuous-delphi/delphi-terminal/issues/53)

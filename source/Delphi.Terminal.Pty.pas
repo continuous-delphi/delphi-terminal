@@ -56,6 +56,7 @@ type
     FIsRunning: Boolean;
     FSize: TCoord;
     FReader: IPtyReader;
+    FJob: THandle;
     function GetProcessHandle: THandle;
     function BuildStartupInfo(out ASI: TStartupInfoExW): Boolean;
     procedure FreeStartupInfo(var ASI: TStartupInfoExW);
@@ -85,6 +86,8 @@ type
     property IsAvailable: Boolean read FIsAvailable;
     property ProcessHandle: THandle read GetProcessHandle;
     property IsRunning: Boolean read FIsRunning;
+    ///<summary>Job Object the child (and its descendants) are assigned to; closed by Close to terminate the tree.</summary>
+    property JobHandle: THandle read FJob;
   end;
 
 
@@ -180,6 +183,7 @@ var
   LCmd: string;
   LWorkDir: PChar;
   LResult: HRESULT;
+  LJobInfo: TJobObjectExtendedLimitInformation;
 begin
   Result := False;
   if IsRunning or (not IsAvailable) then
@@ -236,14 +240,30 @@ begin
   else
     LWorkDir := nil;
 
-  // bInheritHandles = False: the pseudoconsole attribute delivers the handles,
-  // so we avoid leaking every inheritable handle of the host (IDE) into the child.
-  Result := CreateProcess(nil, PChar(LCmd), nil, nil, False, EXTENDED_STARTUPINFO_PRESENT, nil, LWorkDir, LSI.StartupInfo, FProcessInfo);
+  // Create a kill-on-close Job Object so tearing it down terminates the entire
+  // child tree (shell + descendants, e.g. node.exe spawned by Claude Code).
+  FJob := CreateJobObject(nil, nil);
+  if FJob <> 0 then
+  begin
+    ZeroMemory(@LJobInfo, SizeOf(LJobInfo));
+    LJobInfo.BasicLimitInformation.LimitFlags := JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    SetInformationJobObject(FJob, JobObjectExtendedLimitInformation, @LJobInfo, SizeOf(LJobInfo));
+  end;
+
+  // bInheritHandles = False: the pseudoconsole attribute delivers the handles, so
+  // we avoid leaking every inheritable handle of the host (IDE) into the child.
+  // CREATE_SUSPENDED so the child is assigned to the job before it can spawn.
+  Result := CreateProcess(nil, PChar(LCmd), nil, nil, False, EXTENDED_STARTUPINFO_PRESENT or CREATE_SUSPENDED, nil, LWorkDir, LSI.StartupInfo, FProcessInfo);
 
   FreeStartupInfo(LSI);
 
   if Result then
-    FIsRunning := True
+  begin
+    if FJob <> 0 then
+      AssignProcessToJobObject(FJob, FProcessInfo.hProcess);
+    ResumeThread(FProcessInfo.hThread);
+    FIsRunning := True;
+  end
   else
     Close;
 end;
@@ -306,8 +326,16 @@ begin
     FOutputRead := INVALID_HANDLE_VALUE;
   end;
 
-  // 5. Reclaim the child process; terminate it if it lingers past the grace
-  //    period, then release the process/thread handles.
+  // 5. Terminate the whole child tree: closing the job handle triggers
+  //    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, killing the shell and all descendants.
+  if FJob <> 0 then
+  begin
+    CloseHandle(FJob);
+    FJob := 0;
+  end;
+
+  // 6. Reclaim the child process; terminate it if it lingers past the grace
+  //    period (e.g. job assignment failed), then release the process/thread handles.
   if FProcessInfo.hProcess <> 0 then
   begin
     if WaitForSingleObject(FProcessInfo.hProcess, 5000) <> WAIT_OBJECT_0 then

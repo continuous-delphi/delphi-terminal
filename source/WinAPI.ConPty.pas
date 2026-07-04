@@ -11,8 +11,9 @@
 
   ---------------------------------------------------------------------------
 
-  Self-contained declarations for the Windows Pseudo Console (ConPTY) API and
-  the process-thread attribute-list functions it depends on.
+  Self-contained declarations for the Windows Pseudo Console (ConPTY) API, the
+  process-thread attribute-list functions it depends on, and the Job Object API
+  used to terminate the child process tree on teardown.
 
   These are declared here rather than taken from WinAPI.Windows on purpose:
 
@@ -166,6 +167,54 @@ type
   TDeleteProcThreadAttributeListFunc = procedure(lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST); stdcall;
 
 
+{ Job Objects -- used to terminate the child process tree (the shell plus any
+  descendants, e.g. the node.exe Claude Code spawns) on teardown. Absent from
+  WinAPI.Windows before Delphi 11, so declared here for XE6+; the whole block is
+  skipped when the RTL already provides these (identifiers match the RTL). }
+{$IF not Declared(JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE)}
+const
+  JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = $00002000;
+  JobObjectExtendedLimitInformation = 9;
+
+type
+  TIOCounters = record
+    ReadOperationCount: UInt64;
+    WriteOperationCount: UInt64;
+    OtherOperationCount: UInt64;
+    ReadTransferCount: UInt64;
+    WriteTransferCount: UInt64;
+    OtherTransferCount: UInt64;
+  end;
+
+  TJobObjectBasicLimitInformation = record
+    PerProcessUserTimeLimit: Int64;
+    PerJobUserTimeLimit: Int64;
+    LimitFlags: DWORD;
+    MinimumWorkingSetSize: SIZE_T;
+    MaximumWorkingSetSize: SIZE_T;
+    ActiveProcessLimit: DWORD;
+    Affinity: ULONG_PTR;
+    PriorityClass: DWORD;
+    SchedulingClass: DWORD;
+  end;
+
+  TJobObjectExtendedLimitInformation = record
+    BasicLimitInformation: TJobObjectBasicLimitInformation;
+    IoInfo: TIOCounters;
+    ProcessMemoryLimit: SIZE_T;
+    JobMemoryLimit: SIZE_T;
+    PeakProcessMemoryUsed: SIZE_T;
+    PeakJobMemoryUsed: SIZE_T;
+  end;
+
+function CreateJobObject(lpJobAttributes: PSecurityAttributes; lpName: PWideChar): THandle; stdcall; external kernel32 name 'CreateJobObjectW';
+function SetInformationJobObject(hJob: THandle; JobObjectInfoClass: DWORD; lpJobObjectInfo: Pointer; cbJobObjectInfoLength: DWORD): BOOL; stdcall; external kernel32 name 'SetInformationJobObject';
+function AssignProcessToJobObject(hJob, hProcess: THandle): BOOL; stdcall; external kernel32 name 'AssignProcessToJobObject';
+function IsProcessInJob(ProcessHandle, JobHandle: THandle; var Result: ByteBool): ByteBool; stdcall; external kernel32 name 'IsProcessInJob';
+{$IFEND}
+
+
+type
   TConPtyAPI = record
   public
     CreatePseudoConsole: TCreatePseudoConsoleFunc;

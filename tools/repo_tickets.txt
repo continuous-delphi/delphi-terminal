@@ -866,6 +866,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: Job Object process-tree cleanup in TConPty
 Issue: #54
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 0. Prevent orphaned descendant processes (e.g. Claude Code's `node.exe`
