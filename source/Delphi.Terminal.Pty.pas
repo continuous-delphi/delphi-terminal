@@ -41,7 +41,7 @@ type
   IPtyReader = interface
     ['{5A5E2E7C-0E8E-4E2E-9E1B-2B6E9C7A1F3D}']
     ///<summary>Blocks until the reader has stopped (after draining OutputRead to EOF).</summary>
-    procedure WaitFor;
+    procedure Join;
   end;
 
 
@@ -295,7 +295,7 @@ begin
   //    before we close that handle. Non-owning: the caller frees it afterwards.
   if Assigned(FReader) then
   begin
-    FReader.WaitFor;
+    FReader.Join;
     FReader := nil;
   end;
 
