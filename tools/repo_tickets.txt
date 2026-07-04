@@ -1116,6 +1116,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: TTerminalView painting (metrics, dirty rows, cursor)
 Issue: #67
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 5. Effort: L. Verify: manual.

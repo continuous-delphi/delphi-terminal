@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.91.0
+- Added the terminal renderer (TTerminalView): a TCustomControl that paints a TScreenBuffer as a monospace cell grid with per-cell colours (16 / 256 / truecolor), bold/italic/underline/inverse, and a block cursor; incremental dirty-row repainting and double buffering. The VCL demo gains a canned-content 'TTerminalView' tab as an early visual smoke.
+[#67](https://github.com/continuous-delphi/delphi-terminal/issues/67)
+
 ## v1.3.90.0
 - Renderer build-vs-reuse spike: surveyed permissively-licensed Delphi VT controls (SCShell, andrewd207/TerminalEmulator, pasterm, doublecmd) and decided to build TTerminalView from scratch. See docs/conpty-renderer-decision.md
 [#66](https://github.com/continuous-delphi/delphi-terminal/issues/66)

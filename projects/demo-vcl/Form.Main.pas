@@ -17,7 +17,10 @@ interface
 uses
   System.SysUtils, System.Classes, Vcl.Controls, Vcl.Forms, Vcl.ComCtrls,
   Delphi.Terminal.CmdShell,
-  Delphi.Terminal.Frame.CmdShell;
+  Delphi.Terminal.Frame.CmdShell,
+  Delphi.Terminal.ScreenBuffer,
+  Delphi.Terminal.VTParser,
+  Delphi.Terminal.TerminalView;
 
 type
 
@@ -35,8 +38,15 @@ type
     FFramePwsh: TframeCmdShell;
     FFramePowerShell: TframeCmdShell;
     FFrameWSL:TframeCmdShell;
+    // Sneak peek (#67): a TTerminalView rendering canned VT content, so the new
+    // cursor-addressed renderer can be eyeballed before the full frame wiring (#68).
+    FTermViewTab: TTabSheet;
+    FTermView: TTerminalView;
+    FTermBuffer: TScreenBuffer;
+    FTermParser: TVTParser;
     procedure StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
     procedure HandleRequestDir(Sender: TObject; var APath: string);
+    procedure SetupTerminalViewDemo;
   end;
 
 var
@@ -102,6 +112,59 @@ begin
   FFrameWSL.OnRequestProjectDir := HandleRequestDir;
   FFrameWSL.OnRequestFileDir := HandleRequestDir;
   StartTerminalShell(FFrameWSL, TCmdUtils.CreateCmdShellInfo(TCmdShellType.wsl), ExeDir);
+
+  SetupTerminalViewDemo;
+end;
+
+procedure TfrmMain.SetupTerminalViewDemo;
+const
+  ESC = #27;
+var
+  S: string;
+  I: Integer;
+begin
+  FTermViewTab := TTabSheet.Create(PageControl1);
+  FTermViewTab.PageControl := PageControl1;
+  FTermViewTab.Caption := 'TTerminalView';
+
+  FTermBuffer := TScreenBuffer.Create(80, 24);
+  FTermParser := TVTParser.Create(FTermBuffer);
+
+  FTermView := TTerminalView.Create(Self);
+  FTermView.Parent := FTermViewTab;
+  FTermView.Align := alClient;
+  FTermView.Buffer := FTermBuffer;
+
+  // Canned VT content exercising SGR styles, the 16-colour palette, the 256-colour
+  // cube, and 24-bit truecolour -- driven through the real parser + screen model.
+  S := ESC + '[1;36mdelphi-terminal  -  TTerminalView sneak peek (#67)' + ESC + '[0m' + #13#10 + #13#10;
+
+  S := S + 'SGR styles:  ' + ESC + '[1mBold' + ESC + '[0m  ' + ESC + '[3mItalic' + ESC + '[0m  ' +
+       ESC + '[4mUnderline' + ESC + '[0m  ' + ESC + '[7mInverse' + ESC + '[0m' + #13#10 + #13#10;
+
+  S := S + '16 colours:  ';
+  for I := 0 to 7 do
+    S := S + ESC + '[4' + IntToStr(I) + 'm  ';
+  S := S + ESC + '[0m' + #13#10 + '             ';
+  for I := 0 to 7 do
+    S := S + ESC + '[10' + IntToStr(I) + 'm  ';
+  S := S + ESC + '[0m' + #13#10 + #13#10;
+
+  S := S + '256-cube:    ';
+  for I := 16 to 51 do
+    S := S + ESC + '[48;5;' + IntToStr(I) + 'm ';
+  S := S + ESC + '[0m' + #13#10 + #13#10;
+
+  S := S + 'Truecolor:   ';
+  for I := 0 to 35 do
+    S := S + ESC + '[48;2;' + IntToStr(I * 7) + ';0;' + IntToStr(255 - I * 7) + 'm ';
+  S := S + ESC + '[0m' + #13#10 + #13#10;
+
+  S := S + ESC + '[32mCursor-addressed prompt (block cursor shown):' + ESC + '[0m' + #13#10;
+  S := S + '  ' + ESC + '[33m$' + ESC + '[0m ready ';
+
+  FTermParser.Parse(S);
+  FTermView.UpdateView;
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
@@ -110,6 +173,8 @@ begin
   FFramePwsh.StopShell;
   FFrameCmdShell.StopShell;
   FFrameWSL.StopShell;
+  FTermParser.Free;
+  FTermBuffer.Free;
 end;
 
 procedure TfrmMain.HandleRequestDir(Sender: TObject; var APath: string);
