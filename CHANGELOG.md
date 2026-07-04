@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.96.0
+- VT parser now implements the in-place line-editing CSIs -- ECH (erase chars), ICH (insert chars), DCH (delete chars), IL (insert lines), DL (delete lines) -- so editing a wrapped line (e.g. a pwsh prediction) no longer leaves stale glyphs on the continuation line, and full-screen TUIs redraw correctly. Also retained an opt-in raw ConPTY stream capture diagnostic (disabled by default).
+[#79](https://github.com/continuous-delphi/delphi-terminal/issues/79)
+
 ## v1.3.95.0
 - Fixed ConPTY display corruption when editing lines that reach the right margin (e.g. backspacing over a pwsh prediction): the screen model now uses deferred (pending) line wrap like a real terminal, and the pseudoconsole size reliably tracks the view's actual width so the shell wraps at the right column.
 [#78](https://github.com/continuous-delphi/delphi-terminal/issues/78)

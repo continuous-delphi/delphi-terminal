@@ -378,6 +378,31 @@ begin
       SaveCursor;
     'u':   // RCP -- restore cursor position
       RestoreCursor;
+    'X':   // ECH -- erase characters in place
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.EraseChars(LCount);
+      end;
+    '@':   // ICH -- insert blank characters
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.InsertChars(LCount);
+      end;
+    'P':   // DCH -- delete characters
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.DeleteChars(LCount);
+      end;
+    'L':   // IL -- insert lines
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.InsertLines(LCount);
+      end;
+    'M':   // DL -- delete lines
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.DeleteLines(LCount);
+      end;
   else
     // unknown final byte: consume harmlessly
   end;

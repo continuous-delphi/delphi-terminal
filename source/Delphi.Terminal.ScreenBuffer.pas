@@ -93,6 +93,18 @@ type
     ///<summary>Erase in display: 0 = cursor to end, 1 = start to cursor, 2 = whole screen (cursor unchanged).</summary>
     procedure EraseInDisplay(AMode: Integer);
 
+    // --- In-place line editing (ECH / ICH / DCH / IL / DL) ---
+    ///<summary>ECH: blanks ACount cells from the cursor without moving it (clamped to the line end).</summary>
+    procedure EraseChars(ACount: Integer);
+    ///<summary>ICH: inserts ACount blanks at the cursor, shifting the rest of the line right (cursor unchanged).</summary>
+    procedure InsertChars(ACount: Integer);
+    ///<summary>DCH: deletes ACount cells at the cursor, shifting the rest of the line left and blanking the tail.</summary>
+    procedure DeleteChars(ACount: Integer);
+    ///<summary>IL: inserts ACount blank lines at the cursor row within the scroll region, shifting lines down.</summary>
+    procedure InsertLines(ACount: Integer);
+    ///<summary>DL: deletes ACount lines at the cursor row within the scroll region, shifting lines up.</summary>
+    procedure DeleteLines(ACount: Integer);
+
     ///<summary>Sets the attributes used for subsequent writes and erases.</summary>
     procedure SetAttributes(const AForeground, ABackground: TCellColor; const AStyle: TCellStyle);
 
@@ -343,6 +355,104 @@ begin
     2: // whole screen; cursor unchanged (unlike ClearAll)
       FillAll;
   end;
+end;
+
+procedure TScreenBuffer.EraseChars(ACount: Integer);
+var
+  Col, Last: Integer;
+  LBlank: TTerminalCell;
+begin
+  if ACount < 1 then ACount := 1;
+  LBlank := BlankCell;
+  Last := FCursorCol + ACount - 1;
+  if Last > FCols - 1 then Last := FCols - 1;
+  for Col := FCursorCol to Last do
+    FCells[IndexOf(Col, FCursorRow)] := LBlank;
+  MarkRowDirty(FCursorRow);
+end;
+
+procedure TScreenBuffer.InsertChars(ACount: Integer);
+var
+  Col: Integer;
+  LBlank: TTerminalCell;
+begin
+  if ACount < 1 then ACount := 1;
+  if ACount > FCols - FCursorCol then ACount := FCols - FCursorCol;
+  // Shift the tail right, dropping cells pushed past the line end.
+  for Col := FCols - 1 downto FCursorCol + ACount do
+    FCells[IndexOf(Col, FCursorRow)] := FCells[IndexOf(Col - ACount, FCursorRow)];
+  // Blank the inserted gap.
+  LBlank := BlankCell;
+  for Col := FCursorCol to FCursorCol + ACount - 1 do
+    FCells[IndexOf(Col, FCursorRow)] := LBlank;
+  MarkRowDirty(FCursorRow);
+end;
+
+procedure TScreenBuffer.DeleteChars(ACount: Integer);
+var
+  Col: Integer;
+  LBlank: TTerminalCell;
+begin
+  if ACount < 1 then ACount := 1;
+  if ACount > FCols - FCursorCol then ACount := FCols - FCursorCol;
+  // Shift the tail left.
+  for Col := FCursorCol to FCols - 1 - ACount do
+    FCells[IndexOf(Col, FCursorRow)] := FCells[IndexOf(Col + ACount, FCursorRow)];
+  // Blank the vacated cells at the end of the line.
+  LBlank := BlankCell;
+  for Col := FCols - ACount to FCols - 1 do
+    FCells[IndexOf(Col, FCursorRow)] := LBlank;
+  MarkRowDirty(FCursorRow);
+end;
+
+procedure TScreenBuffer.InsertLines(ACount: Integer);
+var
+  R, C, MaxLines: Integer;
+  LBlank: TTerminalCell;
+begin
+  if (FCursorRow < FScrollTop) or (FCursorRow > FScrollBottom) then Exit;
+  if ACount < 1 then ACount := 1;
+  MaxLines := FScrollBottom - FCursorRow + 1;
+  if ACount > MaxLines then ACount := MaxLines;
+
+  // Shift lines down within [cursor row .. scroll bottom].
+  for R := FScrollBottom downto FCursorRow + ACount do
+    for C := 0 to FCols - 1 do
+      FCells[IndexOf(C, R)] := FCells[IndexOf(C, R - ACount)];
+
+  // Blank the inserted lines.
+  LBlank := BlankCell;
+  for R := FCursorRow to FCursorRow + ACount - 1 do
+    for C := 0 to FCols - 1 do
+      FCells[IndexOf(C, R)] := LBlank;
+
+  for R := FCursorRow to FScrollBottom do
+    MarkRowDirty(R);
+end;
+
+procedure TScreenBuffer.DeleteLines(ACount: Integer);
+var
+  R, C, MaxLines: Integer;
+  LBlank: TTerminalCell;
+begin
+  if (FCursorRow < FScrollTop) or (FCursorRow > FScrollBottom) then Exit;
+  if ACount < 1 then ACount := 1;
+  MaxLines := FScrollBottom - FCursorRow + 1;
+  if ACount > MaxLines then ACount := MaxLines;
+
+  // Shift lines up within [cursor row .. scroll bottom].
+  for R := FCursorRow to FScrollBottom - ACount do
+    for C := 0 to FCols - 1 do
+      FCells[IndexOf(C, R)] := FCells[IndexOf(C, R + ACount)];
+
+  // Blank the vacated lines at the bottom of the region.
+  LBlank := BlankCell;
+  for R := FScrollBottom - ACount + 1 to FScrollBottom do
+    for C := 0 to FCols - 1 do
+      FCells[IndexOf(C, R)] := LBlank;
+
+  for R := FCursorRow to FScrollBottom do
+    MarkRowDirty(R);
 end;
 
 procedure TScreenBuffer.SetAttributes(const AForeground, ABackground: TCellColor; const AStyle: TCellStyle);

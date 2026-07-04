@@ -133,6 +133,57 @@ const
   WM_SYNC_TERM_SIZE = WM_APP + 102;
   MAX_RENDER_CHARS_PER_PASS = 65536;
 
+{.$DEFINE PTY_CAPTURE}  // Diagnostic: raw ConPTY stream capture to <exe dir>\pty-capture.log. Enable (remove the dot) and rebuild to capture.
+
+{$IFDEF PTY_CAPTURE}
+var
+  GPtyCaptureStarted: Boolean = False;
+
+// Appends one line to <exe dir>\pty-capture.log with control bytes made readable
+// (\e = ESC, \r \n \t \b \a, others as \xNN). Truncates on the first call per run.
+procedure PtyCapture(const APrefix, AText: string);
+var
+  LSB: TStringBuilder;
+  LPath: string;
+  LFile: TextFile;
+  C: Char;
+begin
+  LSB := TStringBuilder.Create;
+  try
+    for C in AText do
+      case C of
+        #27: LSB.Append('\e');
+        #13: LSB.Append('\r');
+        #10: LSB.Append('\n');
+        #9:  LSB.Append('\t');
+        #8:  LSB.Append('\b');
+        #7:  LSB.Append('\a');
+      else
+        if (C < ' ') or (C = #127) then
+          LSB.Append('\x').Append(IntToHex(Ord(C), 2))
+        else
+          LSB.Append(C);
+      end;
+    LPath := ExtractFilePath(ParamStr(0)) + 'pty-capture.log';
+    AssignFile(LFile, LPath);
+    if GPtyCaptureStarted and FileExists(LPath) then
+      Append(LFile)
+    else
+    begin
+      Rewrite(LFile);
+      GPtyCaptureStarted := True;
+    end;
+    try
+      Writeln(LFile, APrefix, '|', LSB.ToString);
+    finally
+      CloseFile(LFile);
+    end;
+  finally
+    LSB.Free;
+  end;
+end;
+{$ENDIF}
+
 constructor TframeCmdShell.Create(AOwner: TComponent);
 begin
   inherited;
@@ -291,6 +342,10 @@ procedure TframeCmdShell.HandleOutput(Sender: TObject; const AText: string);
 begin
   if AText = '' then
     Exit;
+  {$IFDEF PTY_CAPTURE}
+  if FBackendKind = tbConPty then
+    PtyCapture('OUT ' + Name, AText);
+  {$ENDIF}
   FOutputBuffer.Append(AText);
   if not FOutputRenderPending then
   begin
@@ -623,6 +678,9 @@ begin
   LSeq := KeyToVT(Key, Shift);
   if LSeq <> '' then
   begin
+    {$IFDEF PTY_CAPTURE}
+    PtyCapture('IN  ' + Name, LSeq);
+    {$ENDIF}
     FProcess.WriteInput(LSeq);
     Key := 0;
   end;
@@ -632,7 +690,12 @@ procedure TframeCmdShell.HandleTermViewKeyPress(Sender: TObject; var Key: Char);
 begin
   // Printable characters (control keys were already consumed in KeyDown).
   if (Key >= ' ') and Assigned(FProcess) and FProcess.Running then
+  begin
+    {$IFDEF PTY_CAPTURE}
+    PtyCapture('IN  ' + Name, Key);
+    {$ENDIF}
     FProcess.WriteInput(Key);
+  end;
   Key := #0;
 end;
 

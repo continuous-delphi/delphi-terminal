@@ -18,6 +18,11 @@ type
     [Test] procedure DeferredWrap_HoldsCursorAtLastColumn;
     [Test] procedure DeferredWrap_NextCharPerformsWrap;
     [Test] procedure DeferredWrap_CursorMoveCancelsPending;
+    [Test] procedure EraseChars_BlanksInPlace;
+    [Test] procedure InsertChars_ShiftsRight;
+    [Test] procedure DeleteChars_ShiftsLeft;
+    [Test] procedure InsertLines_ShiftsDown;
+    [Test] procedure DeleteLines_ShiftsUp;
     [Test] procedure ClearAll_BlanksAndHomes;
     [Test] procedure EraseInDisplay_ToEnd_Clears;
     [Test] procedure EraseInDisplay_Whole_KeepsCursor;
@@ -179,6 +184,103 @@ begin
     Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'X', 'X overwrote A on row 0');
     Assert.IsTrue((LBuf.CursorCol = 1) and (LBuf.CursorRow = 0), 'cursor stayed on row 0');
     Assert.IsTrue(LBuf.GetCell(0, 1).Ch = ' ', 'row 1 untouched');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.EraseChars_BlanksInPlace;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(10, 2);
+  try
+    LBuf.WriteText('ABCDE');
+    LBuf.SetCursor(1, 0);
+    LBuf.EraseChars(2);   // blank cols 1..2, cursor unchanged
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'A kept');
+    Assert.IsTrue(LBuf.GetCell(1, 0).Ch = ' ', 'B erased');
+    Assert.IsTrue(LBuf.GetCell(2, 0).Ch = ' ', 'C erased');
+    Assert.IsTrue(LBuf.GetCell(3, 0).Ch = 'D', 'D kept');
+    Assert.IsTrue((LBuf.CursorCol = 1) and (LBuf.CursorRow = 0), 'cursor unchanged');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.InsertChars_ShiftsRight;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(10, 2);
+  try
+    LBuf.WriteText('ABCDE');
+    LBuf.SetCursor(1, 0);
+    LBuf.InsertChars(2);   // insert 2 blanks at col 1, shifting BCDE right
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'A kept');
+    Assert.IsTrue(LBuf.GetCell(1, 0).Ch = ' ', 'blank inserted');
+    Assert.IsTrue(LBuf.GetCell(2, 0).Ch = ' ', 'blank inserted');
+    Assert.IsTrue(LBuf.GetCell(3, 0).Ch = 'B', 'B shifted right');
+    Assert.IsTrue(LBuf.GetCell(6, 0).Ch = 'E', 'E shifted right');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.DeleteChars_ShiftsLeft;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(10, 2);
+  try
+    LBuf.WriteText('ABCDE');
+    LBuf.SetCursor(1, 0);
+    LBuf.DeleteChars(2);   // delete B,C -- D,E shift left
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'A kept');
+    Assert.IsTrue(LBuf.GetCell(1, 0).Ch = 'D', 'D shifted left');
+    Assert.IsTrue(LBuf.GetCell(2, 0).Ch = 'E', 'E shifted left');
+    Assert.IsTrue(LBuf.GetCell(3, 0).Ch = ' ', 'tail blanked');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.InsertLines_ShiftsDown;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(5, 4);
+  try
+    LBuf.SetCursor(0, 0); LBuf.WriteText('AAAA');
+    LBuf.SetCursor(0, 1); LBuf.WriteText('BBBB');
+    LBuf.SetCursor(0, 2); LBuf.WriteText('CCCC');
+    LBuf.SetCursor(0, 1);
+    LBuf.InsertLines(1);   // blank line at row 1; B,C move down
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'row 0 kept');
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = ' ', 'row 1 blank');
+    Assert.IsTrue(LBuf.GetCell(0, 2).Ch = 'B', 'B moved to row 2');
+    Assert.IsTrue(LBuf.GetCell(0, 3).Ch = 'C', 'C moved to row 3');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.DeleteLines_ShiftsUp;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(5, 4);
+  try
+    LBuf.SetCursor(0, 0); LBuf.WriteText('AAAA');
+    LBuf.SetCursor(0, 1); LBuf.WriteText('BBBB');
+    LBuf.SetCursor(0, 2); LBuf.WriteText('CCCC');
+    LBuf.SetCursor(0, 3); LBuf.WriteText('DDDD');
+    LBuf.SetCursor(0, 1);
+    LBuf.DeleteLines(1);   // remove row 1; C,D move up
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'row 0 kept');
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = 'C', 'C moved to row 1');
+    Assert.IsTrue(LBuf.GetCell(0, 2).Ch = 'D', 'D moved to row 2');
+    Assert.IsTrue(LBuf.GetCell(0, 3).Ch = ' ', 'bottom blanked');
   finally
     LBuf.Free;
   end;

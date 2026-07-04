@@ -1322,3 +1322,26 @@ Acceptance criteria:
 - [ ] Editing a wrapped prediction line in pwsh (type + Backspace) no longer inserts spurious newlines
 - [ ] The shell wraps at the view's actual width; resizing reflows correctly
 - [ ] Screen-model unit tests cover deferred wrap and its cancellation on cursor movement
+
+---
+Title: ConPTY: in-place line-editing CSIs (ECH/ICH/DCH/IL/DL)
+Issue: #79
+Status: closed
+Labels: enhancement, conpty
+Body:
+Follow-up to #78. A raw-stream capture of pwsh confirmed that PSReadLine blanks
+the continuation of a wrapped prediction with ECH (`ESC[nX`, observed as
+`\e[51X`), which the VT parser does not implement -- so stale glyphs linger on
+the wrapped line when editing mid-line. Cosmetic (no state corruption), but it
+exposes a fidelity gap that full-screen TUIs (vim, less, Claude Code) also hit.
+
+Implement the standard in-place editing CSIs in TScreenBuffer + TVTParser:
+- ECH (`ESC[Ps X`) -- erase Ps chars in place, cursor unchanged (confirmed needed)
+- ICH (`ESC[Ps @`) -- insert Ps blanks, shifting the rest of the line right
+- DCH (`ESC[Ps P`) -- delete Ps chars, shifting the rest of the line left
+- IL  (`ESC[Ps L`) -- insert Ps blank lines within the scroll region
+- DL  (`ESC[Ps M`) -- delete Ps lines within the scroll region
+
+Acceptance criteria:
+- [ ] Editing a wrapped prediction line leaves no stale glyphs on the continuation line
+- [ ] ECH/ICH/DCH/IL/DL implemented with unit tests
