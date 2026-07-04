@@ -1079,6 +1079,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: VT parser OSC and DEC private modes
 Issue: #65
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 4. Effort: M. Verify: unit.

@@ -32,6 +32,8 @@ uses
 type
   TVTParserState = (vpsNormal, vpsEscape, vpsCSI, vpsOSC, vpsOSCEsc, vpsCharset);
 
+  TVTTitleEvent = procedure(Sender: TObject; const ATitle: string) of object;
+
   TVTParser = class
   private
     FScreen: TScreenBuffer;   // not owned
@@ -42,6 +44,9 @@ type
     FSavedFg: TCellColor;
     FSavedBg: TCellColor;
     FSavedStyle: TCellStyle;
+    FTitle: string;
+    FOSCBuffer: string;
+    FOnTitleChanged: TVTTitleEvent;
     procedure ProcessChar(ACh: Char);
     procedure HandleC0(ACh: Char);
     procedure DispatchCSI(AFinal: Char);
@@ -50,12 +55,17 @@ type
     procedure RestoreCursor;
     function ParseParams(const AParams: string): TArray<Integer>;
     function Param(const ACodes: TArray<Integer>; AIndex, ADefault: Integer): Integer;
+    procedure DispatchOSC(const AData: string);
+    procedure DispatchPrivateMode(AFinal: Char);
+    procedure SetTitle(const ATitle: string);
   public
     constructor Create(AScreen: TScreenBuffer);
     ///<summary>Feeds a decoded chunk through the state machine, mutating the screen.</summary>
     procedure Parse(const AChunk: string);
     ///<summary>Resets the parser state (e.g. when the session restarts).</summary>
     procedure Reset;
+    property Title: string read FTitle;
+    property OnTitleChanged: TVTTitleEvent read FOnTitleChanged write FOnTitleChanged;
   end;
 
 implementation
@@ -79,12 +89,15 @@ begin
   FSavedFg := DefaultColor;
   FSavedBg := DefaultColor;
   FSavedStyle := [];
+  FTitle := '';
+  FOSCBuffer := '';
 end;
 
 procedure TVTParser.Reset;
 begin
   FState := vpsNormal;
   FParams := '';
+  FOSCBuffer := '';
 end;
 
 procedure TVTParser.Parse(const AChunk: string);
@@ -142,7 +155,10 @@ begin
             FState := vpsCSI;
           end;
         ']':
-          FState := vpsOSC;
+          begin
+            FOSCBuffer := '';
+            FState := vpsOSC;
+          end;
         '(', ')', '*', '+':
           FState := vpsCharset;
         'D':   // IND -- index (line feed)
@@ -177,13 +193,22 @@ begin
 
     vpsOSC:
       if ACh = BEL then
-        FState := vpsNormal          // BEL terminates the OSC string
+      begin
+        DispatchOSC(FOSCBuffer);
+        FState := vpsNormal;
+      end
       else if ACh = ESC then
-        FState := vpsOSCEsc;         // maybe an ST (ESC \) terminator
-      // otherwise swallow the OSC content (interpreted in #65)
+        FState := vpsOSCEsc            // possible ST (ESC \) terminator
+      else
+        FOSCBuffer := FOSCBuffer + ACh;
 
     vpsOSCEsc:
-      FState := vpsNormal;           // ST or any other byte ends the OSC
+      begin
+        DispatchOSC(FOSCBuffer);
+        FState := vpsNormal;
+        if ACh <> '\' then
+          ProcessChar(ACh);           // not an ST terminator: reprocess the byte
+      end;
 
     vpsCharset:
       FState := vpsNormal;           // consume the single charset-designator byte
@@ -226,14 +251,62 @@ begin
     Result := ADefault;
 end;
 
+procedure TVTParser.SetTitle(const ATitle: string);
+begin
+  FTitle := ATitle;
+  if Assigned(FOnTitleChanged) then
+    FOnTitleChanged(Self, FTitle);
+end;
+
+procedure TVTParser.DispatchOSC(const AData: string);
+var
+  LSep: Integer;
+  LPs: string;
+begin
+  // OSC form is "Ps ; Pt". Ps 0 (icon + title) and 2 (title) set the window title.
+  LSep := Pos(';', AData);
+  if LSep = 0 then
+    Exit;
+  LPs := Copy(AData, 1, LSep - 1);
+  if (LPs = '0') or (LPs = '2') then
+    SetTitle(Copy(AData, LSep + 1, MaxInt));
+end;
+
+procedure TVTParser.DispatchPrivateMode(AFinal: Char);
+var
+  LSet: Boolean;
+  LCodes: TArray<Integer>;
+  I: Integer;
+begin
+  if (AFinal <> 'h') and (AFinal <> 'l') then
+    Exit;   // only set (h) and reset (l) are handled
+  LSet := (AFinal = 'h');
+  LCodes := ParseParams(Copy(FParams, 2, MaxInt));   // strip the leading '?'
+  for I := 0 to High(LCodes) do
+    case LCodes[I] of
+      25:
+        FScreen.CursorVisible := LSet;
+      2004:
+        FScreen.BracketedPaste := LSet;
+      47, 1047, 1049:
+        if LSet then
+          FScreen.EnterAltScreen
+        else
+          FScreen.ExitAltScreen;
+    end;
+end;
+
 procedure TVTParser.DispatchCSI(AFinal: Char);
 var
   LCodes: TArray<Integer>;
   LCount, LRow, LCol, LTop, LBottom: Integer;
 begin
-  // CSI ? ... are DEC private-mode sequences (#65); swallow them here.
+  // CSI ? ... are DEC private-mode sequences.
   if FParams.StartsWith('?') then
+  begin
+    DispatchPrivateMode(AFinal);
     Exit;
+  end;
 
   LCodes := ParseParams(FParams);
   case AFinal of

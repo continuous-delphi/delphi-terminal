@@ -8,6 +8,9 @@ uses
 type
   [TestFixture]
   TVTParserTests = class
+  private
+    FLastTitle: string;
+    procedure HandleTitle(Sender: TObject; const ATitle: string);
   public
     [Test] procedure Printable_WritesText;
     [Test] procedure CR_ReturnsToColumnZero;
@@ -29,6 +32,13 @@ type
     [Test] procedure DECSTBM_ConfinesScroll;
     [Test] procedure SaveRestoreCursor_DECSC_DECRC;
     [Test] procedure Index_And_ReverseIndex;
+    [Test] procedure OSC_SetsTitle_BEL;
+    [Test] procedure OSC_SetsTitle_ST;
+    [Test] procedure OSC_TitleSplitAcrossChunks;
+    [Test] procedure OSC_FiresOnTitleChanged;
+    [Test] procedure DECMode_CursorVisibility;
+    [Test] procedure DECMode_AltScreen;
+    [Test] procedure DECMode_BracketedPaste;
   end;
 
 implementation
@@ -408,6 +418,137 @@ begin
     LP.Parse('B');             // cell(1,0)
     Assert.IsTrue(LScr.GetCell(0, 1).Ch = 'A', 'index moved down a line');
     Assert.IsTrue(LScr.GetCell(1, 0).Ch = 'B', 'reverse index moved up a line');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.HandleTitle(Sender: TObject; const ATitle: string);
+begin
+  FLastTitle := ATitle;
+end;
+
+procedure TVTParserTests.OSC_SetsTitle_BEL;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse(ESC + ']0;My Title' + BEL);
+    Assert.IsTrue(LP.Title = 'My Title', 'BEL-terminated OSC 0 set the title');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.OSC_SetsTitle_ST;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse(ESC + ']2;Other' + ESC + '\');
+    Assert.IsTrue(LP.Title = 'Other', 'ST-terminated OSC 2 set the title');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.OSC_TitleSplitAcrossChunks;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse(ESC + ']0;Hel');
+    LP.Parse('lo' + BEL);
+    Assert.IsTrue(LP.Title = 'Hello', 'OSC title reassembled across chunks');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.OSC_FiresOnTitleChanged;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    FLastTitle := '';
+    LP.OnTitleChanged := HandleTitle;
+    LP.Parse(ESC + ']0;Hi' + BEL);
+    Assert.IsTrue(FLastTitle = 'Hi', 'OnTitleChanged fired with the new title');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.DECMode_CursorVisibility;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    Assert.IsTrue(LScr.CursorVisible, 'cursor visible by default');
+    LP.Parse(ESC + '[?25l');
+    Assert.IsFalse(LScr.CursorVisible, '?25l hides the cursor');
+    LP.Parse(ESC + '[?25h');
+    Assert.IsTrue(LScr.CursorVisible, '?25h shows the cursor');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.DECMode_AltScreen;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse('MAIN');
+    LP.Parse(ESC + '[?1049h');
+    Assert.IsTrue(LScr.AltActive, '?1049h enters the alt screen');
+    Assert.IsTrue(LScr.GetCell(0, 0).Ch = ' ', 'alt screen is blank');
+    LP.Parse(ESC + '[?1049l');
+    Assert.IsFalse(LScr.AltActive, '?1049l exits the alt screen');
+    Assert.IsTrue(LScr.GetCell(0, 0).Ch = 'M', 'main content restored');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.DECMode_BracketedPaste;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    Assert.IsFalse(LScr.BracketedPaste, 'bracketed paste off by default');
+    LP.Parse(ESC + '[?2004h');
+    Assert.IsTrue(LScr.BracketedPaste, '?2004h enables bracketed paste');
+    LP.Parse(ESC + '[?2004l');
+    Assert.IsFalse(LScr.BracketedPaste, '?2004l disables bracketed paste');
   finally
     LP.Free;
     LScr.Free;

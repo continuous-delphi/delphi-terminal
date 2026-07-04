@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.89.0
+- VT parser now captures OSC window titles (BEL/ST terminated, reassembled across chunks, with an OnTitleChanged event) and handles DEC private modes: cursor show/hide (?25), alternate screen (?1049), and bracketed paste (?2004)
+[#65](https://github.com/continuous-delphi/delphi-terminal/issues/65)
+
 ## v1.3.88.0
 - VT parser now handles cursor movement (CUU/CUD/CUF/CUB, CUP/HVP, CHA/VPA), save/restore (DECSC/DECRC, SCP/RCP), erase (ED/EL), and scrolling (DECSTBM scroll region, SU/SD, IND/RI/NEL)
 [#64](https://github.com/continuous-delphi/delphi-terminal/issues/64)

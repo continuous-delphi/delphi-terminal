@@ -65,6 +65,8 @@ type
     FSavedCursorRow: Integer;
     FScrollback: TList<TArray<TTerminalCell>>;
     FScrollbackLimit: Integer;
+    FCursorVisible: Boolean;
+    FBracketedPaste: Boolean;
     FDirty: TArray<Boolean>;
     function IndexOf(ACol, ARow: Integer): Integer; inline;
     function BlankCell: TTerminalCell;
@@ -136,6 +138,10 @@ type
     property ScrollBottom: Integer read FScrollBottom;
     property AltActive: Boolean read FAltActive;
     property ScrollbackLimit: Integer read FScrollbackLimit write FScrollbackLimit;
+    ///<summary>Whether the cursor should be drawn (DEC mode ?25).</summary>
+    property CursorVisible: Boolean read FCursorVisible write FCursorVisible;
+    ///<summary>Whether bracketed paste mode is active (DEC mode ?2004); read by the input path.</summary>
+    property BracketedPaste: Boolean read FBracketedPaste write FBracketedPaste;
     property CurrentForeground: TCellColor read FForeground write FForeground;
     property CurrentBackground: TCellColor read FBackground write FBackground;
     property CurrentStyle: TCellStyle read FStyle write FStyle;
@@ -186,6 +192,8 @@ begin
   FScrollBottom := FRows - 1;
   FAltActive := False;
   FScrollbackLimit := 1000;
+  FCursorVisible := True;
+  FBracketedPaste := False;
   FScrollback := TList<TArray<TTerminalCell>>.Create;
   ClearAll;
 end;
