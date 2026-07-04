@@ -47,6 +47,9 @@ type
     procedure StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
     procedure HandleRequestDir(Sender: TObject; var APath: string);
     procedure SetupTerminalViewDemo;
+    procedure HandleTermViewClear(Sender: TObject);
+    procedure HandleTermViewPaste(Sender: TObject);
+    procedure HandleTermViewStop(Sender: TObject);
   end;
 
 var
@@ -56,6 +59,7 @@ implementation
 
 uses
   Vcl.FileCtrl,
+  Vcl.Clipbrd,
   Delphi.Terminal.Settings;
 
 {$R *.dfm}
@@ -134,6 +138,9 @@ begin
   FTermView.Parent := FTermViewTab;
   FTermView.Align := alClient;
   FTermView.Buffer := FTermBuffer;
+  FTermView.OnClearRequested := HandleTermViewClear;
+  FTermView.OnPasteRequested := HandleTermViewPaste;
+  FTermView.OnInterruptRequested := HandleTermViewStop;
 
   // Canned VT content exercising SGR styles, the 16-colour palette, the 256-colour
   // cube, and 24-bit truecolour -- driven through the real parser + screen model.
@@ -160,10 +167,37 @@ begin
     S := S + ESC + '[48;2;' + IntToStr(I * 7) + ';0;' + IntToStr(255 - I * 7) + 'm ';
   S := S + ESC + '[0m' + #13#10 + #13#10;
 
+  // Emit more than one screen of lines so the earlier content scrolls into history;
+  // use the mouse wheel over the view to scroll it back (#68).
+  for I := 1 to 30 do
+    S := S + Format('history line %.2d  -- wheel up to scroll back, drag to select, right-click to copy' + #13#10, [I]);
+
   S := S + ESC + '[32mCursor-addressed prompt (block cursor shown):' + ESC + '[0m' + #13#10;
   S := S + '  ' + ESC + '[33m$' + ESC + '[0m ready ';
 
   FTermParser.Parse(S);
+  FTermView.RefreshAll;
+end;
+
+procedure TfrmMain.HandleTermViewClear(Sender: TObject);
+begin
+  FTermBuffer.ClearAll;
+  FTermView.RefreshAll;
+end;
+
+procedure TfrmMain.HandleTermViewPaste(Sender: TObject);
+begin
+  // Display-only demo: echo the clipboard text into the buffer so the Paste menu is visibly wired.
+  if Clipboard.AsText <> '' then
+  begin
+    FTermParser.Parse(Clipboard.AsText + #13#10);
+    FTermView.UpdateView;
+  end;
+end;
+
+procedure TfrmMain.HandleTermViewStop(Sender: TObject);
+begin
+  FTermParser.Parse(#13#10 + '^C' + #13#10);
   FTermView.UpdateView;
 end;
 

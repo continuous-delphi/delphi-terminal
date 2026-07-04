@@ -1133,6 +1133,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: TTerminalView scrollback, selection/copy, context menu
 Issue: #68
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 5. Effort: M. Verify: manual.

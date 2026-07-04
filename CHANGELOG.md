@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.92.0
+- TTerminalView gained vertical scrollback (mouse wheel over history), mouse selection with clipboard copy, and a Copy / Paste / Clear / Stop context menu (Copy handled internally; Paste/Clear/Stop surfaced as events for the host). Selection maths / document addressing factored into a VCL-free unit.
+[#68](https://github.com/continuous-delphi/delphi-terminal/issues/68)
+
 ## v1.3.91.0
 - Added the terminal renderer (TTerminalView): a TCustomControl that paints a TScreenBuffer as a monospace cell grid with per-cell colours (16 / 256 / truecolor), bold/italic/underline/inverse, and a block cursor; incremental dirty-row repainting and double buffering. The VCL demo gains a canned-content 'TTerminalView' tab as an early visual smoke.
 [#67](https://github.com/continuous-delphi/delphi-terminal/issues/67)
