@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.88.0
+- VT parser now handles cursor movement (CUU/CUD/CUF/CUB, CUP/HVP, CHA/VPA), save/restore (DECSC/DECRC, SCP/RCP), erase (ED/EL), and scrolling (DECSTBM scroll region, SU/SD, IND/RI/NEL)
+[#64](https://github.com/continuous-delphi/delphi-terminal/issues/64)
+
 ## v1.3.87.0
 - Added the VT parser core (TVTParser): a stateful state machine driving TScreenBuffer with C0 controls and SGR (16 / 256 / 24-bit truecolor), handling escape sequences split across chunks and swallowing unknown/OSC sequences harmlessly
 [#63](https://github.com/continuous-delphi/delphi-terminal/issues/63)

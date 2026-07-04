@@ -22,6 +22,13 @@ type
     [Test] procedure UnknownCSI_ProducesNoGarbage;
     [Test] procedure OSC_IsSwallowed;
     [Test] procedure UnknownEscape_ProducesNoGarbage;
+    [Test] procedure CUP_MovesCursor;
+    [Test] procedure CursorArrows_Move;
+    [Test] procedure ED_ClearsScreen;
+    [Test] procedure EL_ClearsToEnd;
+    [Test] procedure DECSTBM_ConfinesScroll;
+    [Test] procedure SaveRestoreCursor_DECSC_DECRC;
+    [Test] procedure Index_And_ReverseIndex;
   end;
 
 implementation
@@ -260,6 +267,147 @@ begin
   try
     LP.Parse(ESC + '=A');   // ESC = (application keypad) -- consume, then print A
     Assert.IsTrue(LScr.GetCell(0, 0).Ch = 'A', 'A printed; ESC = consumed');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.CUP_MovesCursor;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 5);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse(ESC + '[2;3H');   // row 2, col 3 (1-based) -> (col 2, row 1)
+    LP.Parse('X');
+    Assert.IsTrue(LScr.GetCell(2, 1).Ch = 'X', 'CUP positioned the cursor at row 1, col 2');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.CursorArrows_Move;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(3, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse(ESC + '[3;3H');   // (col 2, row 2)
+    LP.Parse(ESC + '[1A');     // up   -> (2,1)
+    LP.Parse(ESC + '[2D');     // left -> (0,1)
+    LP.Parse('Z');             // cell(0,1); cursor -> (1,1)
+    LP.Parse(ESC + '[1B');     // down  -> (1,2)
+    LP.Parse(ESC + '[1C');     // right -> (2,2)
+    LP.Parse('Q');             // cell(2,2)
+    Assert.IsTrue(LScr.GetCell(0, 1).Ch = 'Z', 'up + left landed at (0,1)');
+    Assert.IsTrue(LScr.GetCell(2, 2).Ch = 'Q', 'down + right landed at (2,2)');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.ED_ClearsScreen;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse('ABC');
+    LP.Parse(ESC + '[2J');
+    Assert.IsTrue(LScr.GetCell(0, 0).Ch = ' ', 'ED(2) cleared the screen');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.EL_ClearsToEnd;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse('ABC');
+    LP.Parse(ESC + '[1;2H');   // cursor to col 2 (0-based col 1)
+    LP.Parse(ESC + '[0K');     // erase to end of line
+    Assert.IsTrue(LScr.GetCell(0, 0).Ch = 'A', 'before cursor kept');
+    Assert.IsTrue(LScr.GetCell(1, 0).Ch = ' ', 'cursor cell cleared');
+    Assert.IsTrue(LScr.GetCell(2, 0).Ch = ' ', 'after cursor cleared');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.DECSTBM_ConfinesScroll;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(3, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse(ESC + '[1;1H'); LP.Parse('AAA');
+    LP.Parse(ESC + '[2;1H'); LP.Parse('BBB');
+    LP.Parse(ESC + '[3;1H'); LP.Parse('CCC');
+    LP.Parse(ESC + '[1;2r');   // scroll region rows 1..2 (0-based 0..1); homes cursor
+    LP.Parse(ESC + '[2;1H');   // (col 0, row 1) -- bottom of the region
+    LP.Parse(#10);             // LF at the bottom margin scrolls the region up
+    Assert.IsTrue(LScr.GetCell(0, 0).Ch = 'B', 'region top now holds old region bottom');
+    Assert.IsTrue(LScr.GetCell(0, 1).Ch = ' ', 'region bottom blanked');
+    Assert.IsTrue(LScr.GetCell(0, 2).Ch = 'C', 'row outside the region untouched');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.SaveRestoreCursor_DECSC_DECRC;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 5);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse(ESC + '[1;1H');
+    LP.Parse('A');             // cursor -> (1,0)
+    LP.Parse(ESC + '7');       // DECSC save at (1,0)
+    LP.Parse(ESC + '[3;3H');   // move to (2,2)
+    LP.Parse(ESC + '8');       // DECRC restore to (1,0)
+    LP.Parse('B');
+    Assert.IsTrue(LScr.GetCell(1, 0).Ch = 'B', 'cursor restored to the saved position');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.Index_And_ReverseIndex;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    LP.Parse(ESC + 'D');       // IND: row 0 -> row 1
+    LP.Parse('A');             // cell(0,1); cursor -> (1,1)
+    LP.Parse(ESC + 'M');       // RI: row 1 -> row 0
+    LP.Parse('B');             // cell(1,0)
+    Assert.IsTrue(LScr.GetCell(0, 1).Ch = 'A', 'index moved down a line');
+    Assert.IsTrue(LScr.GetCell(1, 0).Ch = 'B', 'reverse index moved up a line');
   finally
     LP.Free;
     LScr.Free;

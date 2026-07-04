@@ -37,10 +37,19 @@ type
     FScreen: TScreenBuffer;   // not owned
     FState: TVTParserState;
     FParams: string;          // accumulated CSI parameter/intermediate bytes (excludes the final byte)
+    FSavedCol: Integer;
+    FSavedRow: Integer;
+    FSavedFg: TCellColor;
+    FSavedBg: TCellColor;
+    FSavedStyle: TCellStyle;
     procedure ProcessChar(ACh: Char);
     procedure HandleC0(ACh: Char);
     procedure DispatchCSI(AFinal: Char);
     procedure ApplySGR(const AParams: string);
+    procedure SaveCursor;
+    procedure RestoreCursor;
+    function ParseParams(const AParams: string): TArray<Integer>;
+    function Param(const ACodes: TArray<Integer>; AIndex, ADefault: Integer): Integer;
   public
     constructor Create(AScreen: TScreenBuffer);
     ///<summary>Feeds a decoded chunk through the state machine, mutating the screen.</summary>
@@ -65,6 +74,11 @@ begin
   FScreen := AScreen;
   FState := vpsNormal;
   FParams := '';
+  FSavedCol := 0;
+  FSavedRow := 0;
+  FSavedFg := DefaultColor;
+  FSavedBg := DefaultColor;
+  FSavedStyle := [];
 end;
 
 procedure TVTParser.Reset;
@@ -131,6 +145,16 @@ begin
           FState := vpsOSC;
         '(', ')', '*', '+':
           FState := vpsCharset;
+        'D':   // IND -- index (line feed)
+          begin FScreen.LineFeed; FState := vpsNormal; end;
+        'M':   // RI -- reverse index
+          begin FScreen.ReverseLineFeed; FState := vpsNormal; end;
+        'E':   // NEL -- next line (CR + LF)
+          begin FScreen.LineFeed; FScreen.SetCursor(0, FScreen.CursorRow); FState := vpsNormal; end;
+        '7':   // DECSC -- save cursor
+          begin SaveCursor; FState := vpsNormal; end;
+        '8':   // DECRC -- restore cursor
+          begin RestoreCursor; FState := vpsNormal; end;
       else
         FState := vpsNormal;   // unhandled 2-byte escape: consume harmlessly
       end;
@@ -166,37 +190,138 @@ begin
   end;
 end;
 
-procedure TVTParser.DispatchCSI(AFinal: Char);
+procedure TVTParser.SaveCursor;
 begin
+  FSavedCol := FScreen.CursorCol;
+  FSavedRow := FScreen.CursorRow;
+  FSavedFg := FScreen.CurrentForeground;
+  FSavedBg := FScreen.CurrentBackground;
+  FSavedStyle := FScreen.CurrentStyle;
+end;
+
+procedure TVTParser.RestoreCursor;
+begin
+  FScreen.SetCursor(FSavedCol, FSavedRow);
+  FScreen.SetAttributes(FSavedFg, FSavedBg, FSavedStyle);
+end;
+
+function TVTParser.ParseParams(const AParams: string): TArray<Integer>;
+var
+  LParts: TArray<string>;
+  I: Integer;
+begin
+  if AParams = '' then
+    Exit(nil);
+  LParts := AParams.Split([';']);
+  SetLength(Result, Length(LParts));
+  for I := 0 to High(LParts) do
+    Result[I] := StrToIntDef(LParts[I], 0);
+end;
+
+function TVTParser.Param(const ACodes: TArray<Integer>; AIndex, ADefault: Integer): Integer;
+begin
+  if (AIndex >= 0) and (AIndex <= High(ACodes)) then
+    Result := ACodes[AIndex]
+  else
+    Result := ADefault;
+end;
+
+procedure TVTParser.DispatchCSI(AFinal: Char);
+var
+  LCodes: TArray<Integer>;
+  LCount, LRow, LCol, LTop, LBottom: Integer;
+begin
+  // CSI ? ... are DEC private-mode sequences (#65); swallow them here.
+  if FParams.StartsWith('?') then
+    Exit;
+
+  LCodes := ParseParams(FParams);
   case AFinal of
     'm':
       ApplySGR(FParams);
+    'A':   // CUU -- cursor up
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.SetCursor(FScreen.CursorCol, FScreen.CursorRow - LCount);
+      end;
+    'B':   // CUD -- cursor down
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.SetCursor(FScreen.CursorCol, FScreen.CursorRow + LCount);
+      end;
+    'C':   // CUF -- cursor forward
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.SetCursor(FScreen.CursorCol + LCount, FScreen.CursorRow);
+      end;
+    'D':   // CUB -- cursor back
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.SetCursor(FScreen.CursorCol - LCount, FScreen.CursorRow);
+      end;
+    'G':   // CHA -- cursor horizontal absolute (1-based column)
+      begin
+        LCol := Param(LCodes, 0, 1); if LCol < 1 then LCol := 1;
+        FScreen.SetCursor(LCol - 1, FScreen.CursorRow);
+      end;
+    'd':   // VPA -- vertical position absolute (1-based row)
+      begin
+        LRow := Param(LCodes, 0, 1); if LRow < 1 then LRow := 1;
+        FScreen.SetCursor(FScreen.CursorCol, LRow - 1);
+      end;
+    'H', 'f':   // CUP / HVP -- cursor position (1-based row;col)
+      begin
+        LRow := Param(LCodes, 0, 1); if LRow < 1 then LRow := 1;
+        LCol := Param(LCodes, 1, 1); if LCol < 1 then LCol := 1;
+        FScreen.SetCursor(LCol - 1, LRow - 1);
+      end;
+    'J':   // ED -- erase in display
+      FScreen.EraseInDisplay(Param(LCodes, 0, 0));
+    'K':   // EL -- erase in line
+      FScreen.EraseInLine(Param(LCodes, 0, 0));
+    'S':   // SU -- scroll up
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.ScrollUp(LCount);
+      end;
+    'T':   // SD -- scroll down
+      begin
+        LCount := Param(LCodes, 0, 1); if LCount < 1 then LCount := 1;
+        FScreen.ScrollDown(LCount);
+      end;
+    'r':   // DECSTBM -- set top/bottom scroll margins (1-based); homes the cursor
+      begin
+        if Length(LCodes) = 0 then
+          FScreen.SetScrollRegion(0, FScreen.Rows - 1)
+        else
+        begin
+          LTop := Param(LCodes, 0, 1); if LTop < 1 then LTop := 1;
+          LBottom := Param(LCodes, 1, FScreen.Rows); if LBottom < 1 then LBottom := FScreen.Rows;
+          FScreen.SetScrollRegion(LTop - 1, LBottom - 1);
+        end;
+        FScreen.SetCursor(0, 0);
+      end;
+    's':   // SCP -- save cursor position
+      SaveCursor;
+    'u':   // RCP -- restore cursor position
+      RestoreCursor;
   else
-    // Cursor movement / erase / scroll (#64) and DEC private modes (#65) are
-    // added separately. Unknown finals are consumed harmlessly.
+    // unknown final byte: consume harmlessly
   end;
 end;
 
 procedure TVTParser.ApplySGR(const AParams: string);
 var
-  LParts: TArray<string>;
   LCodes: TArray<Integer>;
   I, Code: Integer;
   LFg, LBg: TCellColor;
   LStyle: TCellStyle;
 begin
-  // SGR with no parameters means reset (code 0).
-  if AParams = '' then
+  LCodes := ParseParams(AParams);
+  if Length(LCodes) = 0 then
   begin
     SetLength(LCodes, 1);
-    LCodes[0] := 0;
-  end
-  else
-  begin
-    LParts := AParams.Split([';']);
-    SetLength(LCodes, Length(LParts));
-    for I := 0 to High(LParts) do
-      LCodes[I] := StrToIntDef(LParts[I], 0);
+    LCodes[0] := 0;   // SGR with no parameters means reset
   end;
 
   LFg := FScreen.CurrentForeground;

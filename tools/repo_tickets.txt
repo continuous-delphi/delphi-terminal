@@ -1061,6 +1061,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: VT parser cursor movement, erase, scroll
 Issue: #64
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 4. Effort: M. Verify: unit.
