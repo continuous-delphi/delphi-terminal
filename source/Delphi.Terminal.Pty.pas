@@ -37,6 +37,14 @@ type
   end;
 
 
+  ///<summary>Minimal contract for a reader that consumes TConPty.OutputRead. Registered with TConPty so Close can join it at the correct point during teardown.</summary>
+  IPtyReader = interface
+    ['{5A5E2E7C-0E8E-4E2E-9E1B-2B6E9C7A1F3D}']
+    ///<summary>Blocks until the reader has stopped (after draining OutputRead to EOF).</summary>
+    procedure WaitFor;
+  end;
+
+
   TConPty = class
   private
     FConPtyAPI: TConPtyAPI;
@@ -47,6 +55,7 @@ type
     FProcessInfo: TProcessInformation;
     FIsRunning: Boolean;
     FSize: TCoord;
+    FReader: IPtyReader;
     function GetProcessHandle: THandle;
     function BuildStartupInfo(out ASI: TStartupInfoExW): Boolean;
     procedure FreeStartupInfo(var ASI: TStartupInfoExW);
@@ -61,7 +70,10 @@ type
     ///<summary>Resizes the pseudoconsole buffers.</summary>
     function Resize(const ASize: TTerminalSize): Boolean;
 
-    ///<summary>Tears down the session and releases all owned handles.</summary>
+    ///<summary>Registers the reader that consumes OutputRead so Close can join it before closing that handle. Non-owning: the caller retains ownership and frees the reader after Close returns.</summary>
+    procedure RegisterReader(const AReader: IPtyReader);
+
+    ///<summary>Tears down the session and releases all owned handles. Joins the registered reader (if any) between closing the pseudoconsole and closing the output handle.</summary>
     procedure Close;
 
     ///<summary>Write child input (stdin) to this handle.</summary>
@@ -252,6 +264,12 @@ begin
 end;
 
 
+procedure TConPty.RegisterReader(const AReader: IPtyReader);
+begin
+  FReader := AReader;
+end;
+
+
 procedure TConPty.Close;
 begin
   FIsRunning := False;
@@ -263,8 +281,9 @@ begin
     FInputWrite := INVALID_HANDLE_VALUE;
   end;
 
-  // 2. Close the pseudoconsole. This ends the session; the console host closes
-  //    its end of the output pipe, letting a reader on OutputRead see EOF.
+  // 2. Close the pseudoconsole. The console host drains its remaining output
+  //    into the still-running registered reader, then closes its end of the
+  //    output pipe, letting the reader on OutputRead see EOF.
   if FhPC <> 0 then
   begin
     if Assigned(FConPtyAPI.ClosePseudoConsole) then
@@ -272,10 +291,27 @@ begin
     FhPC := 0;
   end;
 
-  // 3. Wait briefly for the child to exit, then release the process handles.
+  // 3. Join the registered reader (if any) so it is finished with OutputRead
+  //    before we close that handle. Non-owning: the caller frees it afterwards.
+  if Assigned(FReader) then
+  begin
+    FReader.WaitFor;
+    FReader := nil;
+  end;
+
+  // 4. Close our output-read end (safe now: no reader is touching it).
+  if FOutputRead <> INVALID_HANDLE_VALUE then
+  begin
+    CloseHandle(FOutputRead);
+    FOutputRead := INVALID_HANDLE_VALUE;
+  end;
+
+  // 5. Reclaim the child process; terminate it if it lingers past the grace
+  //    period, then release the process/thread handles.
   if FProcessInfo.hProcess <> 0 then
   begin
-    WaitForSingleObject(FProcessInfo.hProcess, 5000);
+    if WaitForSingleObject(FProcessInfo.hProcess, 5000) <> WAIT_OBJECT_0 then
+      TerminateProcess(FProcessInfo.hProcess, 0);
     CloseHandle(FProcessInfo.hProcess);
     FProcessInfo.hProcess := 0;
   end;
@@ -283,13 +319,6 @@ begin
   begin
     CloseHandle(FProcessInfo.hThread);
     FProcessInfo.hThread := 0;
-  end;
-
-  // 4. Close our output-read end last (see the reader-coordination note below).
-  if FOutputRead <> INVALID_HANDLE_VALUE then
-  begin
-    CloseHandle(FOutputRead);
-    FOutputRead := INVALID_HANDLE_VALUE;
   end;
 end;
 
