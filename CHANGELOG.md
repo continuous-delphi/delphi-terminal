@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.90.0
+- Renderer build-vs-reuse spike: surveyed permissively-licensed Delphi VT controls (SCShell, andrewd207/TerminalEmulator, pasterm, doublecmd) and decided to build TTerminalView from scratch. See docs/conpty-renderer-decision.md
+[#66](https://github.com/continuous-delphi/delphi-terminal/issues/66)
+
 ## v1.3.89.0
 - VT parser now captures OSC window titles (BEL/ST terminated, reassembled across chunks, with an OnTitleChanged event) and handles DEC private modes: cursor show/hide (?25), alternate screen (?1049), and bracketed paste (?2004)
 [#65](https://github.com/continuous-delphi/delphi-terminal/issues/65)

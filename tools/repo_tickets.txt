@@ -1097,6 +1097,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: evaluate prebuilt Delphi VT render controls (spike)
 Issue: #66
+Status: closed
 Labels: enhancement, conpty, research
 Body:
 Phase 5. Time-boxed research before building `TTerminalView` from scratch.
