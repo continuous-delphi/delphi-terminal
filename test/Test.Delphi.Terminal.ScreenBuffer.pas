@@ -19,6 +19,13 @@ type
     [Test] procedure EraseInDisplay_ToEnd_Clears;
     [Test] procedure EraseInDisplay_Whole_KeepsCursor;
     [Test] procedure SetCursor_ClampsToBounds;
+    [Test] procedure ScrollUp_ShiftsAndBlanks;
+    [Test] procedure ScrollUp_PushesToScrollback;
+    [Test] procedure ScrollRegion_ConfinesScroll;
+    [Test] procedure LineFeed_AtBottomScrolls;
+    [Test] procedure AltScreen_SwapsAndRestores;
+    [Test] procedure Resize_PreservesContentAndClampsCursor;
+    [Test] procedure Dirty_MarksAndResets;
   end;
 
 implementation
@@ -187,6 +194,140 @@ begin
     Assert.IsTrue((LBuf.CursorCol = 3) and (LBuf.CursorRow = 1), 'cursor clamped to bottom-right');
     LBuf.SetCursor(-5, -5);
     Assert.IsTrue((LBuf.CursorCol = 0) and (LBuf.CursorRow = 0), 'cursor clamped to origin');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.ScrollUp_ShiftsAndBlanks;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(3, 3);
+  try
+    LBuf.SetCursor(0, 0); LBuf.WriteText('ABC');
+    LBuf.SetCursor(0, 1); LBuf.WriteText('DEF');
+    LBuf.SetCursor(0, 2); LBuf.WriteText('GHI');
+    LBuf.ScrollUp(1);
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'D', 'row 0 should now hold the old row 1');
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = 'G', 'row 1 should now hold the old row 2');
+    Assert.IsTrue(LBuf.GetCell(0, 2).Ch = ' ', 'bottom row blanked');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.ScrollUp_PushesToScrollback;
+var
+  LBuf: TScreenBuffer;
+  LLine: TArray<TTerminalCell>;
+begin
+  LBuf := TScreenBuffer.Create(3, 3);
+  try
+    LBuf.SetCursor(0, 0); LBuf.WriteText('ABC');
+    LBuf.ScrollUp(1);
+    Assert.IsTrue(LBuf.ScrollbackCount = 1, 'one line should be in scrollback');
+    LLine := LBuf.GetScrollbackLine(0);
+    Assert.IsTrue((LLine[0].Ch = 'A') and (LLine[1].Ch = 'B') and (LLine[2].Ch = 'C'), 'scrollback line content');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.ScrollRegion_ConfinesScroll;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(3, 4);
+  try
+    LBuf.SetCursor(0, 0); LBuf.WriteText('AAA');
+    LBuf.SetCursor(0, 1); LBuf.WriteText('BBB');
+    LBuf.SetCursor(0, 2); LBuf.WriteText('CCC');
+    LBuf.SetCursor(0, 3); LBuf.WriteText('DDD');
+    LBuf.SetScrollRegion(1, 2);
+    LBuf.ScrollUp(1);
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'row above the region is untouched');
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = 'C', 'region top now holds the old region bottom');
+    Assert.IsTrue(LBuf.GetCell(0, 2).Ch = ' ', 'region bottom blanked');
+    Assert.IsTrue(LBuf.GetCell(0, 3).Ch = 'D', 'row below the region is untouched');
+    Assert.IsTrue(LBuf.ScrollbackCount = 0, 'non-top-anchored region does not add to scrollback');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.LineFeed_AtBottomScrolls;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(3, 3);
+  try
+    LBuf.SetCursor(0, 0); LBuf.WriteText('ABC');
+    LBuf.SetCursor(0, 1); LBuf.WriteText('DEF');
+    LBuf.SetCursor(0, 2); LBuf.WriteText('GHI');
+    LBuf.SetCursor(0, 2);   // at the bottom margin
+    LBuf.LineFeed;
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'D', 'line feed at bottom scrolls the screen up');
+    Assert.IsTrue(LBuf.CursorRow = 2, 'cursor stays at the bottom margin');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.AltScreen_SwapsAndRestores;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(5, 2);
+  try
+    LBuf.WriteText('MAIN');
+    LBuf.SetCursor(2, 1);
+    LBuf.EnterAltScreen;
+    Assert.IsTrue(LBuf.AltActive, 'alt screen active');
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = ' ', 'alt screen starts blank');
+    Assert.IsTrue((LBuf.CursorCol = 0) and (LBuf.CursorRow = 0), 'alt screen homes the cursor');
+    LBuf.WriteText('ALT');
+    LBuf.ExitAltScreen;
+    Assert.IsFalse(LBuf.AltActive, 'back on main screen');
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'M', 'main screen content restored');
+    Assert.IsTrue((LBuf.CursorCol = 2) and (LBuf.CursorRow = 1), 'main cursor restored');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.Resize_PreservesContentAndClampsCursor;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(4, 3);
+  try
+    LBuf.WriteText('WXYZ');
+    LBuf.SetCursor(3, 2);
+    LBuf.Resize(2, 2);
+    Assert.IsTrue((LBuf.Cols = 2) and (LBuf.Rows = 2), 'dimensions updated');
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'W', 'top-left content preserved');
+    Assert.IsTrue(LBuf.GetCell(1, 0).Ch = 'X', 'top-left content preserved (col 1)');
+    Assert.IsTrue((LBuf.CursorCol = 1) and (LBuf.CursorRow = 1), 'cursor clamped to new bounds');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.Dirty_MarksAndResets;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(5, 3);
+  try
+    LBuf.ResetDirty;
+    Assert.IsFalse(LBuf.IsRowDirty(1), 'clean after reset');
+    LBuf.SetCursor(0, 1);
+    LBuf.PutChar('X');
+    Assert.IsTrue(LBuf.IsRowDirty(1), 'written row is dirty');
+    Assert.IsFalse(LBuf.IsRowDirty(2), 'untouched row stays clean');
+    LBuf.ResetDirty;
+    Assert.IsFalse(LBuf.IsRowDirty(1), 'clean again after reset');
   finally
     LBuf.Free;
   end;

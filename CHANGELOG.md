@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.86.0
+- Extended the screen model with scroll regions, alternate screen, scrollback, resize (content-preserving, cursor-clamping), and dirty-row tracking
+[#62](https://github.com/continuous-delphi/delphi-terminal/issues/62)
+
 ## v1.3.85.0
 - Added the terminal screen model (TScreenBuffer): a pure cell grid with per-cell colour/style, cursor, current attributes, write, and erase-in-line/display
 [#61](https://github.com/continuous-delphi/delphi-terminal/issues/61)

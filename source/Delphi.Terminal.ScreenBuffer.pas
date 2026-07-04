@@ -15,13 +15,17 @@
   style, a cursor, and the current writing attributes. Pure logic (no VCL / no
   WinAPI) so it is fully unit-testable and independent of rendering.
 
-  This unit is the M6 "core": cells, cursor, attributes, write and erase.
-  Scroll regions, alternate screen, scrollback and resize are added separately.
+  Covers the M6 model: cells, cursor, attributes, write and erase (#61), plus
+  scroll region, alternate screen, scrollback and resize with dirty-row
+  tracking (#62).
 
 *)
 unit Delphi.Terminal.ScreenBuffer;
 
 interface
+
+uses
+  System.Generics.Collections;
 
 type
   ///<summary>How a cell colour is specified: the terminal default, a palette index (0..255), or 24-bit RGB.</summary>
@@ -47,18 +51,29 @@ type
   private
     FCols: Integer;
     FRows: Integer;
-    FCells: array of TTerminalCell;
+    FCells: TArray<TTerminalCell>;
     FCursorCol: Integer;
     FCursorRow: Integer;
     FForeground: TCellColor;
     FBackground: TCellColor;
     FStyle: TCellStyle;
+    FScrollTop: Integer;
+    FScrollBottom: Integer;
+    FAltActive: Boolean;
+    FMainCells: TArray<TTerminalCell>;
+    FSavedCursorCol: Integer;
+    FSavedCursorRow: Integer;
+    FScrollback: TList<TArray<TTerminalCell>>;
+    FScrollbackLimit: Integer;
+    FDirty: TArray<Boolean>;
     function IndexOf(ACol, ARow: Integer): Integer; inline;
     function BlankCell: TTerminalCell;
     procedure FillAll;
     procedure ClampCursor;
+    procedure PushScrollback(const ALine: TArray<TTerminalCell>);
   public
     constructor Create(ACols, ARows: Integer);
+    destructor Destroy; override;
 
     ///<summary>Blanks the whole screen (using the current background) and homes the cursor.</summary>
     procedure ClearAll;
@@ -78,6 +93,38 @@ type
     ///<summary>Sets the attributes used for subsequent writes and erases.</summary>
     procedure SetAttributes(const AForeground, ABackground: TCellColor; const AStyle: TCellStyle);
 
+    // --- Scroll region ---
+    ///<summary>Sets the top/bottom scroll margins (inclusive). Invalid ranges reset to the full screen.</summary>
+    procedure SetScrollRegion(ATop, ABottom: Integer);
+    ///<summary>Scrolls the region up by ACount lines; on the main screen with a top-anchored region, departing lines go to scrollback.</summary>
+    procedure ScrollUp(ACount: Integer);
+    ///<summary>Scrolls the region down by ACount lines (no scrollback).</summary>
+    procedure ScrollDown(ACount: Integer);
+    ///<summary>Index: moves the cursor down one line, scrolling the region up when at the bottom margin.</summary>
+    procedure LineFeed;
+    ///<summary>Reverse index: moves the cursor up one line, scrolling the region down when at the top margin.</summary>
+    procedure ReverseLineFeed;
+
+    // --- Alternate screen ---
+    ///<summary>Switches to a blank alternate screen, saving the main screen and cursor.</summary>
+    procedure EnterAltScreen;
+    ///<summary>Restores the main screen and cursor.</summary>
+    procedure ExitAltScreen;
+
+    // --- Resize ---
+    ///<summary>Resizes the grid, preserving the top-left content, clamping the cursor, and resetting the scroll region.</summary>
+    procedure Resize(ACols, ARows: Integer);
+
+    // --- Dirty-row tracking (for incremental rendering) ---
+    procedure MarkRowDirty(ARow: Integer);
+    procedure MarkAllDirty;
+    procedure ResetDirty;
+    function IsRowDirty(ARow: Integer): Boolean;
+
+    // --- Scrollback access ---
+    function ScrollbackCount: Integer;
+    function GetScrollbackLine(AIndex: Integer): TArray<TTerminalCell>;
+
     ///<summary>Reads a cell (returns a blank cell for out-of-range coordinates).</summary>
     function GetCell(ACol, ARow: Integer): TTerminalCell;
 
@@ -85,6 +132,10 @@ type
     property Rows: Integer read FRows;
     property CursorCol: Integer read FCursorCol;
     property CursorRow: Integer read FCursorRow;
+    property ScrollTop: Integer read FScrollTop;
+    property ScrollBottom: Integer read FScrollBottom;
+    property AltActive: Boolean read FAltActive;
+    property ScrollbackLimit: Integer read FScrollbackLimit write FScrollbackLimit;
     property CurrentForeground: TCellColor read FForeground write FForeground;
     property CurrentBackground: TCellColor read FBackground write FBackground;
     property CurrentStyle: TCellStyle read FStyle write FStyle;
@@ -127,10 +178,22 @@ begin
   FCols := ACols;
   FRows := ARows;
   SetLength(FCells, FCols * FRows);
+  SetLength(FDirty, FRows);
   FForeground := DefaultColor;
   FBackground := DefaultColor;
   FStyle := [];
+  FScrollTop := 0;
+  FScrollBottom := FRows - 1;
+  FAltActive := False;
+  FScrollbackLimit := 1000;
+  FScrollback := TList<TArray<TTerminalCell>>.Create;
   ClearAll;
+end;
+
+destructor TScreenBuffer.Destroy;
+begin
+  FScrollback.Free;
+  inherited;
 end;
 
 function TScreenBuffer.IndexOf(ACol, ARow: Integer): Integer;
@@ -154,6 +217,7 @@ begin
   LBlank := BlankCell;
   for I := 0 to High(FCells) do
     FCells[I] := LBlank;
+  MarkAllDirty;
 end;
 
 procedure TScreenBuffer.ClampCursor;
@@ -173,9 +237,11 @@ end;
 
 procedure TScreenBuffer.SetCursor(ACol, ARow: Integer);
 begin
+  MarkRowDirty(FCursorRow);   // repaint the row the cursor leaves
   FCursorCol := ACol;
   FCursorRow := ARow;
   ClampCursor;
+  MarkRowDirty(FCursorRow);   // and the row it enters
 end;
 
 procedure TScreenBuffer.PutChar(ACh: Char);
@@ -189,6 +255,7 @@ begin
     FCells[Idx].Foreground := FForeground;
     FCells[Idx].Background := FBackground;
     FCells[Idx].Style := FStyle;
+    MarkRowDirty(FCursorRow);
   end;
 
   Inc(FCursorCol);
@@ -197,7 +264,7 @@ begin
     FCursorCol := 0;
     Inc(FCursorRow);
     if FCursorRow >= FRows then
-      FCursorRow := FRows - 1;   // clamp at the bottom (scrolling is added separately)
+      FCursorRow := FRows - 1;   // clamp at the bottom (callers scroll via LineFeed)
   end;
 end;
 
@@ -224,6 +291,7 @@ begin
   LBlank := BlankCell;
   for Col := First to Last do
     FCells[IndexOf(Col, FCursorRow)] := LBlank;
+  MarkRowDirty(FCursorRow);
 end;
 
 procedure TScreenBuffer.EraseInDisplay(AMode: Integer);
@@ -237,14 +305,20 @@ begin
       begin
         EraseInLine(0);
         for Row := FCursorRow + 1 to FRows - 1 do
+        begin
           for Col := 0 to FCols - 1 do
             FCells[IndexOf(Col, Row)] := LBlank;
+          MarkRowDirty(Row);
+        end;
       end;
     1: // start of screen to cursor
       begin
         for Row := 0 to FCursorRow - 1 do
+        begin
           for Col := 0 to FCols - 1 do
             FCells[IndexOf(Col, Row)] := LBlank;
+          MarkRowDirty(Row);
+        end;
         EraseInLine(1);
       end;
     2: // whole screen; cursor unchanged (unlike ClearAll)
@@ -257,6 +331,211 @@ begin
   FForeground := AForeground;
   FBackground := ABackground;
   FStyle := AStyle;
+end;
+
+procedure TScreenBuffer.SetScrollRegion(ATop, ABottom: Integer);
+begin
+  if (ATop < 0) or (ABottom > FRows - 1) or (ATop >= ABottom) then
+  begin
+    FScrollTop := 0;
+    FScrollBottom := FRows - 1;
+  end
+  else
+  begin
+    FScrollTop := ATop;
+    FScrollBottom := ABottom;
+  end;
+end;
+
+procedure TScreenBuffer.PushScrollback(const ALine: TArray<TTerminalCell>);
+begin
+  FScrollback.Add(ALine);
+  while (FScrollbackLimit > 0) and (FScrollback.Count > FScrollbackLimit) do
+    FScrollback.Delete(0);
+end;
+
+procedure TScreenBuffer.ScrollUp(ACount: Integer);
+var
+  RegionHeight, R, C, SrcRow: Integer;
+  LLine: TArray<TTerminalCell>;
+  LBlank: TTerminalCell;
+begin
+  RegionHeight := FScrollBottom - FScrollTop + 1;
+  if ACount < 1 then Exit;
+  if ACount > RegionHeight then ACount := RegionHeight;
+
+  // Capture scrolled-off lines into scrollback (main screen, top-anchored region only).
+  if (not FAltActive) and (FScrollTop = 0) then
+    for R := 0 to ACount - 1 do
+    begin
+      SetLength(LLine, FCols);
+      for C := 0 to FCols - 1 do
+        LLine[C] := FCells[IndexOf(C, FScrollTop + R)];
+      PushScrollback(LLine);
+    end;
+
+  // Shift rows up within the region.
+  for R := FScrollTop to FScrollBottom - ACount do
+  begin
+    SrcRow := R + ACount;
+    for C := 0 to FCols - 1 do
+      FCells[IndexOf(C, R)] := FCells[IndexOf(C, SrcRow)];
+  end;
+
+  // Blank the vacated bottom rows.
+  LBlank := BlankCell;
+  for R := FScrollBottom - ACount + 1 to FScrollBottom do
+    for C := 0 to FCols - 1 do
+      FCells[IndexOf(C, R)] := LBlank;
+
+  for R := FScrollTop to FScrollBottom do
+    MarkRowDirty(R);
+end;
+
+procedure TScreenBuffer.ScrollDown(ACount: Integer);
+var
+  RegionHeight, R, C, SrcRow: Integer;
+  LBlank: TTerminalCell;
+begin
+  RegionHeight := FScrollBottom - FScrollTop + 1;
+  if ACount < 1 then Exit;
+  if ACount > RegionHeight then ACount := RegionHeight;
+
+  // Shift rows down within the region (bottom lines are discarded, no scrollback).
+  for R := FScrollBottom downto FScrollTop + ACount do
+  begin
+    SrcRow := R - ACount;
+    for C := 0 to FCols - 1 do
+      FCells[IndexOf(C, R)] := FCells[IndexOf(C, SrcRow)];
+  end;
+
+  // Blank the vacated top rows.
+  LBlank := BlankCell;
+  for R := FScrollTop to FScrollTop + ACount - 1 do
+    for C := 0 to FCols - 1 do
+      FCells[IndexOf(C, R)] := LBlank;
+
+  for R := FScrollTop to FScrollBottom do
+    MarkRowDirty(R);
+end;
+
+procedure TScreenBuffer.LineFeed;
+begin
+  if FCursorRow = FScrollBottom then
+    ScrollUp(1)
+  else if FCursorRow < FRows - 1 then
+  begin
+    MarkRowDirty(FCursorRow);
+    Inc(FCursorRow);
+    MarkRowDirty(FCursorRow);
+  end;
+end;
+
+procedure TScreenBuffer.ReverseLineFeed;
+begin
+  if FCursorRow = FScrollTop then
+    ScrollDown(1)
+  else if FCursorRow > 0 then
+  begin
+    MarkRowDirty(FCursorRow);
+    Dec(FCursorRow);
+    MarkRowDirty(FCursorRow);
+  end;
+end;
+
+procedure TScreenBuffer.EnterAltScreen;
+begin
+  if FAltActive then Exit;
+  FMainCells := Copy(FCells, 0, Length(FCells));
+  FSavedCursorCol := FCursorCol;
+  FSavedCursorRow := FCursorRow;
+  FAltActive := True;
+  FillAll;                 // alt screen starts blank
+  FCursorCol := 0;
+  FCursorRow := 0;
+end;
+
+procedure TScreenBuffer.ExitAltScreen;
+begin
+  if not FAltActive then Exit;
+  FCells := Copy(FMainCells, 0, Length(FMainCells));
+  SetLength(FMainCells, 0);
+  FCursorCol := FSavedCursorCol;
+  FCursorRow := FSavedCursorRow;
+  FAltActive := False;
+  ClampCursor;
+  MarkAllDirty;
+end;
+
+procedure TScreenBuffer.Resize(ACols, ARows: Integer);
+var
+  LNew: TArray<TTerminalCell>;
+  LBlank: TTerminalCell;
+  R, C, CopyCols, CopyRows: Integer;
+begin
+  if ACols < 1 then ACols := 1;
+  if ARows < 1 then ARows := 1;
+
+  SetLength(LNew, ACols * ARows);
+  LBlank := BlankCell;
+  for R := 0 to High(LNew) do
+    LNew[R] := LBlank;
+
+  // Preserve the overlapping top-left region.
+  CopyCols := FCols; if ACols < CopyCols then CopyCols := ACols;
+  CopyRows := FRows; if ARows < CopyRows then CopyRows := ARows;
+  for R := 0 to CopyRows - 1 do
+    for C := 0 to CopyCols - 1 do
+      LNew[R * ACols + C] := FCells[IndexOf(C, R)];
+
+  FCells := LNew;
+  FCols := ACols;
+  FRows := ARows;
+  FScrollTop := 0;
+  FScrollBottom := FRows - 1;
+  SetLength(FDirty, FRows);
+  ClampCursor;
+  MarkAllDirty;
+end;
+
+procedure TScreenBuffer.MarkRowDirty(ARow: Integer);
+begin
+  if (ARow >= 0) and (ARow < FRows) then
+    FDirty[ARow] := True;
+end;
+
+procedure TScreenBuffer.MarkAllDirty;
+var
+  R: Integer;
+begin
+  for R := 0 to FRows - 1 do
+    FDirty[R] := True;
+end;
+
+procedure TScreenBuffer.ResetDirty;
+var
+  R: Integer;
+begin
+  for R := 0 to FRows - 1 do
+    FDirty[R] := False;
+end;
+
+function TScreenBuffer.IsRowDirty(ARow: Integer): Boolean;
+begin
+  Result := (ARow >= 0) and (ARow < FRows) and FDirty[ARow];
+end;
+
+function TScreenBuffer.ScrollbackCount: Integer;
+begin
+  Result := FScrollback.Count;
+end;
+
+function TScreenBuffer.GetScrollbackLine(AIndex: Integer): TArray<TTerminalCell>;
+begin
+  if (AIndex >= 0) and (AIndex < FScrollback.Count) then
+    Result := FScrollback[AIndex]
+  else
+    Result := nil;
 end;
 
 function TScreenBuffer.GetCell(ACol, ARow: Integer): TTerminalCell;
