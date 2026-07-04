@@ -40,6 +40,7 @@ type
     FNotifierIndex: Integer;
     FGroupOpening: Boolean;
     FLastProjectDir: string;
+    FResolvedBackend: TTerminalBackendKind;
     procedure CreateTerminalTab(const ACaption: string; var AFrame: TframeCmdShell);
     procedure StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo:TCmdShellInfo; const AWorkDir: string);
     procedure HandleRequestProjectDir(Sender: TObject; var APath: string);
@@ -77,6 +78,7 @@ uses
   Delphi.Terminal.Settings,
   Delphi.Terminal.SavedCommands,
   Delphi.Terminal.VariableExpander,
+  Delphi.Terminal.ConPtyShell,
   Delphi.Terminal.Plugin.CommandPalette;
 
 type
@@ -195,6 +197,7 @@ begin
   OnClose := HandleFormClose;
 
   S := TerminalSettings;
+  FResolvedBackend := ResolveTerminalBackend(S.BackendSetting, TConPtyShell.IsSupported);
   if not S.ShowCmdTab and not S.ShowPwshTab and not S.ShowPowerShellTab then
     S.ShowCmdTab := True;
   WorkDir := GetInitialWorkDir;
@@ -272,6 +275,7 @@ begin
   AFrame.OnRequestProjectDir := HandleRequestProjectDir;
   AFrame.OnRequestFileDir := HandleRequestFileDir;
   AFrame.OnCommandPaletteRequested := HandleCommandPaletteRequested;
+  AFrame.BackendKind := FResolvedBackend;
 end;
 
 procedure TfrmDelphiTerminalDock.StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo:TCmdShellInfo; const AWorkDir: string);

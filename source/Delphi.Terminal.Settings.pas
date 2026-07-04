@@ -16,6 +16,7 @@ interface
 
 uses
   System.SysUtils, System.Classes,
+  Delphi.Terminal.CmdShell,
   Delphi.Terminal.SavedCommands;
 
 type
@@ -29,6 +30,7 @@ type
     FFontName: string;
     FFontSize: Integer;
     FAutoCdMode: Integer;  // 0 = active tab only, 1 = all tabs
+    FBackendSetting: TTerminalBackendSetting;
     FSavedCommands: TSavedCommandList;
   public
     constructor Create;
@@ -44,6 +46,7 @@ type
     property FontName: string read FFontName write FFontName;
     property FontSize: Integer read FFontSize write FFontSize;
     property AutoCdMode: Integer read FAutoCdMode write FAutoCdMode;
+    property BackendSetting: TTerminalBackendSetting read FBackendSetting write FBackendSetting;
     property SavedCommands: TSavedCommandList read FSavedCommands;
   end;
 
@@ -98,12 +101,14 @@ begin
   FFontName := 'Cascadia Mono';
   FFontSize := 12;
   FAutoCdMode := 0;
+  FBackendSetting := bsAuto;
 end;
 
 procedure TDelphiTerminalSettings.LoadFromRegistry(const ARegKeyBase: string);
 var
   Reg: TRegistry;
   Key: string;
+  LInt: Integer;
 begin
   Key := ARegKeyBase + '\Continuous-Delphi\delphi-terminal';
   Reg := TRegistry.Create(KEY_READ);
@@ -127,6 +132,12 @@ begin
       FFontSize := Reg.ReadInteger('FontSize');
     if Reg.ValueExists('AutoCdMode') then
       FAutoCdMode := Reg.ReadInteger('AutoCdMode');
+    if Reg.ValueExists('BackendSetting') then
+    begin
+      LInt := Reg.ReadInteger('BackendSetting');
+      if (LInt >= Ord(Low(TTerminalBackendSetting))) and (LInt <= Ord(High(TTerminalBackendSetting))) then
+        FBackendSetting := TTerminalBackendSetting(LInt);
+    end;
     if Reg.ValueExists('SavedCommands') then
       FSavedCommands.FromJSON(Reg.ReadString('SavedCommands'));
     Reg.CloseKey;
@@ -154,6 +165,7 @@ begin
     Reg.WriteString('FontName', FFontName);
     Reg.WriteInteger('FontSize', FFontSize);
     Reg.WriteInteger('AutoCdMode', FAutoCdMode);
+    Reg.WriteInteger('BackendSetting', Ord(FBackendSetting));
     Reg.WriteString('SavedCommands', FSavedCommands.ToJSON);
     Reg.CloseKey;
   finally

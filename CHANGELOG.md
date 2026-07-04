@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.83.0
+- Added a terminal backend setting (Automatic / ConPTY / Legacy pipes) on the Tools > Options page, persisted to the registry; the dock form resolves it and applies it to each terminal tab
+[#60](https://github.com/continuous-delphi/delphi-terminal/issues/60)
+
 ## v1.3.82.0
 - Added pure backend-selection logic (ResolveTerminalBackend): honors forced Legacy/ConPTY, falls back to legacy when ConPTY is unavailable, and keeps Auto on legacy for now
 [#59](https://github.com/continuous-delphi/delphi-terminal/issues/59)

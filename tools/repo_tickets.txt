@@ -985,6 +985,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: backend setting persistence and options-page UI
 Issue: #60
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 2. The persistence + UI half of backend selection. Effort: S. Verify: manual.
