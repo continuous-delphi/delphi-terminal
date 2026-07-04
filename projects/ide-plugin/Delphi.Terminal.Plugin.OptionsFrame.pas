@@ -198,7 +198,7 @@ begin
   FCboAutoCd.Items.Add('All tabs');
   Inc(Y, 36);
 
-  CreateLabel(Self, Y + 3, 'Terminal backend (on next restart):');
+  CreateLabel(Self, Y + 3, 'Terminal backend:');
   FCboBackend := TComboBox.Create(Self);
   FCboBackend.Parent := Self;
   FCboBackend.Left := Col2;
