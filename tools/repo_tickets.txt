@@ -1282,6 +1282,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: performance pass on large output / rapid redraws (post-2.0)
 Issue: #77
+Status: closed
 Labels: enhancement, conpty
 Body:
 Post-2.0 follow-up. Profile and optimize the reader -> parser -> renderer path

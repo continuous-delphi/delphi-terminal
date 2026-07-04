@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.104.0
+- Output rendering is now coalesced to ~60fps on a render timer instead of one parse+paint pass per reader chunk. Under heavy output this cuts render passes ~50x (measured: 14-18k -> ~300 for a 50k-line dump), so the UI stays responsive during floods; memory remains bounded. Benefits both the ConPTY and legacy renderers.
+[#77](https://github.com/continuous-delphi/delphi-terminal/issues/77)
+
 ## v2.0.103.0
 - Demo profiler: measures the ConPTY backend explicitly (independent of the DEBUG-gated default), increased the between-run settle for WSL's VM restart, and embeds the shared version resource so CSVs are version-keyed.
 - RunCommandLine now uses a backend-appropriate line ending (CR for ConPTY, CRLF for the legacy pipe shell) so injected commands submit correctly on either backend.

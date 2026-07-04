@@ -65,7 +65,7 @@ type
     FHistory: TCommandHistory;
     FAnsiParser: TAnsiParser;
     FOutputBuffer: TStringBuilder;
-    FOutputRenderPending: Boolean;
+    FRenderTimer: TTimer;   // coalesces output into ~60fps render passes (#77)
     FCmdShellInfo: TCmdShellInfo;
     FWorkDir: string;
     FShellUnavailable: Boolean;
@@ -92,6 +92,7 @@ type
     procedure HandleClearClick(Sender: TObject);
     procedure HandleStopClick(Sender: TObject);
     procedure FlushOutputBuffer;
+    procedure HandleRenderTick(Sender: TObject);
     procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
     procedure TrimOutput;
     procedure BuildControls;
@@ -154,9 +155,9 @@ uses
 {$R *.dfm}
 
 const
-  WM_RENDER_OUTPUT = WM_APP + 101;
   WM_SYNC_TERM_SIZE = WM_APP + 102;
   MAX_RENDER_CHARS_PER_PASS = 65536;
+  RENDER_INTERVAL_MS = 16;          // coalesce output and repaint at ~60fps (#77)
   STOP_RESTART_INTERVAL_MS = 400;   // a second Stop within this window restarts the shell
 
 {.$DEFINE PTY_CAPTURE}  // Diagnostic: raw ConPTY stream capture to <exe dir>\pty-capture.log. Enable (remove the dot) and rebuild to capture.
@@ -218,6 +219,14 @@ begin
   FHistory := TCommandHistory.Create;
   FAnsiParser := TAnsiParser.Create;
   FOutputBuffer := TStringBuilder.Create;
+
+  // Output is coalesced and rendered on this timer (~60fps) instead of once per
+  // reader chunk, so a burst of tiny chunks becomes one parse+paint pass (#77).
+  FRenderTimer := TTimer.Create(Self);
+  FRenderTimer.Enabled := False;
+  FRenderTimer.Interval := RENDER_INTERVAL_MS;
+  FRenderTimer.OnTimer := HandleRenderTick;
+
   // The backend (legacy pipe or ConPTY) is created on demand in StartShell,
   // chosen by BackendKind (default: legacy pipe).
 end;
@@ -377,11 +386,18 @@ begin
   if Assigned(FOnOutputReceived) then
     FOnOutputReceived(Self, Length(AText));
   FOutputBuffer.Append(AText);
-  if not FOutputRenderPending then
-  begin
-    FOutputRenderPending := True;
-    PostMessage(Handle, WM_RENDER_OUTPUT, 0, 0);
-  end;
+  // Render on the next timer tick; multiple chunks arriving within the interval
+  // are coalesced into a single parse + paint pass.
+  if not FRenderTimer.Enabled then
+    FRenderTimer.Enabled := True;
+end;
+
+procedure TframeCmdShell.HandleRenderTick(Sender: TObject);
+begin
+  if FOutputBuffer.Length = 0 then
+    FRenderTimer.Enabled := False   // idle: stop ticking until more output arrives
+  else
+    FlushOutputBuffer;              // leaves the timer running to drain any remainder next tick
 end;
 
 procedure TframeCmdShell.FlushOutputBuffer;
@@ -391,7 +407,9 @@ var
   Segments: TArray<TAnsiSegment>;
   Seg: TAnsiSegment;
 begin
-  FOutputRenderPending := False;
+  // Called from the render timer. Processes up to one pass worth of buffered
+  // output; any remainder is drained on the next tick (bounds per-pass work so
+  // the UI stays responsive under heavy output).
   if FOutputBuffer.Length = 0 then
     Exit;
 
@@ -412,11 +430,6 @@ begin
       FVTParser.Parse(Text);
     if Assigned(FTermView) then
       FTermView.UpdateView;
-    if FOutputBuffer.Length > 0 then
-    begin
-      FOutputRenderPending := True;
-      PostMessage(Handle, WM_RENDER_OUTPUT, 0, 0);
-    end;
     Exit;
   end;
 
@@ -438,12 +451,6 @@ begin
   TrimOutput;
 
   SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
-
-  if FOutputBuffer.Length > 0 then
-  begin
-    FOutputRenderPending := True;
-    PostMessage(Handle, WM_RENDER_OUTPUT, 0, 0);
-  end;
 end;
 
 procedure TframeCmdShell.ApplySegmentFormat(const AAttr: TAnsiAttributes);
@@ -541,13 +548,6 @@ var
   Key: Word;
   Shift: TShiftState;
 begin
-  if Message.Msg = WM_RENDER_OUTPUT then
-  begin
-    Message.Result := 0;
-    FlushOutputBuffer;
-    Exit;
-  end;
-
   if Message.Msg = WM_SYNC_TERM_SIZE then
   begin
     Message.Result := 0;
@@ -811,7 +811,7 @@ begin
   // First Stop: drop any backlog and send the interrupt (Ctrl+C / ETX).
   FProcess.DiscardQueuedOutput;
   FOutputBuffer.Clear;
-  FOutputRenderPending := False;
+  FRenderTimer.Enabled := False;
   if FBackendKind = tbConPty then
   begin
     if Assigned(FVTParser) then
@@ -825,7 +825,7 @@ end;
 procedure TframeCmdShell.ClearOutput;
 begin
   FOutputBuffer.Clear;
-  FOutputRenderPending := False;
+  FRenderTimer.Enabled := False;
   if FBackendKind = tbConPty then
   begin
     if Assigned(FVTParser) then
