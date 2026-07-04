@@ -1386,3 +1386,42 @@ Acceptance criteria:
 - [ ] When the app requests ?9001h, keyboard input is sent as win32-input-mode records; legacy VT otherwise
 - [ ] Multi-line paste into pwsh inserts as an editable block (no premature execution)
 - [ ] Existing typing / editing / TUI behavior is unaffected in both modes
+
+---
+Title: Demo: data-driven ConPTY perf profiling harness (interactive + PROFILE_COMMANDS batch)
+Issue: #81
+Status: closed
+Labels: enhancement, conpty
+Body:
+Prep work for #77 (ConPTY performance pass). Add a repeatable, data-driven
+performance profiling harness to the VCL demo so the same commands can be
+measured over time / across builds.
+
+Single source of truth: a `TProfiledCommand` record (UniqueID, Description,
+Shell, Command, EndAfterSeconds, CaptureMemory, Cols, Rows, Repeats) and a
+predefined const array. The dropdown (interactive) and the batch runner both
+iterate it.
+
+Measurement: per run, capture chars received, elapsed, chars/sec, chunk count,
+render-pass count, and memory (start/peak/end). The "done" signal is the process
+exit: bounded commands (EndAfterSeconds = 0) append `exit` and report on process
+exit; timed commands (> 0) run a fixed window then terminate and report. A
+generous safety cap covers bounded commands that hang. Captured via tiny frame
+hooks (OnOutputReceived, OnRenderPass, OnShellExited) plus a public
+RunCommandLine and a SetFixedTerminalSize override for reproducibility.
+
+Interactive mode: command dropdown + Run/Stop + a results memo, appending to a
+rolling CSV. Batch mode ({$DEFINE PROFILE_COMMANDS}, demo-only): on launch,
+auto-run the full array x Repeats sequentially, write
+ProfileResults{yyyymmdd-hhnnss}.csv, then terminate the app (scriptable). Skip
+unavailable shells (reason=unavailable); exit code reflects success.
+
+CSV is keyed by UniqueID + version (read from the exe version resource) so runs
+can be diffed by version; a `reason` column (exit/timed/capped/unavailable) flags
+truncated runs. All harness/batch/CSV logic lives in the demo; the plugin is
+untouched.
+
+Acceptance criteria:
+- [ ] Interactive: pick a command, Run, see stats; result appended to the CSV
+- [ ] Batch build auto-runs the full list and writes a timestamped CSV, then exits
+- [ ] Bounded (exit-signaled) and timed (windowed) commands both report correctly

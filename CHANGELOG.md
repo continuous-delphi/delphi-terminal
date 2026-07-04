@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.102.0
+- Demo: added a data-driven ConPTY performance-profiling harness (prep for #77). A Profiler tab runs a predefined command set (throughput dumps, huge line, full-screen redraws) measuring chars/sec, chunk/render-pass counts, and memory, using process-exit as the "done" signal (timed window for non-terminating commands). Build with the PROFILE_COMMANDS define for an unattended batch that runs the whole set and writes a timestamped, version-keyed CSV, then exits.
+[#81](https://github.com/continuous-delphi/delphi-terminal/issues/81)
+
 ## v2.0.101.0 -- ConPTY 2.0
 
 Major release: delphi-terminal now embeds a real Windows pseudoconsole

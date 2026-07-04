@@ -38,6 +38,7 @@ uses
 
 type
   TRequestPathEvent = procedure(Sender: TObject; var APath: string) of object;
+  TProfileDataEvent = procedure(Sender: TObject; ACharCount: Integer) of object;
 
   TframeCmdShell = class(TFrame)
   private
@@ -52,6 +53,8 @@ type
     FScreen: TScreenBuffer;               // ConPTY screen model (nil until ConPTY starts)
     FVTParser: TVTParser;                 // ConPTY VT parser driving FScreen
     FPtySize: TTerminalSize;              // last size pushed to the pseudoconsole
+    FFixedSize: TTerminalSize;            // profiling override; pins buffer/PTY to a known size
+    FHasFixedSize: Boolean;
     FLastStopTick: Cardinal;              // GetTickCount of the last Stop (for double-Stop restart)
     FPanelInput: TPanel;
     FCmdLabel: TEdit;
@@ -69,6 +72,10 @@ type
     FOnRequestProjectDir: TRequestPathEvent;
     FOnRequestFileDir: TRequestPathEvent;
     FOnCommandPaletteRequested: TNotifyEvent;
+    FOnOutputReceived: TProfileDataEvent;   // profiling hooks (demo perf harness)
+    FOnRenderPass: TNotifyEvent;
+    FOnShellExited: TNotifyEvent;
+    function GetShellAvailable: Boolean;
 
     procedure HandleOutput(Sender: TObject; const AText: string);
     procedure HandleProcessExit(Sender: TObject);
@@ -115,11 +122,26 @@ type
     procedure InsertCommandText(const AText: string);
     procedure ShowMessage(const AText: string);
 
+    ///<summary>Writes AText followed by Enter to the running shell (used by the perf harness).</summary>
+    procedure RunCommandLine(const AText: string);
+    ///<summary>Pins the terminal/PTY to a fixed size for reproducible profiling; auto-resize is suppressed until cleared.</summary>
+    procedure SetFixedTerminalSize(ACols, ARows: Integer);
+    ///<summary>Restores automatic (view-driven) terminal sizing.</summary>
+    procedure ClearFixedTerminalSize;
+
     property BackendKind: TTerminalBackendKind read FBackendKind write FBackendKind;
     property ShellType:TCmdShellType read GetShellType;
+    ///<summary>True when a shell process is running (not flagged unavailable).</summary>
+    property ShellAvailable: Boolean read GetShellAvailable;
     property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
     property OnRequestFileDir: TRequestPathEvent read FOnRequestFileDir write FOnRequestFileDir;
     property OnCommandPaletteRequested: TNotifyEvent read FOnCommandPaletteRequested write FOnCommandPaletteRequested;
+    ///<summary>Fired for each output chunk with its char count (perf harness).</summary>
+    property OnOutputReceived: TProfileDataEvent read FOnOutputReceived write FOnOutputReceived;
+    ///<summary>Fired once per render pass / flush (perf harness).</summary>
+    property OnRenderPass: TNotifyEvent read FOnRenderPass write FOnRenderPass;
+    ///<summary>Fired when the shell process exits (perf harness / restart UI).</summary>
+    property OnShellExited: TNotifyEvent read FOnShellExited write FOnShellExited;
   end;
 
 implementation
@@ -352,6 +374,8 @@ begin
   if FBackendKind = tbConPty then
     PtyCapture('OUT ' + Name, AText);
   {$ENDIF}
+  if Assigned(FOnOutputReceived) then
+    FOnOutputReceived(Self, Length(AText));
   FOutputBuffer.Append(AText);
   if not FOutputRenderPending then
   begin
@@ -370,6 +394,9 @@ begin
   FOutputRenderPending := False;
   if FOutputBuffer.Length = 0 then
     Exit;
+
+  if Assigned(FOnRenderPass) then
+    FOnRenderPass(Self);
 
   Count := FOutputBuffer.Length;
   if Count > MAX_RENDER_CHARS_PER_PASS then
@@ -491,6 +518,8 @@ begin
   FEditInput.ReadOnly := True;
   FEditInput.Text := '';
   FEditInput.TextHint := 'Press Enter to restart';
+  if Assigned(FOnShellExited) then
+    FOnShellExited(Self);
 end;
 
 procedure TframeCmdShell.HandleInputKeyPress(Sender: TObject; var Key: Char);
@@ -873,6 +902,9 @@ end;
 
 function TframeCmdShell.CurrentTerminalSize: TTerminalSize;
 begin
+  // A profiling override pins the size for reproducibility.
+  if FHasFixedSize then
+    Exit(FFixedSize);
   // Derive cols/rows from the view's font metrics and client area; fall back to a
   // sane default before the view has a handle (e.g. plugin dock not yet shown).
   if (FTermView <> nil) and FTermView.HandleAllocated and (FTermView.VisibleCols > 1) and (FTermView.VisibleRows > 1) then
@@ -932,6 +964,35 @@ end;
 procedure TframeCmdShell.HandleTermViewResize(Sender: TObject);
 begin
   SyncTerminalSize;
+end;
+
+function TframeCmdShell.GetShellAvailable: Boolean;
+begin
+  Result := (not FShellUnavailable) and Assigned(FProcess);
+end;
+
+procedure TframeCmdShell.RunCommandLine(const AText: string);
+begin
+  if Assigned(FProcess) and FProcess.Running then
+    FProcess.WriteInput(AText + #13);
+end;
+
+procedure TframeCmdShell.SetFixedTerminalSize(ACols, ARows: Integer);
+begin
+  if ACols < 1 then ACols := 1;
+  if ARows < 1 then ARows := 1;
+  FFixedSize.Cols := ACols;
+  FFixedSize.Rows := ARows;
+  FHasFixedSize := True;
+  SyncTerminalSize;   // apply immediately to the model + PTY
+end;
+
+procedure TframeCmdShell.ClearFixedTerminalSize;
+begin
+  if not FHasFixedSize then
+    Exit;
+  FHasFixedSize := False;
+  SyncTerminalSize;   // fall back to the view-derived size
 end;
 
 procedure TframeCmdShell.HandleTermViewPaste(Sender: TObject);
