@@ -67,6 +67,7 @@ type
     FScrollbackLimit: Integer;
     FCursorVisible: Boolean;
     FBracketedPaste: Boolean;
+    FWrapPending: Boolean;   // DECAWM: cursor sits past the last column awaiting the next char
     FDirty: TArray<Boolean>;
     function IndexOf(ACol, ARow: Integer): Integer; inline;
     function BlankCell: TTerminalCell;
@@ -241,10 +242,12 @@ begin
   FillAll;
   FCursorCol := 0;
   FCursorRow := 0;
+  FWrapPending := False;
 end;
 
 procedure TScreenBuffer.SetCursor(ACol, ARow: Integer);
 begin
+  FWrapPending := False;       // any explicit cursor move cancels a pending wrap
   MarkRowDirty(FCursorRow);   // repaint the row the cursor leaves
   FCursorCol := ACol;
   FCursorRow := ARow;
@@ -256,6 +259,18 @@ procedure TScreenBuffer.PutChar(ACh: Char);
 var
   Idx: Integer;
 begin
+  // Deferred wrap (DECAWM): a char written to the last column leaves the cursor
+  // parked there; the wrap is performed here, only when the next char arrives.
+  if FWrapPending then
+  begin
+    FWrapPending := False;
+    FCursorCol := 0;
+    if FCursorRow = FScrollBottom then
+      ScrollUp(1)
+    else if FCursorRow < FRows - 1 then
+      Inc(FCursorRow);
+  end;
+
   if (FCursorCol >= 0) and (FCursorCol < FCols) and (FCursorRow >= 0) and (FCursorRow < FRows) then
   begin
     Idx := IndexOf(FCursorCol, FCursorRow);
@@ -266,14 +281,10 @@ begin
     MarkRowDirty(FCursorRow);
   end;
 
-  Inc(FCursorCol);
-  if FCursorCol >= FCols then
-  begin
-    FCursorCol := 0;
-    Inc(FCursorRow);
-    if FCursorRow >= FRows then
-      FCursorRow := FRows - 1;   // clamp at the bottom (callers scroll via LineFeed)
-  end;
+  if FCursorCol >= FCols - 1 then
+    FWrapPending := True         // reached the last column: defer the wrap
+  else
+    Inc(FCursorCol);
 end;
 
 procedure TScreenBuffer.WriteText(const AText: string);
@@ -429,6 +440,7 @@ end;
 
 procedure TScreenBuffer.LineFeed;
 begin
+  FWrapPending := False;
   if FCursorRow = FScrollBottom then
     ScrollUp(1)
   else if FCursorRow < FRows - 1 then
@@ -441,6 +453,7 @@ end;
 
 procedure TScreenBuffer.ReverseLineFeed;
 begin
+  FWrapPending := False;
   if FCursorRow = FScrollTop then
     ScrollDown(1)
   else if FCursorRow > 0 then
@@ -461,6 +474,7 @@ begin
   FillAll;                 // alt screen starts blank
   FCursorCol := 0;
   FCursorRow := 0;
+  FWrapPending := False;
 end;
 
 procedure TScreenBuffer.ExitAltScreen;
@@ -471,6 +485,7 @@ begin
   FCursorCol := FSavedCursorCol;
   FCursorRow := FSavedCursorRow;
   FAltActive := False;
+  FWrapPending := False;
   ClampCursor;
   MarkAllDirty;
 end;
@@ -502,6 +517,7 @@ begin
   FScrollTop := 0;
   FScrollBottom := FRows - 1;
   SetLength(FDirty, FRows);
+  FWrapPending := False;
   ClampCursor;
   MarkAllDirty;
 end;

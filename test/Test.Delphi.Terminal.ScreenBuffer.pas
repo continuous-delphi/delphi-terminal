@@ -15,6 +15,9 @@ type
     [Test] procedure EraseInLine_ToStart_Clears;
     [Test] procedure Attributes_AppliedToWrittenCells;
     [Test] procedure PutChar_WrapsAtEndOfRow;
+    [Test] procedure DeferredWrap_HoldsCursorAtLastColumn;
+    [Test] procedure DeferredWrap_NextCharPerformsWrap;
+    [Test] procedure DeferredWrap_CursorMoveCancelsPending;
     [Test] procedure ClearAll_BlanksAndHomes;
     [Test] procedure EraseInDisplay_ToEnd_Clears;
     [Test] procedure EraseInDisplay_Whole_KeepsCursor;
@@ -129,6 +132,53 @@ begin
     Assert.IsTrue(LBuf.GetCell(2, 0).Ch = 'C', 'row 0 col 2');
     Assert.IsTrue(LBuf.GetCell(0, 1).Ch = 'D', 'wrapped to row 1 col 0');
     Assert.IsTrue((LBuf.CursorCol = 1) and (LBuf.CursorRow = 1), 'cursor after wrap');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.DeferredWrap_HoldsCursorAtLastColumn;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(3, 3);
+  try
+    LBuf.WriteText('ABC');   // fills row 0 exactly; the wrap must be deferred
+    Assert.IsTrue(LBuf.GetCell(2, 0).Ch = 'C', 'C at row 0 col 2');
+    Assert.IsTrue((LBuf.CursorCol = 2) and (LBuf.CursorRow = 0), 'cursor parked at last column, not wrapped');
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = ' ', 'row 1 still blank');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.DeferredWrap_NextCharPerformsWrap;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(3, 3);
+  try
+    LBuf.WriteText('ABC');   // pending wrap
+    LBuf.WriteText('D');     // now the wrap happens
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = 'D', 'D wrapped to row 1 col 0');
+    Assert.IsTrue((LBuf.CursorCol = 1) and (LBuf.CursorRow = 1), 'cursor advanced on row 1');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.DeferredWrap_CursorMoveCancelsPending;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(3, 3);
+  try
+    LBuf.WriteText('ABC');   // pending wrap
+    LBuf.SetCursor(0, 0);    // an explicit move must cancel the pending wrap
+    LBuf.WriteText('X');     // overwrites A on row 0, no wrap to row 1
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'X', 'X overwrote A on row 0');
+    Assert.IsTrue((LBuf.CursorCol = 1) and (LBuf.CursorRow = 0), 'cursor stayed on row 0');
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = ' ', 'row 1 untouched');
   finally
     LBuf.Free;
   end;

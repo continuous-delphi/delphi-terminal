@@ -1286,3 +1286,39 @@ under heavy output and rapid redraws. Effort: M. Verify: manual.
 Acceptance criteria:
 - [ ] Sustained heavy output stays responsive
 - [ ] No unbounded memory growth
+
+---
+Title: ConPTY: deferred line wrap (DECAWM) and reliable PTY size sync
+Issue: #78
+Status: closed
+Labels: bug, conpty
+Body:
+Found during #70 acceptance testing. In ConPTY mode, editing a line that reaches
+the right margin corrupts the display. Repro (VCL demo, pwsh tab): type `get` so
+PSReadLine shows an inline prediction that fills past the right edge, then press
+Backspace -- a spurious newline is inserted and the redraw is misplaced (the
+prompt keeps `get` and the remainder of the prediction drops to a new line).
+
+Two root causes:
+
+1. Immediate vs. deferred wrap. `TScreenBuffer.PutChar` advances to the next
+   line the instant the cursor passes the last column. Real terminals (DECAWM)
+   use a pending-wrap state: after writing the last column the cursor stays
+   there, and the wrap happens only when the next printable arrives; any cursor
+   movement (CR, BS, CUP, LF) cancels the pending wrap. Without this, an app that
+   fills a line exactly and then repositions the cursor desyncs by one row, so
+   its erase/move sequences land on the wrong line.
+
+2. PTY size can remain at the 80x24 startup fallback. The session starts before
+   the view has its real size; the screen buffer can be resized without the
+   pseudoconsole (or a later sync early-returns because the buffer already
+   matches), leaving the shell wrapping at 80 columns in a wider window.
+
+Fix: implement pending-wrap in the screen model (cleared on cursor movement /
+line feed); track the last size sent to the pseudoconsole and always push the
+current view size when it differs, plus a post-layout size sync after start.
+
+Acceptance criteria:
+- [ ] Editing a wrapped prediction line in pwsh (type + Backspace) no longer inserts spurious newlines
+- [ ] The shell wraps at the view's actual width; resizing reflows correctly
+- [ ] Screen-model unit tests cover deferred wrap and its cancellation on cursor movement

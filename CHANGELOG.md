@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.95.0
+- Fixed ConPTY display corruption when editing lines that reach the right margin (e.g. backspacing over a pwsh prediction): the screen model now uses deferred (pending) line wrap like a real terminal, and the pseudoconsole size reliably tracks the view's actual width so the shell wraps at the right column.
+[#78](https://github.com/continuous-delphi/delphi-terminal/issues/78)
+
 ## v1.3.94.0
 - ConPTY mode is now interactive: TTerminalView takes keyboard focus and keystrokes are translated to VT sequences and sent to the shell (printables, Enter, Backspace, Tab/Shift+Tab, Esc, arrows, Home/End, Insert/Delete, PgUp/PgDn, Ctrl+letter incl. Ctrl+C/L/D). The line-entry TEdit is hidden in ConPTY mode; command history remains legacy line-mode only.
 [#70](https://github.com/continuous-delphi/delphi-terminal/issues/70)

@@ -51,6 +51,7 @@ type
     FTermView: TTerminalView;             // ConPTY backend renderer
     FScreen: TScreenBuffer;               // ConPTY screen model (nil until ConPTY starts)
     FVTParser: TVTParser;                 // ConPTY VT parser driving FScreen
+    FPtySize: TTerminalSize;              // last size pushed to the pseudoconsole
     FPanelInput: TPanel;
     FCmdLabel: TEdit;
     FEditInput: TEdit;
@@ -129,6 +130,7 @@ uses
 
 const
   WM_RENDER_OUTPUT = WM_APP + 101;
+  WM_SYNC_TERM_SIZE = WM_APP + 102;
   MAX_RENDER_CHARS_PER_PASS = 65536;
 
 constructor TframeCmdShell.Create(AOwner: TComponent);
@@ -458,6 +460,13 @@ begin
   begin
     Message.Result := 0;
     FlushOutputBuffer;
+    Exit;
+  end;
+
+  if Message.Msg = WM_SYNC_TERM_SIZE then
+  begin
+    Message.Result := 0;
+    SyncTerminalSize;
     Exit;
   end;
 
@@ -813,12 +822,22 @@ begin
   if (FBackendKind <> tbConPty) or (FScreen = nil) or (FTermView = nil) then
     Exit;
   LSize := CurrentTerminalSize;
-  if (LSize.Cols = FScreen.Cols) and (LSize.Rows = FScreen.Rows) then
-    Exit;
-  FScreen.Resize(LSize.Cols, LSize.Rows);
-  FTermView.RefreshAll;
-  if Assigned(FProcess) and FProcess.Running then
+
+  // Resize the model to match the view.
+  if (LSize.Cols <> FScreen.Cols) or (LSize.Rows <> FScreen.Rows) then
+  begin
+    FScreen.Resize(LSize.Cols, LSize.Rows);
+    FTermView.RefreshAll;
+  end;
+
+  // Push to the pseudoconsole whenever it differs from the last size we sent -- this
+  // is tracked independently of the buffer so an initial resize that happened before
+  // the process was running (leaving the PTY at the 80x24 fallback) is still corrected.
+  if Assigned(FProcess) and FProcess.Running and ((LSize.Cols <> FPtySize.Cols) or (LSize.Rows <> FPtySize.Rows)) then
+  begin
     FProcess.Resize(LSize);
+    FPtySize := LSize;
+  end;
 end;
 
 procedure TframeCmdShell.HandleTermViewResize(Sender: TObject);
@@ -838,15 +857,27 @@ begin
 end;
 
 procedure TframeCmdShell.StartShell(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
+var
+  LStartSize: TTerminalSize;
 begin
   FCmdShellInfo := ACmdShellInfo;
   FWorkDir := AWorkDir;
   FShellUnavailable := False;
   RecreateBackend;
+  FPtySize.Cols := 0;   // force the first sync to (re)send the real size
+  FPtySize.Rows := 0;
   if FBackendKind = tbConPty then
     EnsureConPtyModel;
+  LStartSize := CurrentTerminalSize;
   try
-    FProcess.Start(ACmdShellInfo, AWorkDir, CurrentTerminalSize);
+    FProcess.Start(ACmdShellInfo, AWorkDir, LStartSize);
+    if FBackendKind = tbConPty then
+    begin
+      FPtySize := LStartSize;
+      // The view may not have its real size yet (e.g. dock/tab not shown); re-sync
+      // once layout settles so the pseudoconsole matches the actual view width.
+      PostMessage(Handle, WM_SYNC_TERM_SIZE, 0, 0);
+    end;
   except
     on E: Exception do
     begin
