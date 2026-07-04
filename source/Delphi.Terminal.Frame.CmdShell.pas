@@ -72,6 +72,11 @@ type
     procedure HandleProcessExit(Sender: TObject);
     procedure HandleInputKeyPress(Sender: TObject; var Key: Char);
     procedure HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure HandleTermViewKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure HandleTermViewKeyPress(Sender: TObject; var Key: Char);
+    function FindPageControl: TPageControl;
+    procedure SwitchToTab(AIndex: Integer);
+    procedure CycleTab(AForward: Boolean);
     procedure HandleProjectDirClick(Sender: TObject);
     procedure HandleFileDirClick(Sender: TObject);
     procedure HandleCommandsClick(Sender: TObject);
@@ -117,6 +122,7 @@ implementation
 
 uses
   Vcl.Clipbrd,
+  Delphi.Terminal.KeyInput,
   Delphi.Terminal.ConPtyShell;
 
 {$R *.dfm}
@@ -275,6 +281,8 @@ begin
   FTermView.OnClearRequested := HandleClearClick;
   FTermView.OnInterruptRequested := HandleStopClick;
   FTermView.OnPasteRequested := HandleTermViewPaste;
+  FTermView.OnKeyDown := HandleTermViewKeyDown;
+  FTermView.OnKeyPress := HandleTermViewKeyPress;
 end;
 
 procedure TframeCmdShell.HandleOutput(Sender: TObject; const AText: string);
@@ -467,63 +475,61 @@ begin
   inherited WndProc(Message);
 end;
 
-procedure TframeCmdShell.HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-
-  function FindPageControl: TPageControl;
-  var
-    P: TWinControl;
+function TframeCmdShell.FindPageControl: TPageControl;
+var
+  P: TWinControl;
+begin
+  Result := nil;
+  P := Self.Parent;
+  while P <> nil do
   begin
-    Result := nil;
-    P := Self.Parent;
-    while P <> nil do
+    if P is TPageControl then
+      Exit(TPageControl(P));
+    if P is TTabSheet then
     begin
-      if P is TPageControl then
-        Exit(TPageControl(P));
-      if P is TTabSheet then
-      begin
-        if TTabSheet(P).PageControl <> nil then
-          Exit(TTabSheet(P).PageControl);
-      end;
-      P := P.Parent;
+      if TTabSheet(P).PageControl <> nil then
+        Exit(TTabSheet(P).PageControl);
     end;
+    P := P.Parent;
   end;
+end;
 
-  procedure SwitchToTab(AIndex: Integer);
-  var
-    PC: TPageControl;
-    Frame: TframeCmdShell;
-    I: Integer;
-  begin
-    PC := FindPageControl;
-    if (PC = nil) or (AIndex < 0) or (AIndex >= PC.PageCount) then
-      Exit;
-    PC.ActivePageIndex := AIndex;
-    for I := 0 to PC.ActivePage.ControlCount - 1 do
-      if PC.ActivePage.Controls[I] is TframeCmdShell then
-      begin
-        Frame := TframeCmdShell(PC.ActivePage.Controls[I]);
-        Frame.FocusInput;
-        Break;
-      end;
-    Key := 0;
-  end;
+procedure TframeCmdShell.SwitchToTab(AIndex: Integer);
+var
+  PC: TPageControl;
+  Frame: TframeCmdShell;
+  I: Integer;
+begin
+  PC := FindPageControl;
+  if (PC = nil) or (AIndex < 0) or (AIndex >= PC.PageCount) then
+    Exit;
+  PC.ActivePageIndex := AIndex;
+  for I := 0 to PC.ActivePage.ControlCount - 1 do
+    if PC.ActivePage.Controls[I] is TframeCmdShell then
+    begin
+      Frame := TframeCmdShell(PC.ActivePage.Controls[I]);
+      Frame.FocusInput;
+      Break;
+    end;
+end;
 
-  procedure CycleTab(AForward: Boolean);
-  var
-    PC: TPageControl;
-    Idx: Integer;
-  begin
-    PC := FindPageControl;
-    if (PC = nil) or (PC.PageCount < 2) then
-      Exit;
-    Idx := PC.ActivePageIndex;
-    if AForward then
-      Idx := (Idx + 1) mod PC.PageCount
-    else
-      Idx := (Idx - 1 + PC.PageCount) mod PC.PageCount;
-    SwitchToTab(Idx);
-  end;
+procedure TframeCmdShell.CycleTab(AForward: Boolean);
+var
+  PC: TPageControl;
+  Idx: Integer;
+begin
+  PC := FindPageControl;
+  if (PC = nil) or (PC.PageCount < 2) then
+    Exit;
+  Idx := PC.ActivePageIndex;
+  if AForward then
+    Idx := (Idx + 1) mod PC.PageCount
+  else
+    Idx := (Idx - 1 + PC.PageCount) mod PC.PageCount;
+  SwitchToTab(Idx);
+end;
 
+procedure TframeCmdShell.HandleInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key = VK_UP then
   begin
@@ -538,9 +544,15 @@ begin
     Key := 0;
   end
   else if (Key = VK_TAB) and (ssCtrl in Shift) then
-    CycleTab(not (ssShift in Shift))
+  begin
+    CycleTab(not (ssShift in Shift));
+    Key := 0;
+  end
   else if (ssCtrl in Shift) and (Key in [Ord('1') .. Ord('9')]) then
-    SwitchToTab(Key - Ord('1'))
+  begin
+    SwitchToTab(Key - Ord('1'));
+    Key := 0;
+  end
   else if (Key = Ord('L')) and (ssCtrl in Shift) then
   begin
     ClearOutput;
@@ -558,6 +570,61 @@ begin
       FOnCommandPaletteRequested(Self);
     Key := 0;
   end;
+end;
+
+procedure TframeCmdShell.HandleTermViewKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+var
+  LSeq: string;
+begin
+  // UI navigation stays at the frame level even when the view has focus.
+  if (Key = VK_TAB) and (ssCtrl in Shift) then
+  begin
+    CycleTab(not (ssShift in Shift));
+    Key := 0;
+    Exit;
+  end
+  else if (ssCtrl in Shift) and (Key in [Ord('1') .. Ord('9')]) then
+  begin
+    SwitchToTab(Key - Ord('1'));
+    Key := 0;
+    Exit;
+  end
+  else if (Key = Ord('P')) and (ssCtrl in Shift) then
+  begin
+    if Assigned(FOnCommandPaletteRequested) then
+      FOnCommandPaletteRequested(Self);
+    Key := 0;
+    Exit;
+  end;
+
+  if not (Assigned(FProcess) and FProcess.Running) then
+  begin
+    // Process has exited: Enter restarts the session (mirrors the legacy line-mode path).
+    if (Key = VK_RETURN) and not FShellUnavailable then
+    begin
+      ClearOutput;
+      StartShell(FCmdShellInfo, FWorkDir);
+      Key := 0;
+    end;
+    Exit;
+  end;
+
+  // Everything else is translated to a VT sequence and sent to the shell. Printable
+  // characters return '' here and are handled by HandleTermViewKeyPress instead.
+  LSeq := KeyToVT(Key, Shift);
+  if LSeq <> '' then
+  begin
+    FProcess.WriteInput(LSeq);
+    Key := 0;
+  end;
+end;
+
+procedure TframeCmdShell.HandleTermViewKeyPress(Sender: TObject; var Key: Char);
+begin
+  // Printable characters (control keys were already consumed in KeyDown).
+  if (Key >= ' ') and Assigned(FProcess) and FProcess.Running then
+    FProcess.WriteInput(Key);
+  Key := #0;
 end;
 
 procedure TframeCmdShell.HandleCommandsClick(Sender: TObject);
@@ -654,7 +721,12 @@ end;
 
 procedure TframeCmdShell.FocusInput;
 begin
-  if FEditInput.CanFocus then
+  if (FBackendKind = tbConPty) and FTermView.Visible then
+  begin
+    if FTermView.CanFocus then
+      FTermView.SetFocus;
+  end
+  else if FEditInput.CanFocus then
     FEditInput.SetFocus;
 end;
 
@@ -694,9 +766,11 @@ begin
   FProcess.OnOutput := HandleOutput;
   FProcess.OnProcessExit := HandleProcessExit;
 
-  // Show the renderer for the active backend; hide the other.
+  // Show the renderer for the active backend; hide the other. In ConPTY mode the
+  // keystrokes go straight to the view, so the line-entry panel is hidden.
   FRichOutput.Visible := FBackendKind <> tbConPty;
   FTermView.Visible := FBackendKind = tbConPty;
+  FPanelInput.Visible := FBackendKind <> tbConPty;
 end;
 
 function TframeCmdShell.CurrentTerminalSize: TTerminalSize;

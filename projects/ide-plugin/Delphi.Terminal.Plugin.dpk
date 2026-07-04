@@ -67,6 +67,7 @@ contains
   Delphi.Terminal.VTParser in '..\..\source\Delphi.Terminal.VTParser.pas',
   Delphi.Terminal.TerminalColors in '..\..\source\Delphi.Terminal.TerminalColors.pas',
   Delphi.Terminal.TerminalSelection in '..\..\source\Delphi.Terminal.TerminalSelection.pas',
+  Delphi.Terminal.KeyInput in '..\..\source\Delphi.Terminal.KeyInput.pas',
   Delphi.Terminal.TerminalView in '..\..\source\Delphi.Terminal.TerminalView.pas',
   Delphi.Terminal.Plugin.SavedCommandsEditor in 'Delphi.Terminal.Plugin.SavedCommandsEditor.pas',
   Delphi.Terminal.Plugin.CommandPalette in 'Delphi.Terminal.Plugin.CommandPalette.pas';

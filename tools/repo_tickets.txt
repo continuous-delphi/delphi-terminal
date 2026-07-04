@@ -1169,6 +1169,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: raw input path (key to VT, focusable view)
 Issue: #70
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 6. Effort: M. Verify: manual.

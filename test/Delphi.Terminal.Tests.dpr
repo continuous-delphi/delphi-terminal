@@ -49,13 +49,15 @@ uses
   Delphi.Terminal.VTParser in '..\source\Delphi.Terminal.VTParser.pas',
   Delphi.Terminal.TerminalColors in '..\source\Delphi.Terminal.TerminalColors.pas',
   Delphi.Terminal.TerminalSelection in '..\source\Delphi.Terminal.TerminalSelection.pas',
+  Delphi.Terminal.KeyInput in '..\source\Delphi.Terminal.KeyInput.pas',
   Test.Delphi.Terminal.SavedCommands in 'Test.Delphi.Terminal.SavedCommands.pas',
   Test.Delphi.Terminal.VariableExpander in 'Test.Delphi.Terminal.VariableExpander.pas',
   Test.Delphi.Terminal.ConPty in 'Test.Delphi.Terminal.ConPty.pas',
   Test.Delphi.Terminal.ScreenBuffer in 'Test.Delphi.Terminal.ScreenBuffer.pas',
   Test.Delphi.Terminal.VTParser in 'Test.Delphi.Terminal.VTParser.pas',
   Test.Delphi.Terminal.TerminalColors in 'Test.Delphi.Terminal.TerminalColors.pas',
-  Test.Delphi.Terminal.TerminalSelection in 'Test.Delphi.Terminal.TerminalSelection.pas';
+  Test.Delphi.Terminal.TerminalSelection in 'Test.Delphi.Terminal.TerminalSelection.pas',
+  Test.Delphi.Terminal.KeyInput in 'Test.Delphi.Terminal.KeyInput.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

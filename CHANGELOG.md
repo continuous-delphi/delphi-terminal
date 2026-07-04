@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.94.0
+- ConPTY mode is now interactive: TTerminalView takes keyboard focus and keystrokes are translated to VT sequences and sent to the shell (printables, Enter, Backspace, Tab/Shift+Tab, Esc, arrows, Home/End, Insert/Delete, PgUp/PgDn, Ctrl+letter incl. Ctrl+C/L/D). The line-entry TEdit is hidden in ConPTY mode; command history remains legacy line-mode only.
+[#70](https://github.com/continuous-delphi/delphi-terminal/issues/70)
+
 ## v1.3.93.0
 - ConPTY mode now renders through TTerminalView (VT parser -> screen model -> view) instead of the RichEdit; the legacy pipe backend keeps using the RichEdit. Resizing the terminal (or its font metrics) reflows the shell via ResizePseudoConsole, and the view's Copy/Paste/Clear/Stop menu is wired to the live process.
 [#69](https://github.com/continuous-delphi/delphi-terminal/issues/69)

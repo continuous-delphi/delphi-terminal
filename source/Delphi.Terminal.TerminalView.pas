@@ -77,6 +77,7 @@ type
     procedure ClearClick(Sender: TObject);
     procedure StopClick(Sender: TObject);
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
+    procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -165,6 +166,7 @@ begin
   inherited Create(AOwner);
   ControlStyle := ControlStyle + [csOpaque];
   DoubleBuffered := True;
+  TabStop := True;   // the view takes keyboard focus so keystrokes reach the shell (#70)
   FDefaultForeground := clSilver;
   FDefaultBackground := clBlack;
   FMetricsValid := False;
@@ -241,6 +243,13 @@ begin
   inherited;
   FMetricsValid := False;
   RefreshAll;
+end;
+
+procedure TTerminalView.WMGetDlgCode(var Message: TWMGetDlgCode);
+begin
+  // Deliver every key (arrows, Tab, Return, Esc, chars) to this control rather than
+  // letting the dialog manager consume them, so they can be forwarded to the shell.
+  Message.Result := DLGC_WANTARROWS or DLGC_WANTCHARS or DLGC_WANTTAB or DLGC_WANTALLKEYS;
 end;
 
 procedure TTerminalView.RecalcMetrics;
@@ -570,6 +579,8 @@ var
   LLine, LCol: Integer;
 begin
   inherited MouseDown(Button, Shift, X, Y);
+  if CanFocus and not Focused then
+    SetFocus;
   if Button = mbLeft then
   begin
     PointToDoc(X, Y, LLine, LCol);
