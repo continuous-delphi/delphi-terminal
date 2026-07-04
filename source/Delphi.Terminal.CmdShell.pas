@@ -41,6 +41,9 @@ type
   ///<summary>Concrete backend selection. (The Auto setting resolves to one of these.)</summary>
   TTerminalBackendKind = (tbLegacyPipe, tbConPty);
 
+  ///<summary>User-facing backend preference (persisted in settings).</summary>
+  TTerminalBackendSetting = (bsAuto, bsConPty, bsLegacyPipe);
+
   ///<summary>Backend contract implemented by both the legacy pipe process (TCmdShellProcess) and the ConPTY backend, so the frame can drive either.</summary>
   ITerminalProcess = interface
     ['{7B3C1A44-9E2D-4C6F-9B1A-8D2E5F0A6C31}']
@@ -107,11 +110,35 @@ type
     property OnProcessExit: TNotifyEvent read FOnProcessExit write FOnProcessExit;
   end;
 
+///<summary>
+///  Resolves a user backend preference to the concrete backend to create, given
+///  whether ConPTY is available on this system. Forced Legacy always yields the
+///  pipe backend; forced ConPTY falls back to legacy when ConPTY is unavailable;
+///  Auto stays on legacy until the ConPTY renderer ships (see #72).
+///</summary>
+function ResolveTerminalBackend(ASetting: TTerminalBackendSetting; AConPtyAvailable: Boolean): TTerminalBackendKind;
+
 
 implementation
 
 uses
   Delphi.Terminal.TextDecode;
+
+function ResolveTerminalBackend(ASetting: TTerminalBackendSetting; AConPtyAvailable: Boolean): TTerminalBackendKind;
+begin
+  case ASetting of
+    bsConPty:
+      if AConPtyAvailable then
+        Result := tbConPty
+      else
+        Result := tbLegacyPipe;   // forced ConPTY, but unavailable -> fall back to legacy
+    bsAuto:
+      // Auto stays on the legacy backend until the ConPTY renderer ships (#72).
+      Result := tbLegacyPipe;
+  else
+    Result := tbLegacyPipe;       // bsLegacyPipe
+  end;
+end;
 
 type
   TPipeReaderThread = class(TThread)

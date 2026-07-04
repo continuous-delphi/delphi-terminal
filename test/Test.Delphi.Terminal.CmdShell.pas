@@ -50,6 +50,15 @@ type
     [Test] procedure ImplementsTerminalProcessInterface;
   end;
 
+  [TestFixture]
+  TBackendResolutionTests = class
+  public
+    [Test] procedure Legacy_AlwaysResolvesToLegacy;
+    [Test] procedure ConPty_ResolvesToConPtyWhenAvailable;
+    [Test] procedure ConPty_FallsBackToLegacyWhenUnavailable;
+    [Test] procedure Auto_ResolvesToLegacyForNow;
+  end;
+
 implementation
 
 uses
@@ -273,7 +282,32 @@ begin
   Assert.IsTrue(Assigned(LIntf), 'Interface reference should be resolved');
 end;
 
+{ TBackendResolutionTests }
+
+procedure TBackendResolutionTests.Legacy_AlwaysResolvesToLegacy;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsLegacyPipe, True) = tbLegacyPipe, 'Legacy setting must resolve to the pipe backend even when ConPTY is available');
+  Assert.IsTrue(ResolveTerminalBackend(bsLegacyPipe, False) = tbLegacyPipe, 'Legacy setting must resolve to the pipe backend when ConPTY is unavailable');
+end;
+
+procedure TBackendResolutionTests.ConPty_ResolvesToConPtyWhenAvailable;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsConPty, True) = tbConPty, 'Forced ConPTY must resolve to ConPTY when available');
+end;
+
+procedure TBackendResolutionTests.ConPty_FallsBackToLegacyWhenUnavailable;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsConPty, False) = tbLegacyPipe, 'Forced ConPTY must fall back to legacy when ConPTY is unavailable');
+end;
+
+procedure TBackendResolutionTests.Auto_ResolvesToLegacyForNow;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsAuto, True) = tbLegacyPipe, 'Auto must resolve to legacy for now, even when ConPTY is available');
+  Assert.IsTrue(ResolveTerminalBackend(bsAuto, False) = tbLegacyPipe, 'Auto must resolve to legacy when ConPTY is unavailable');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TTestCmdShellProcess);
+  TDUnitX.RegisterTestFixture(TBackendResolutionTests);
 
 end.

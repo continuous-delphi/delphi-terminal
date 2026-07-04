@@ -633,7 +633,22 @@ begin
   FWorkDir := AWorkDir;
   FShellUnavailable := False;
   RecreateBackend;
-  FProcess.Start(ACmdShellInfo, AWorkDir, DefaultTerminalSize);
+  try
+    FProcess.Start(ACmdShellInfo, AWorkDir, DefaultTerminalSize);
+  except
+    on E: Exception do
+    begin
+      // If the ConPTY backend fails to start at runtime (e.g. CreatePseudoConsole
+      // or CreateProcess fails), fall back to the legacy pipe backend and retry.
+      // Latch to legacy so a later restart does not keep retrying a failing ConPTY.
+      if FBackendKind <> tbConPty then
+        raise;
+      FBackendKind := tbLegacyPipe;
+      RecreateBackend;
+      HandleOutput(Self, '[ConPTY unavailable, using legacy backend]'#13#10);
+      FProcess.Start(ACmdShellInfo, AWorkDir, DefaultTerminalSize);
+    end;
+  end;
 end;
 
 procedure TframeCmdShell.ShowStartupError(const ACmdShellInfo: TCmdShellInfo; const AMessage: string);

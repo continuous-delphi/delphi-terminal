@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.82.0
+- Added pure backend-selection logic (ResolveTerminalBackend): honors forced Legacy/ConPTY, falls back to legacy when ConPTY is unavailable, and keeps Auto on legacy for now
+[#59](https://github.com/continuous-delphi/delphi-terminal/issues/59)
+
 ## v1.3.81.0
 - TframeCmdShell now drives the terminal through the ITerminalProcess abstraction and creates its backend on demand (BackendKind); the demo can force ConPTY via the DELPHI_TERMINAL_BACKEND env var. Legacy path unchanged.
 [#58](https://github.com/continuous-delphi/delphi-terminal/issues/58)

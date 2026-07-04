@@ -966,6 +966,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: backend selection and fallback resolution logic
 Issue: #59
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 2. Pure resolution logic, separate from UI. Effort: S. Verify: unit.
