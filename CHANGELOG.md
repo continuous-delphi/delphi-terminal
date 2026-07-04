@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.76.0
+- ConPTY foundation wired into the plugin package and test project, with a TConPty/TConPtyReader round-trip smoke test; DUnitX suite unblocked and repaired
+[#52](https://github.com/continuous-delphi/delphi-terminal/issues/52) [#53](https://github.com/continuous-delphi/delphi-terminal/issues/53)
+
 ## v1.3.65.0
 - VCL demo app should not crash on startup when optional shells (pwsh, WSL) are not installed
 [#49](https://github.com/continuous-delphi/delphi-terminal/issues/49)

@@ -821,3 +821,451 @@ Acceptance criteria:
 - [ ] VCL demo opens even if pwsh.exe, wsl.exe, or powershell.exe is missing
 - [ ] Failed tabs show a descriptive error message in the output area
 - [ ] Working tabs are unaffected by a sibling tab's failure
+
+---
+Title: ConPTY: add foundation units to plugin package and test project
+Issue: #52
+Status: closed
+Labels: enhancement, conpty
+Body:
+Part of the ConPTY 2.0 effort (umbrella #31; see plan-conpty.md, Phase 0).
+Bring the committed foundation units into the build so they compile and are
+testable. Effort: S. Verify: build.
+
+Implementation notes:
+- Add `WinAPI.ConPty`, `Delphi.Terminal.Pty`, `Delphi.Terminal.TextDecode`,
+  `Delphi.Terminal.ConPtyReader` to the plugin `Delphi.Terminal.Plugin.dpk`
+  `contains` clause.
+- Reference the shared units from the DUnitX test project as needed.
+
+Acceptance criteria:
+- [ ] Plugin package builds with the four units included
+- [ ] Test project builds referencing the shared units
+- [ ] No runtime behavior change
+
+---
+Title: ConPTY: TConPty/TConPtyReader round-trip smoke test
+Issue: #53
+Status: closed
+Labels: enhancement, conpty, test
+Body:
+Phase 0. Prove the session + reader stack end to end. Effort: S. Verify: integration.
+
+Implementation notes:
+- Start `cmd.exe` via `TConPty`; attach a `TConPtyReader`; send `echo hello`
+  and assert the output is delivered on the main thread.
+- Exercise deliberate teardown (`Terminate` reader -> `TConPty.Close`); assert
+  the reader joins, handles close, and there is no hang or leak.
+- Guard for ConPTY availability; skip gracefully below Windows 1903.
+
+Acceptance criteria:
+- [ ] Test captures `echo` output from a real cmd.exe
+- [ ] Deliberate teardown joins the reader and closes cleanly
+- [ ] Skips when ConPTY is unavailable
+
+---
+Title: ConPTY: Job Object process-tree cleanup in TConPty
+Issue: #54
+Labels: enhancement, conpty
+Body:
+Phase 0. Prevent orphaned descendant processes (e.g. Claude Code's `node.exe`
+grandchildren) when a session ends. Correctness-critical for the headline use
+case. Effort: S. Verify: integration.
+
+Implementation notes:
+- Create a Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`; assign the
+  child to it at spawn in `TConPty.Start`.
+- Close the job handle during `TConPty.Close` so the whole tree terminates.
+
+Acceptance criteria:
+- [ ] Child and its descendants terminate on Close
+- [ ] No orphaned processes after a session that spawned grandchildren
+- [ ] Job handle lifecycle leaks nothing
+
+---
+Title: ConPTY: gate availability at Windows build 18362 (1903)
+Issue: #55
+Labels: enhancement, conpty
+Body:
+Phase 0. Require known-good ConPTY (stable resize/alt-screen) and fall back to
+legacy below it. Effort: S. Verify: unit.
+
+Implementation notes:
+- Extend the availability check beyond `Win32MajorVersion >= 10` to also require
+  OS build >= 18362.
+- Keep `GetProcAddress` presence as the primary gate; version as secondary.
+
+Acceptance criteria:
+- [ ] IsAvailable is False below build 18362
+- [ ] IsAvailable is True on 1903+ with the exports present
+- [ ] Below-threshold systems resolve to the legacy backend
+
+---
+Title: ConPTY: ITerminalProcess abstraction; adapt legacy TCmdShellProcess
+Issue: #56
+Labels: enhancement, conpty
+Body:
+Phase 1. One backend contract both paths implement. Effort: M. Verify: unit
+(existing tests pass).
+
+Implementation notes:
+- Define `ITerminalProcess`: `Start(shellInfo, workDir, size)`, `WriteInput`,
+  `SendInterrupt`, `Resize`, `Terminate`, `Running`, `DiscardQueuedOutput`,
+  `OnOutput`, `OnProcessExit`.
+- Make legacy `TCmdShellProcess` implement it with unchanged behavior.
+
+Acceptance criteria:
+- [ ] ITerminalProcess defined
+- [ ] Legacy backend implements it; existing DUnitX tests pass
+- [ ] No behavior change to the legacy path
+
+---
+Title: ConPTY: TConPtyShell backend (input, interrupt, resize, shell mapping)
+Issue: #57
+Labels: enhancement, conpty
+Body:
+Phase 1. The backend that owns `TConPty` + `TConPtyReader` and implements
+`ITerminalProcess`. Effort: M. Verify: integration.
+
+Implementation notes:
+- Start -> `TConPty.Start` + create/`RegisterReader`; Stop -> Terminate reader +
+  `TConPty.Close` + free.
+- `WriteInput`: UTF-8 encode -> `WriteFile(InputWrite)`. `SendInterrupt`: write `#3`.
+- `Resize` -> `TConPty.Resize`.
+- Map shell types (CMD/pwsh/PowerShell/WSL, `%COMSPEC%`, WSL path translation)
+  to a command line, reusing `TCmdUtils`.
+
+Acceptance criteria:
+- [ ] Starts CMD/pwsh/PowerShell/WSL through ConPTY
+- [ ] WriteInput and SendInterrupt work against a live shell
+- [ ] Clean shutdown with no orphaned processes
+
+---
+Title: ConPTY: wire TframeCmdShell to ITerminalProcess
+Issue: #58
+Labels: enhancement, conpty
+Body:
+Phase 1. Frame depends on the abstraction, not `TCmdShellProcess` directly.
+Effort: M. Verify: manual.
+
+Implementation notes:
+- Replace direct `TCmdShellProcess` usage with `ITerminalProcess`.
+- ConPTY output still flows through the existing append renderer at this stage
+  (expected; gated off Auto until the renderer ships).
+
+Acceptance criteria:
+- [ ] Frame drives either backend via the interface
+- [ ] Legacy path is visually unchanged
+- [ ] Demo can force a backend for testing
+
+---
+Title: ConPTY: backend selection and fallback resolution logic
+Issue: #59
+Labels: enhancement, conpty
+Body:
+Phase 2. Pure resolution logic, separate from UI. Effort: S. Verify: unit.
+
+Implementation notes:
+- Resolve Auto/ConPTY/Legacy to a concrete backend given availability.
+- Auto = legacy until the renderer ships; fall back to legacy when ConPTY is
+  unavailable or `CreatePseudoConsole`/`CreateProcess` fails.
+
+Acceptance criteria:
+- [ ] Forced modes are honored
+- [ ] Auto resolves to legacy for now
+- [ ] Unavailable/failed ConPTY falls back to legacy
+- [ ] Unit tests cover the resolution matrix
+
+---
+Title: ConPTY: backend setting persistence and options-page UI
+Issue: #60
+Labels: enhancement, conpty
+Body:
+Phase 2. The persistence + UI half of backend selection. Effort: S. Verify: manual.
+
+Implementation notes:
+- Add the Auto/ConPTY/Legacy setting to `TDelphiTerminalSettings` with registry
+  load/save.
+- Add the control to the options page; surface ConPTY startup failure in the tab
+  output, consistent with missing-shell handling.
+
+Acceptance criteria:
+- [ ] Setting persists across sessions
+- [ ] Options page exposes the choice
+- [ ] Startup failure is surfaced in the tab
+
+---
+Title: ConPTY: TScreenBuffer core (cells, cursor, attributes, write, erase)
+Issue: #61
+Labels: enhancement, conpty
+Body:
+Phase 3. Pure cell-grid model. Effort: M. Verify: unit.
+
+Implementation notes:
+- Cells: char, foreground, background, style (bold/italic/underline/inverse).
+- Cursor row/col, current attributes, basic write and erase.
+
+Acceptance criteria:
+- [ ] Writing text populates the expected cells
+- [ ] Cursor movement overwrites cells
+- [ ] Erase clears the expected ranges
+- [ ] Unit-tested
+
+---
+Title: ConPTY: TScreenBuffer scroll region, alt screen, scrollback, resize
+Issue: #62
+Labels: enhancement, conpty
+Body:
+Phase 3. Effort: M. Verify: unit.
+
+Implementation notes:
+- Scroll region; main/alt screen swap; scrollback kept separate from the active
+  screen; resize (preserve visible content, clamp cursor, invalidate rows);
+  dirty-row tracking.
+
+Acceptance criteria:
+- [ ] Alt-screen enter/exit swaps buffers
+- [ ] Scroll region behaves correctly
+- [ ] Resize preserves sane content and clamps the cursor
+- [ ] Unit-tested
+
+---
+Title: ConPTY: VT parser core (C0 controls, SGR, escape-boundary buffering)
+Issue: #63
+Labels: enhancement, conpty
+Body:
+Phase 4. Consumes string chunks from the reader and mutates `TScreenBuffer`.
+Effort: M. Verify: unit.
+
+Implementation notes:
+- C0: LF/CR/BS/TAB/BEL. SGR: reset/bold/underline/inverse, 16 / 256 / truecolor.
+- Buffer incomplete escape sequences across chunks (separate from the reader's
+  UTF-8 buffering). Consume unknown sequences harmlessly.
+
+Acceptance criteria:
+- [ ] C0 and SGR update the model correctly
+- [ ] Escape sequence split across reads is handled
+- [ ] Unknown sequences produce no visible garbage
+- [ ] Unit-tested
+
+---
+Title: ConPTY: VT parser cursor movement, erase, scroll
+Issue: #64
+Labels: enhancement, conpty
+Body:
+Phase 4. Effort: M. Verify: unit.
+
+Implementation notes:
+- Cursor: CUU/CUD/CUF/CUB, CUP/HVP, save/restore. Erase: EL/ED. Scroll:
+  index/reverse-index, scroll region.
+
+Acceptance criteria:
+- [ ] Cursor commands move as specified
+- [ ] Erase commands clear the expected regions
+- [ ] Scrolling behaves within the region
+- [ ] Unit-tested
+
+---
+Title: ConPTY: VT parser OSC and DEC private modes
+Issue: #65
+Labels: enhancement, conpty
+Body:
+Phase 4. Effort: M. Verify: unit.
+
+Implementation notes:
+- OSC: window title (buffered across reads). DEC private modes: cursor
+  show/hide, alt screen `?1049`, bracketed paste `?2004`.
+
+Acceptance criteria:
+- [ ] Title sequences are captured
+- [ ] Alt-screen and bracketed-paste modes toggle model state
+- [ ] Cursor visibility is honored
+- [ ] Unit-tested
+
+---
+Title: ConPTY: evaluate prebuilt Delphi VT render controls (spike)
+Issue: #66
+Labels: enhancement, conpty, research
+Body:
+Phase 5. Time-boxed research before building `TTerminalView` from scratch.
+Effort: S. Verify: research.
+
+Implementation notes:
+- Survey MIT/BSD-licensed Delphi VT grid/renderer controls; assess license, VCL
+  fit, and maturity. The screen model and parser are ours regardless; only the
+  paint control is in question. Default outcome: build from scratch.
+- Deliverable: a short build-vs-reuse decision note.
+
+Acceptance criteria:
+- [ ] Candidates surveyed with license/fit notes
+- [ ] Documented build-vs-reuse decision
+
+---
+Title: ConPTY: TTerminalView painting (metrics, dirty rows, cursor)
+Issue: #67
+Labels: enhancement, conpty
+Body:
+Phase 5. Effort: L. Verify: manual.
+
+Implementation notes:
+- `TCustomControl`; monospace metrics (cell width/height/baseline); paint dirty
+  rows (background rects, attribute-grouped text runs, cursor).
+
+Acceptance criteria:
+- [ ] Renders the screen model with correct colors and attributes
+- [ ] Cursor is drawn correctly
+- [ ] Large output stays responsive via dirty-row painting
+
+---
+Title: ConPTY: TTerminalView scrollback, selection/copy, context menu
+Issue: #68
+Labels: enhancement, conpty
+Body:
+Phase 5. Effort: M. Verify: manual.
+
+Implementation notes:
+- Vertical scrollback; mouse selection -> clipboard copy; context menu
+  (Copy/Paste/Clear/Stop).
+
+Acceptance criteria:
+- [ ] Scrollback scrolls history
+- [ ] Mouse selection copies text
+- [ ] Context menu actions work
+
+---
+Title: ConPTY: frame integration of TTerminalView and resize wiring
+Issue: #69
+Labels: enhancement, conpty
+Body:
+Phase 5. Effort: M. Verify: manual.
+
+Implementation notes:
+- In ConPTY mode host `TTerminalView` instead of `TRichEdit`; RichEdit stays for
+  legacy.
+- Font/size change or control resize -> compute cols/rows from metrics ->
+  `TConPty.Resize`.
+
+Acceptance criteria:
+- [ ] ConPTY mode uses TTerminalView; legacy uses RichEdit
+- [ ] Resizing the control reflows the shell
+- [ ] No glyph overlap at configured font sizes
+
+---
+Title: ConPTY: raw input path (key to VT, focusable view)
+Issue: #70
+Labels: enhancement, conpty
+Body:
+Phase 6. Effort: M. Verify: manual.
+
+Implementation notes:
+- Make `TTerminalView` focusable; hide the line-entry `TEdit` in ConPTY mode.
+- Key -> VT: printables, Enter, Backspace, Tab, Esc, Ctrl+C/L/D, arrows,
+  Home/End, Delete, PgUp/PgDn.
+- Command history stays legacy-line-mode only.
+
+Acceptance criteria:
+- [ ] Interactive cmd/pwsh line editing works
+- [ ] Ctrl+C interrupts the foreground application
+- [ ] Line-entry TEdit hidden in ConPTY mode
+
+---
+Title: ConPTY: paste and bracketed paste
+Issue: #71
+Labels: enhancement, conpty
+Body:
+Phase 6. Effort: S. Verify: manual.
+
+Implementation notes:
+- Paste clipboard text -> `InputWrite`; wrap with `ESC[200~`/`ESC[201~` when
+  bracketed-paste mode is active.
+
+Acceptance criteria:
+- [ ] Paste inserts at the shell/app prompt
+- [ ] Bracketed paste is used when the app requests it
+
+---
+Title: ConPTY: interrupt, restart, and teardown semantics
+Issue: #72
+Labels: enhancement, conpty
+Body:
+Phase 7. Effort: M. Verify: manual.
+
+Implementation notes:
+- Stop -> `#3`; double-Stop within an interval -> restart; restart after exit;
+  reconcile with the existing "Press Enter to restart" UX.
+- Clear parser/screen/queue state on restart.
+- Dock-form cleanup stops all terminals before settings release.
+
+Acceptance criteria:
+- [ ] `ping localhost -t` interrupts and returns to the prompt
+- [ ] Exit shows restart UI; restart clears state
+- [ ] IDE close / package unload does not hang
+
+---
+Title: ConPTY: flip Auto to ConPTY on supported systems
+Issue: #73
+Labels: enhancement, conpty
+Body:
+Phase 8. Effort: S. Verify: manual.
+
+Implementation notes:
+- `Auto` -> ConPTY when available (1903+), legacy otherwise; fallback intact.
+
+Acceptance criteria:
+- [ ] Auto uses ConPTY on supported systems
+- [ ] Auto falls back cleanly when ConPTY is unavailable
+
+---
+Title: ConPTY: Claude Code acceptance, documentation, and 2.0 release
+Issue: #74
+Labels: enhancement, conpty
+Body:
+Phase 8. Effort: M. Verify: manual.
+
+Implementation notes:
+- Acceptance matrix in the demo AND the plugin: `claude -p "..."` (arg and
+  piped); interactive `claude` (type, Backspace, arrows, paste, Ctrl+C).
+- Troubleshooting doc: legacy backend is not a true terminal; interactive TUIs
+  require ConPTY (Windows 10 1903+).
+- Update README + CHANGELOG; bump version to 2.0.
+
+Acceptance criteria:
+- [ ] `claude -p` works in both hosts
+- [ ] Interactive `claude` works (input, paste, Ctrl+C)
+- [ ] Docs updated; version bumped to 2.0
+
+---
+Title: ConPTY: unify TConPtyReader and legacy TPipeReaderThread (post-2.0)
+Issue: #75
+Labels: enhancement, conpty, tech-debt
+Body:
+Post-2.0 follow-up. Fold both readers into a single parameterized reader once
+ConPTY is proven end to end. Effort: M. Verify: unit/integration.
+
+Acceptance criteria:
+- [ ] A single shared reader is used by both backends
+- [ ] Existing tests pass
+
+---
+Title: ConPTY: environment-block support (post-2.0, if needed)
+Issue: #76
+Labels: enhancement, conpty
+Body:
+Post-2.0 follow-up. `TConPty.Start` currently inherits the parent environment.
+Add an optional custom environment block if a use case needs it (parallel to the
+legacy `BuildEnvironmentBlock` / `NO_COLOR` handling). Effort: S.
+
+Acceptance criteria:
+- [ ] An optional environment block is passed to the child when configured
+
+---
+Title: ConPTY: performance pass on large output / rapid redraws (post-2.0)
+Issue: #77
+Labels: enhancement, conpty
+Body:
+Post-2.0 follow-up. Profile and optimize the reader -> parser -> renderer path
+under heavy output and rapid redraws. Effort: M. Verify: manual.
+
+Acceptance criteria:
+- [ ] Sustained heavy output stays responsive
+- [ ] No unbounded memory growth

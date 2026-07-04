@@ -12,7 +12,7 @@
 *)
 unit Delphi.Terminal.SavedCommands;
 
-{$INCLUDE ..\..\source\DELPHI_COMPILER_VERSIONS.inc}
+{$INCLUDE DELPHI_COMPILER_VERSIONS.inc}
 
 interface
 
