@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.97.0
+- ConPTY paste: Ctrl+V / Shift+Insert / context-menu Paste send the clipboard to the shell (newlines normalized to CR), wrapped in bracketed-paste markers (ESC[200~/ESC[201~) when the running app has enabled bracketed-paste mode.
+[#71](https://github.com/continuous-delphi/delphi-terminal/issues/71)
+
 ## v1.3.96.0
 - VT parser now implements the in-place line-editing CSIs -- ECH (erase chars), ICH (insert chars), DCH (delete chars), IL (insert lines), DL (delete lines) -- so editing a wrapped line (e.g. a pwsh prediction) no longer leaves stale glyphs on the continuation line, and full-screen TUIs redraw correctly. Also retained an opt-in raw ConPTY stream capture diagnostic (disabled by default).
 [#79](https://github.com/continuous-delphi/delphi-terminal/issues/79)

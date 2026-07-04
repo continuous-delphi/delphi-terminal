@@ -95,6 +95,7 @@ type
     procedure SyncTerminalSize;
     procedure HandleTermViewResize(Sender: TObject);
     procedure HandleTermViewPaste(Sender: TObject);
+    procedure PasteToShell;
   protected
     procedure WndProc(var Message: TMessage); override;
   public
@@ -133,7 +134,7 @@ const
   WM_SYNC_TERM_SIZE = WM_APP + 102;
   MAX_RENDER_CHARS_PER_PASS = 65536;
 
-{.$DEFINE PTY_CAPTURE}  // Diagnostic: raw ConPTY stream capture to <exe dir>\pty-capture.log. Enable (remove the dot) and rebuild to capture.
+{$DEFINE PTY_CAPTURE}  // Diagnostic: raw ConPTY stream capture to <exe dir>\pty-capture.log. Enable (remove the dot) and rebuild to capture.
 
 {$IFDEF PTY_CAPTURE}
 var
@@ -659,6 +660,14 @@ begin
       FOnCommandPaletteRequested(Self);
     Key := 0;
     Exit;
+  end
+  else if ((Key = Ord('V')) and (ssCtrl in Shift) and not (ssAlt in Shift)) or
+          ((Key = VK_INSERT) and (ssShift in Shift)) then
+  begin
+    // Paste (Ctrl+V, matching PSReadLine/Windows convention, or Shift+Insert).
+    PasteToShell;
+    Key := 0;
+    Exit;
   end;
 
   if not (Assigned(FProcess) and FProcess.Running) then
@@ -909,14 +918,24 @@ begin
 end;
 
 procedure TframeCmdShell.HandleTermViewPaste(Sender: TObject);
+begin
+  PasteToShell;
+end;
+
+procedure TframeCmdShell.PasteToShell;
 var
   LText: string;
+  LBracketed: Boolean;
 begin
   if not (Assigned(FProcess) and FProcess.Running) then
     Exit;
   LText := Clipboard.AsText;
-  if LText <> '' then
-    FProcess.WriteInput(LText);
+  if LText = '' then
+    Exit;
+  // Use bracketed paste only when the running app asked for it (DEC ?2004), so it can
+  // treat the paste as literal text instead of interpreting embedded newlines/keys.
+  LBracketed := (FBackendKind = tbConPty) and Assigned(FScreen) and FScreen.BracketedPaste;
+  FProcess.WriteInput(BuildPasteSequence(LText, LBracketed));
 end;
 
 procedure TframeCmdShell.StartShell(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);

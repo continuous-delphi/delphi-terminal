@@ -23,6 +23,11 @@ type
     [Test] procedure CtrlL_SendsFF;
     [Test] procedure PlainLetter_ReturnsEmpty;
     [Test] procedure AltGrLetter_ReturnsEmpty;
+    // --- paste ---
+    [Test] procedure Paste_Plain_PassesThrough;
+    [Test] procedure Paste_Bracketed_WrapsWithMarkers;
+    [Test] procedure Paste_NormalizesCRLFToCR;
+    [Test] procedure Paste_NormalizesLoneLFToCR;
   end;
 
 implementation
@@ -113,6 +118,26 @@ procedure TKeyInputTests.AltGrLetter_ReturnsEmpty;
 begin
   // Ctrl+Alt (AltGr) must not become a control code -- it may produce a printable.
   Assert.AreEqual('', KeyToVT(Ord('A'), [ssCtrl, ssAlt]));
+end;
+
+procedure TKeyInputTests.Paste_Plain_PassesThrough;
+begin
+  Assert.AreEqual('hello', BuildPasteSequence('hello', False));
+end;
+
+procedure TKeyInputTests.Paste_Bracketed_WrapsWithMarkers;
+begin
+  Assert.AreEqual(ESC + '[200~hello' + ESC + '[201~', BuildPasteSequence('hello', True));
+end;
+
+procedure TKeyInputTests.Paste_NormalizesCRLFToCR;
+begin
+  Assert.AreEqual('a'#13'b', BuildPasteSequence('a'#13#10'b', False));
+end;
+
+procedure TKeyInputTests.Paste_NormalizesLoneLFToCR;
+begin
+  Assert.AreEqual('a'#13'b', BuildPasteSequence('a'#10'b', False));
 end;
 
 initialization

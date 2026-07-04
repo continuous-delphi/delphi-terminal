@@ -30,7 +30,8 @@ interface
 
 uses
   Winapi.Windows,
-  System.Classes;
+  System.Classes,
+  System.SysUtils;
 
 ///<summary>
 ///  Translates a key press to the VT byte sequence to send to the shell, or ''
@@ -38,10 +39,19 @@ uses
 ///</summary>
 function KeyToVT(AKey: Word; AShift: TShiftState): string;
 
+///<summary>
+///  Builds the byte sequence for pasting AText: newlines are normalized to CR
+///  (as terminals do), and when ABracketed is set the text is wrapped in the
+///  bracketed-paste markers ESC[200~ ... ESC[201~ so the app can tell paste from typing.
+///</summary>
+function BuildPasteSequence(const AText: string; ABracketed: Boolean): string;
+
 implementation
 
 const
   ESC = #27;
+  BRACKET_PASTE_START = ESC + '[200~';
+  BRACKET_PASTE_END = ESC + '[201~';
 
 function KeyToVT(AKey: Word; AShift: TShiftState): string;
 begin
@@ -69,6 +79,15 @@ begin
     VK_PRIOR:  Result := ESC + '[5~';                            // Page Up
     VK_NEXT:   Result := ESC + '[6~';                            // Page Down
   end;
+end;
+
+function BuildPasteSequence(const AText: string; ABracketed: Boolean): string;
+begin
+  // Normalize CRLF and lone LF to CR, matching how terminals feed pasted newlines.
+  Result := StringReplace(AText, #13#10, #13, [rfReplaceAll]);
+  Result := StringReplace(Result, #10, #13, [rfReplaceAll]);
+  if ABracketed then
+    Result := BRACKET_PASTE_START + Result + BRACKET_PASTE_END;
 end;
 
 end.

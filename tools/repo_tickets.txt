@@ -1188,6 +1188,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: paste and bracketed paste
 Issue: #71
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 6. Effort: S. Verify: manual.
