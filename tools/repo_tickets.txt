@@ -1238,6 +1238,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: Claude Code acceptance, documentation, and 2.0 release
 Issue: #74
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 8. Effort: M. Verify: manual.

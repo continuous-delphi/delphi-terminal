@@ -2,6 +2,28 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.101.0 -- ConPTY 2.0
+
+Major release: delphi-terminal now embeds a real Windows pseudoconsole
+(**ConPTY**) terminal, so interactive console programs and full-screen TUIs
+(Claude Code, editors, pagers) work -- not just line-at-a-time commands. The
+classic pipe backend remains as an automatic fallback for older systems.
+
+- New ConPTY backend: pseudoconsole session with a kill-on-close Job Object,
+  UTF-8 reader, and a stateful VT/ANSI parser driving a cell-based screen model
+  (colors 16/256/truecolor, styles, cursor, scroll regions, alternate screen,
+  scrollback, DEC modes, OSC titles, in-place line editing) rendered by a
+  cursor-addressed TTerminalView (dirty-row painting, mouse selection + copy,
+  context menu).
+- Interactive input: focusable view with key->VT translation (arrows, editing
+  keys, Ctrl+C/D/L, etc.), paste with bracketed-paste support, and Stop /
+  double-Stop-to-restart / restart-on-exit semantics.
+- The Automatic backend setting selects ConPTY on Windows 10 1903+ and falls
+  back to legacy pipes elsewhere; a runtime fallback also covers start failures.
+- Documented backends, requirements, and troubleshooting in the README.
+[#31](https://github.com/continuous-delphi/delphi-terminal/issues/31)
+[#74](https://github.com/continuous-delphi/delphi-terminal/issues/74)
+
 ## v1.3.100.0
 - The Automatic backend setting now selects ConPTY on supported systems (Windows 10 1903+) and falls back to legacy pipes elsewhere -- so the modern terminal is the default out of the box, with the runtime fallback intact.
 [#73](https://github.com/continuous-delphi/delphi-terminal/issues/73)
