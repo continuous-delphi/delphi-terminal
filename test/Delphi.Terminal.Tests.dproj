@@ -111,6 +111,7 @@
         <DCCReference Include="..\source\WinAPI.ConPty.pas"/>
         <DCCReference Include="..\source\Delphi.Terminal.Pty.pas"/>
         <DCCReference Include="..\source\Delphi.Terminal.ConPtyReader.pas"/>
+        <DCCReference Include="..\source\Delphi.Terminal.ConPtyShell.pas"/>
         <DCCReference Include="Test.Delphi.Terminal.ConPty.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

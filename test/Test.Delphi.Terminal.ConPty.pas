@@ -23,6 +23,20 @@ type
     procedure BuildGate_ExcludesBelow1903;
   end;
 
+  [TestFixture]
+  TConPtyShellTests = class
+  public
+    ///<summary>The ConPTY backend implements ITerminalProcess.</summary>
+    [Test]
+    procedure ImplementsITerminalProcess;
+    ///<summary>Starting a shell delivers ConPTY output via OnOutput, then closes cleanly.</summary>
+    [Test]
+    procedure DeliversOutputThenTerminates;
+    ///<summary>A child that exits on its own raises OnProcessExit (via the process-exit watcher).</summary>
+    [Test]
+    procedure DetectsNaturalExit;
+  end;
+
 implementation
 
 uses
@@ -30,8 +44,10 @@ uses
   System.Classes,
   Winapi.Windows,
   WinAPI.ConPty,
+  Delphi.Terminal.CmdShell,
   Delphi.Terminal.Pty,
-  Delphi.Terminal.ConPtyReader;
+  Delphi.Terminal.ConPtyReader,
+  Delphi.Terminal.ConPtyShell;
 
 // IsProcessInJob with its out parameter bound as a 4-byte BOOL. The RTL declares
 // it as ByteBool, but the Win32 API writes a full BOOL, so use our own binding.
@@ -209,7 +225,95 @@ begin
   Assert.IsTrue(ConPtyBuildSupported(22631), 'Windows 11 builds must be supported');
 end;
 
+{ TConPtyShellTests }
+
+procedure TConPtyShellTests.ImplementsITerminalProcess;
+var
+  LShell: TConPtyShell;
+  LIntf: ITerminalProcess;
+begin
+  LShell := TConPtyShell.Create;
+  try
+    Assert.IsTrue(Supports(LShell, ITerminalProcess, LIntf), 'TConPtyShell should implement ITerminalProcess');
+    Assert.IsTrue(Assigned(LIntf), 'Interface reference should resolve');
+  finally
+    LShell.Free;
+  end;
+end;
+
+procedure TConPtyShellTests.DeliversOutputThenTerminates;
+var
+  LShell: TConPtyShell;
+  LCollector: TOutputCollector;
+  LInfo: TCmdShellInfo;
+  LDeadline: UInt64;
+  LGotOutput: Boolean;
+begin
+  if not TConPtyShell.IsSupported then
+  begin
+    Assert.Pass('ConPTY not available on this OS; skipping.');
+    Exit;
+  end;
+
+  LShell := TConPtyShell.Create;
+  LCollector := TOutputCollector.Create;
+  try
+    LShell.OnOutput := LCollector.HandleOutput;
+    LInfo := TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD);
+    LShell.Start(LInfo, '', DefaultTerminalSize);
+
+    LDeadline := GetTickCount64 + 5000;
+    while (not LCollector.Output.Contains(#27)) and (GetTickCount64 < LDeadline) do
+      CheckSynchronize(50);
+
+    LGotOutput := LCollector.Output.Contains(#27);
+  finally
+    LShell.Terminate;
+    LShell.Free;
+    LCollector.Free;
+  end;
+
+  Assert.IsTrue(LGotOutput, 'Backend should deliver ConPTY VT output via OnOutput');
+end;
+
+procedure TConPtyShellTests.DetectsNaturalExit;
+var
+  LShell: TConPtyShell;
+  LCollector: TOutputCollector;
+  LInfo: TCmdShellInfo;
+  LDeadline: UInt64;
+  LExited: Boolean;
+begin
+  if not TConPtyShell.IsSupported then
+  begin
+    Assert.Pass('ConPTY not available on this OS; skipping.');
+    Exit;
+  end;
+
+  LShell := TConPtyShell.Create;
+  LCollector := TOutputCollector.Create;
+  try
+    LShell.OnProcessExit := LCollector.HandleExit;
+    LInfo := TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD);
+    LInfo.Parameters := '/c exit';   // exits immediately on its own
+    LShell.Start(LInfo, '', DefaultTerminalSize);
+
+    LDeadline := GetTickCount64 + 5000;
+    while (not LCollector.Exited) and (GetTickCount64 < LDeadline) do
+      CheckSynchronize(50);
+
+    LExited := LCollector.Exited;
+  finally
+    LShell.Terminate;
+    LShell.Free;
+    LCollector.Free;
+  end;
+
+  Assert.IsTrue(LExited, 'OnProcessExit should fire when the child exits on its own (process-exit watcher)');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConPtyTests);
+  TDUnitX.RegisterTestFixture(TConPtyShellTests);
 
 end.

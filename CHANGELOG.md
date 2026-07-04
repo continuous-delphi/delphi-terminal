@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.80.0
+- Added the ConPTY backend (TConPtyShell) implementing ITerminalProcess: owns the pseudoconsole session and reader, maps shells to a command line, handles input/interrupt/resize, and detects natural child exit via a process-handle watcher
+[#57](https://github.com/continuous-delphi/delphi-terminal/issues/57)
+
 ## v1.3.79.0
 - Introduced the ITerminalProcess backend abstraction; the legacy pipe process now implements it (WriteInput/SendInterrupt/Resize), so the frame can drive either backend
 [#56](https://github.com/continuous-delphi/delphi-terminal/issues/56)

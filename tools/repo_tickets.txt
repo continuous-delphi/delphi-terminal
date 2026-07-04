@@ -925,6 +925,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: TConPtyShell backend (input, interrupt, resize, shell mapping)
 Issue: #57
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 1. The backend that owns `TConPty` + `TConPtyReader` and implements

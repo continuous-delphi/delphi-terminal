@@ -62,6 +62,7 @@ contains
   WinAPI.ConPty in '..\..\source\WinAPI.ConPty.pas',
   Delphi.Terminal.Pty in '..\..\source\Delphi.Terminal.Pty.pas',
   Delphi.Terminal.ConPtyReader in '..\..\source\Delphi.Terminal.ConPtyReader.pas',
+  Delphi.Terminal.ConPtyShell in '..\..\source\Delphi.Terminal.ConPtyShell.pas',
   Delphi.Terminal.Plugin.SavedCommandsEditor in 'Delphi.Terminal.Plugin.SavedCommandsEditor.pas',
   Delphi.Terminal.Plugin.CommandPalette in 'Delphi.Terminal.Plugin.CommandPalette.pas';
 

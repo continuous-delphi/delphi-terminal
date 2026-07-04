@@ -44,6 +44,7 @@ uses
   WinAPI.ConPty in '..\source\WinAPI.ConPty.pas',
   Delphi.Terminal.Pty in '..\source\Delphi.Terminal.Pty.pas',
   Delphi.Terminal.ConPtyReader in '..\source\Delphi.Terminal.ConPtyReader.pas',
+  Delphi.Terminal.ConPtyShell in '..\source\Delphi.Terminal.ConPtyShell.pas',
   Test.Delphi.Terminal.SavedCommands in 'Test.Delphi.Terminal.SavedCommands.pas',
   Test.Delphi.Terminal.VariableExpander in 'Test.Delphi.Terminal.VariableExpander.pas',
   Test.Delphi.Terminal.ConPty in 'Test.Delphi.Terminal.ConPty.pas';
