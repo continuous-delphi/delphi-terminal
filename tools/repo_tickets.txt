@@ -1204,6 +1204,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: interrupt, restart, and teardown semantics
 Issue: #72
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 7. Effort: M. Verify: manual.

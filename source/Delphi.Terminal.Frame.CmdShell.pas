@@ -52,6 +52,7 @@ type
     FScreen: TScreenBuffer;               // ConPTY screen model (nil until ConPTY starts)
     FVTParser: TVTParser;                 // ConPTY VT parser driving FScreen
     FPtySize: TTerminalSize;              // last size pushed to the pseudoconsole
+    FLastStopTick: Cardinal;              // GetTickCount of the last Stop (for double-Stop restart)
     FPanelInput: TPanel;
     FCmdLabel: TEdit;
     FEditInput: TEdit;
@@ -104,6 +105,7 @@ type
 
     procedure StartShell(const ACmdShellInfo: TCmdShellInfo;const AWorkDir: string = '');
     procedure StopShell;
+    procedure RestartShell;
     procedure ShowStartupError(const ACmdShellInfo: TCmdShellInfo; const AMessage: string);
 
     procedure SetWorkingDirectory(const APath: string);
@@ -133,6 +135,7 @@ const
   WM_RENDER_OUTPUT = WM_APP + 101;
   WM_SYNC_TERM_SIZE = WM_APP + 102;
   MAX_RENDER_CHARS_PER_PASS = 65536;
+  STOP_RESTART_INTERVAL_MS = 400;   // a second Stop within this window restarts the shell
 
 {.$DEFINE PTY_CAPTURE}  // Diagnostic: raw ConPTY stream capture to <exe dir>\pty-capture.log. Enable (remove the dot) and rebuild to capture.
 
@@ -265,6 +268,8 @@ begin
   FBtnStop.Width := 45;
   FBtnStop.Caption := 'Stop';
   FBtnStop.Flat := True;
+  FBtnStop.Hint := 'Stop / interrupt (Ctrl+C). Click again to restart the shell.';
+  FBtnStop.ShowHint := True;
   FBtnStop.OnClick := HandleStopClick;
 
   FPanelInput := TPanel.Create(Self);
@@ -495,12 +500,7 @@ begin
     Key := #0;
     if not (Assigned(FProcess) and FProcess.Running) then
     begin
-      if FShellUnavailable then
-        Exit;
-      FEditInput.ReadOnly := False;
-      FEditInput.TextHint := '';
-      ClearOutput;
-      StartShell(FCmdShellInfo, FWorkDir);
+      RestartShell;   // no-op when the shell is unavailable
       Exit;
     end;
     SendUserCommand(FEditInput.Text);
@@ -673,10 +673,9 @@ begin
   if not (Assigned(FProcess) and FProcess.Running) then
   begin
     // Process has exited: Enter restarts the session (mirrors the legacy line-mode path).
-    if (Key = VK_RETURN) and not FShellUnavailable then
+    if Key = VK_RETURN then
     begin
-      ClearOutput;
-      StartShell(FCmdShellInfo, FWorkDir);
+      RestartShell;
       Key := 0;
     end;
     Exit;
@@ -760,9 +759,28 @@ begin
 end;
 
 procedure TframeCmdShell.HandleStopClick(Sender: TObject);
+var
+  LNow: Cardinal;
 begin
-  if Assigned(FProcess) then
-    FProcess.DiscardQueuedOutput;
+  // Stop on an already-exited session restarts it (parity with Enter-to-restart).
+  if not (Assigned(FProcess) and FProcess.Running) then
+  begin
+    RestartShell;
+    Exit;
+  end;
+
+  // A second Stop within the interval restarts instead of interrupting again.
+  LNow := GetTickCount;
+  if (FLastStopTick <> 0) and (LNow - FLastStopTick <= STOP_RESTART_INTERVAL_MS) then
+  begin
+    FLastStopTick := 0;
+    RestartShell;
+    Exit;
+  end;
+  FLastStopTick := LNow;
+
+  // First Stop: drop any backlog and send the interrupt (Ctrl+C / ETX).
+  FProcess.DiscardQueuedOutput;
   FOutputBuffer.Clear;
   FOutputRenderPending := False;
   if FBackendKind = tbConPty then
@@ -772,8 +790,7 @@ begin
   end
   else
     FAnsiParser.Reset;
-  if Assigned(FProcess) then
-    FProcess.SendInterrupt;
+  FProcess.SendInterrupt;
 end;
 
 procedure TframeCmdShell.ClearOutput;
@@ -995,6 +1012,20 @@ procedure TframeCmdShell.StopShell;
 begin
   if Assigned(FProcess) then
     FProcess.Terminate;
+end;
+
+procedure TframeCmdShell.RestartShell;
+begin
+  // A missing shell will not recover from a restart.
+  if FShellUnavailable then
+    Exit;
+  if Assigned(FProcess) and FProcess.Running then
+    StopShell;
+  FLastStopTick := 0;
+  FEditInput.ReadOnly := False;
+  FEditInput.TextHint := '';
+  ClearOutput;   // clears the output queue, parser, and (ConPTY) screen -- backend-aware
+  StartShell(FCmdShellInfo, FWorkDir);
 end;
 
 function TframeCmdShell.GetShellType:TCmdShellType;

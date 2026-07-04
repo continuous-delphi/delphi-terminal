@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.99.0
+- Interrupt / restart semantics: Stop (or Ctrl+C) interrupts the foreground app; a second Stop within a short window -- or Stop/Enter after the shell has exited -- restarts the session, clearing the output queue, parser, and screen. Teardown already stops all terminals before releasing settings on IDE close / package unload.
+[#72](https://github.com/continuous-delphi/delphi-terminal/issues/72)
+
 ## v1.3.97.0
 - ConPTY paste: Ctrl+V / Shift+Insert / context-menu Paste send the clipboard to the shell (newlines normalized to CR), wrapped in bracketed-paste markers (ESC[200~/ESC[201~) when the running app has enabled bracketed-paste mode.
 [#71](https://github.com/continuous-delphi/delphi-terminal/issues/71)
