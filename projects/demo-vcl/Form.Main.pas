@@ -117,7 +117,7 @@ uses
 
 const
   PROF_SAFETY_CAP_MS = 120000;   // bounded commands that hang are terminated after this
-  PROF_BETWEEN_MS = 700;         // settle between batch runs (shell teardown/restart)
+  PROF_BETWEEN_MS = 1500;        // settle between batch runs (shell teardown/restart; WSL VM needs headroom)
   PROF_STARTUP_MS = 1500;        // settle after launch before the first batch run
 
 function CurrentWorkingSetKB: NativeUInt;
@@ -493,6 +493,11 @@ begin
   end;
 
   PageControl1.ActivePage := TabForShell(ACmd.Shell);
+
+  // The profiler measures the ConPTY pipeline (#77 target), independent of the
+  // demo's DEBUG-gated default; the frame falls back to legacy at runtime if
+  // ConPTY is unavailable.
+  LFrame.BackendKind := tbConPty;
 
   // Fresh, isolated shell pinned to a known size for reproducibility.
   LFrame.SetFixedTerminalSize(ACmd.Cols, ACmd.Rows);

@@ -2,6 +2,11 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.103.0
+- Demo profiler: measures the ConPTY backend explicitly (independent of the DEBUG-gated default), increased the between-run settle for WSL's VM restart, and embeds the shared version resource so CSVs are version-keyed.
+- RunCommandLine now uses a backend-appropriate line ending (CR for ConPTY, CRLF for the legacy pipe shell) so injected commands submit correctly on either backend.
+[#81](https://github.com/continuous-delphi/delphi-terminal/issues/81)
+
 ## v2.0.102.0
 - Demo: added a data-driven ConPTY performance-profiling harness (prep for #77). A Profiler tab runs a predefined command set (throughput dumps, huge line, full-screen redraws) measuring chars/sec, chunk/render-pass counts, and memory, using process-exit as the "done" signal (timed window for non-terminating commands). Build with the PROFILE_COMMANDS define for an unattended batch that runs the whole set and writes a timestamped, version-keyed CSV, then exits.
 [#81](https://github.com/continuous-delphi/delphi-terminal/issues/81)

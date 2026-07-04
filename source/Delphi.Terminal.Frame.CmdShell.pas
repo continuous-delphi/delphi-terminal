@@ -973,8 +973,13 @@ end;
 
 procedure TframeCmdShell.RunCommandLine(const AText: string);
 begin
-  if Assigned(FProcess) and FProcess.Running then
-    FProcess.WriteInput(AText + #13);
+  if not (Assigned(FProcess) and FProcess.Running) then
+    Exit;
+  // ConPTY treats CR as Enter; the legacy pipe shell needs CRLF to submit a line.
+  if FBackendKind = tbConPty then
+    FProcess.WriteInput(AText + #13)
+  else
+    FProcess.WriteInput(AText + #13#10);
 end;
 
 procedure TframeCmdShell.SetFixedTerminalSize(ACols, ARows: Integer);
