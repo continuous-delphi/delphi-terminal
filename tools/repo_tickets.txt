@@ -886,6 +886,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: gate availability at Windows build 18362 (1903)
 Issue: #55
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 0. Require known-good ConPTY (stable resize/alt-screen) and fall back to

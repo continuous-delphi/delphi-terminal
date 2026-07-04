@@ -18,6 +18,9 @@ type
     ///<summary>The child process must be assigned to TConPty's kill-on-close Job Object (so descendants die on Close).</summary>
     [Test]
     procedure ChildIsAssignedToJob;
+    ///<summary>The build gate (CONPTY_MIN_BUILD) excludes pre-1903 builds and admits 1903+.</summary>
+    [Test]
+    procedure BuildGate_ExcludesBelow1903;
   end;
 
 implementation
@@ -26,6 +29,7 @@ uses
   System.SysUtils,
   System.Classes,
   Winapi.Windows,
+  WinAPI.ConPty,
   Delphi.Terminal.Pty,
   Delphi.Terminal.ConPtyReader;
 
@@ -194,6 +198,15 @@ begin
   finally
     LPty.Free;
   end;
+end;
+
+procedure TConPtyTests.BuildGate_ExcludesBelow1903;
+begin
+  Assert.IsFalse(ConPtyBuildSupported(17763), 'Windows 1809 (17763) must be excluded');
+  Assert.IsFalse(ConPtyBuildSupported(CONPTY_MIN_BUILD - 1), 'A build just below the threshold must be excluded');
+  Assert.IsTrue(ConPtyBuildSupported(CONPTY_MIN_BUILD), 'Windows 1903 (18362) must be supported');
+  Assert.IsTrue(ConPtyBuildSupported(19045), 'Later Windows 10 builds must be supported');
+  Assert.IsTrue(ConPtyBuildSupported(22631), 'Windows 11 builds must be supported');
 end;
 
 initialization

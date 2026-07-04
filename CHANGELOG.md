@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.78.0
+- ConPTY availability is gated to Windows 10 1903+ (build 18362), detected via RtlGetVersion so a missing app manifest cannot falsely disable it
+[#55](https://github.com/continuous-delphi/delphi-terminal/issues/55)
+
 ## v1.3.77.0
 - ConPTY sessions assign the child to a kill-on-close Job Object so the whole process tree (shell + descendants) is terminated on teardown
 [#54](https://github.com/continuous-delphi/delphi-terminal/issues/54)

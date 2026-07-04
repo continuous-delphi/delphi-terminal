@@ -1,5 +1,5 @@
 1 VERSIONINFO
-FILEVERSION 1,3,78,0
+FILEVERSION 1,3,79,0
 PRODUCTVERSION 1,0,0,0
 FILEFLAGSMASK 0x3FL
 FILEFLAGS 0x0L
@@ -14,7 +14,7 @@ BEGIN
       VALUE "Comments", "Continuous-Delphi Organization\0"
       VALUE "CompanyName", "Ideas Awakened, Inc\0"
       VALUE "FileDescription", "Delphi-Terminal - Dockable Terminal for RAD Studio\0"
-      VALUE "FileVersion", "1.3.78.0\0"
+      VALUE "FileVersion", "1.3.79.0\0"
       VALUE "InternalName", "Delphi.Terminal\0"
       VALUE "LegalCopyright", "Copyright (c) 2026 Darian Miller\0"
       VALUE "OriginalFilename", "Delphi.Terminal.Plugin.bpl\0"

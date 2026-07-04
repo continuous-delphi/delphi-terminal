@@ -50,6 +50,9 @@ const
   ///<summary>dwFlags value for CreatePseudoConsole: inherit the cursor position of the calling console.</summary>
   PSEUDOCONSOLE_INHERIT_CURSOR = $00000001;
 
+  ///<summary>First Windows 10 build with stable ConPTY (version 1903). 1809 shipped ConPTY but with resize/alt-screen defects, so it is excluded.</summary>
+  CONPTY_MIN_BUILD = 18362;
+
 {$IF not Declared(EXTENDED_STARTUPINFO_PRESENT)}
   // Present in WinAPI.Windows on 12+, absent prior
   EXTENDED_STARTUPINFO_PRESENT = $00080000;
@@ -229,9 +232,34 @@ type
   end;
 
 
+///<summary>True when ABuildNumber meets the minimum for stable ConPTY (see CONPTY_MIN_BUILD).</summary>
+function ConPtyBuildSupported(ABuildNumber: DWORD): Boolean;
+
+
 implementation
 uses
   System.SysUtils;
+
+// RtlGetVersion reports the true OS version regardless of the app's manifest
+// (GetVersionEx / Win32BuildNumber lie to unmanifested apps, reporting 6.2/9200).
+function RtlGetVersion(var AVersionInfo: TOSVersionInfoW): LongInt; stdcall; external 'ntdll.dll' name 'RtlGetVersion';
+
+function WindowsBuildNumber: DWORD;
+var
+  LInfo: TOSVersionInfoW;
+begin
+  ZeroMemory(@LInfo, SizeOf(LInfo));
+  LInfo.dwOSVersionInfoSize := SizeOf(LInfo);
+  if RtlGetVersion(LInfo) = 0 then
+    Result := LInfo.dwBuildNumber
+  else
+    Result := 0;
+end;
+
+function ConPtyBuildSupported(ABuildNumber: DWORD): Boolean;
+begin
+  Result := ABuildNumber >= CONPTY_MIN_BUILD;
+end;
 
 
 function TConPtyAPI.Initialize: Boolean;
@@ -240,7 +268,9 @@ var
 begin
   Self := Default(TConPtyAPI);
 
-  if System.SysUtils.Win32MajorVersion >= 10 then
+  // Primary gate is GetProcAddress below; the build check is a secondary filter
+  // that additionally excludes 1809 (which has ConPTY but with known defects).
+  if ConPtyBuildSupported(WindowsBuildNumber) then
   begin
     hModule:= GetModuleHandle(WinAPI.Windows.Kernel32);
 
