@@ -83,7 +83,7 @@ type
   ///<summary>Creates a new pseudoconsole object for the calling process.</summary>
   ///<see>https://learn.microsoft.com/en-us/windows/console/createpseudoconsole</see>
   ///<c>
-  ///  HRESULT WINAPI CreatePseudoConsole(
+  ///  HRESULT WINAPI CreatePseudoConsole(    If this method succeeds, it returns S_OK. Otherwise, it returns an HRESULT error code.
   ///    _In_ COORD size,                     The dimensions of the window/buffer in count of characters that will be used on initial creation of the pseudoconsole. This can be adjusted later with ResizePseudoConsole.
   ///    _In_ HANDLE hInput,                  An open handle to a stream of data that represents user input to the device. This is currently restricted to synchronous I/O.
   ///    _In_ HANDLE hOutput,                 An open handle to a stream of data that represents application output from the device. This is currently restricted to synchronous I/O.
