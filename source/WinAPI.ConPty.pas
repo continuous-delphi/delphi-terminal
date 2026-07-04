@@ -34,6 +34,9 @@
 
   The actual dynamic loading and call wrappers live in Delphi.Terminal.Pty.
 
+  Reference -- Microsoft's "Creating a Pseudoconsole session" walkthrough:
+  https://learn.microsoft.com/en-us/windows/console/creating-a-pseudoconsole-session
+
 *)
 unit WinAPI.ConPty;
 

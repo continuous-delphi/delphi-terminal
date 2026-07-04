@@ -1258,6 +1258,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: unify TConPtyReader and legacy TPipeReaderThread (post-2.0)
 Issue: #75
+Status: closed
 Labels: enhancement, conpty, tech-debt
 Body:
 Post-2.0 follow-up. Fold both readers into a single parameterized reader once
