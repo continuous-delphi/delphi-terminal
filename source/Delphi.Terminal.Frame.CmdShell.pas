@@ -47,7 +47,9 @@ type
     FPanelInput: TPanel;
     FCmdLabel: TEdit;
     FEditInput: TEdit;
-    FCmdShellProcess: TCmdShellProcess;
+    FProcess: ITerminalProcess;
+    FProcessObj: TObject;
+    FBackendKind: TTerminalBackendKind;
     FHistory: TCommandHistory;
     FAnsiParser: TAnsiParser;
     FOutputBuffer: TStringBuilder;
@@ -72,6 +74,7 @@ type
     procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
     procedure TrimOutput;
     procedure BuildControls;
+    procedure RecreateBackend;
     function GetShellType:TCmdShellType;
   protected
     procedure WndProc(var Message: TMessage); override;
@@ -90,6 +93,7 @@ type
     procedure InsertCommandText(const AText: string);
     procedure ShowMessage(const AText: string);
 
+    property BackendKind: TTerminalBackendKind read FBackendKind write FBackendKind;
     property ShellType:TCmdShellType read GetShellType;
     property OnRequestProjectDir: TRequestPathEvent read FOnRequestProjectDir write FOnRequestProjectDir;
     property OnRequestFileDir: TRequestPathEvent read FOnRequestFileDir write FOnRequestFileDir;
@@ -97,6 +101,10 @@ type
   end;
 
 implementation
+
+uses
+  Delphi.Terminal.Pty,
+  Delphi.Terminal.ConPtyShell;
 
 {$R *.dfm}
 
@@ -112,14 +120,14 @@ begin
   FHistory := TCommandHistory.Create;
   FAnsiParser := TAnsiParser.Create;
   FOutputBuffer := TStringBuilder.Create;
-  FCmdShellProcess := TCmdShellProcess.Create;
-  FCmdShellProcess.OnOutput := HandleOutput;
-  FCmdShellProcess.OnProcessExit := HandleProcessExit;
+  // The backend (legacy pipe or ConPTY) is created on demand in StartShell,
+  // chosen by BackendKind (default: legacy pipe).
 end;
 
 destructor TframeCmdShell.Destroy;
 begin
-  FCmdShellProcess.Free;
+  FProcess := nil;
+  FreeAndNil(FProcessObj);
   FOutputBuffer.Free;
   FAnsiParser.Free;
   FHistory.Free;
@@ -373,7 +381,7 @@ begin
   if Key = #13 then
   begin
     Key := #0;
-    if not FCmdShellProcess.Running then
+    if not (Assigned(FProcess) and FProcess.Running) then
     begin
       if FShellUnavailable then
         Exit;
@@ -495,7 +503,8 @@ begin
   end
   else if (Key = Ord('C')) and (ssCtrl in Shift) and (FEditInput.SelLength = 0) then
   begin
-    FCmdShellProcess.SendCtrlC;
+    if Assigned(FProcess) then
+      FProcess.SendInterrupt;
     Key := 0;
   end
   else if (Key = Ord('P')) and (ssCtrl in Shift) then
@@ -542,10 +551,10 @@ procedure TframeCmdShell.SetWorkingDirectory(const APath: string);
 var
   Cmd: string;
 begin
-  if not FCmdShellProcess.Running then
+  if not (Assigned(FProcess) and FProcess.Running) then
     Exit;
   Cmd := TCmdUtils.ChangeDirectoryCommand(FCmdShellInfo.ShellType, APath);
-  FCmdShellProcess.SendCommand(Cmd);
+  FProcess.WriteInput(Cmd + #13#10);
   //  FRichOutput.SelStart := FRichOutput.GetTextLen;
   //  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
   SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
@@ -558,11 +567,13 @@ end;
 
 procedure TframeCmdShell.HandleStopClick(Sender: TObject);
 begin
-  FCmdShellProcess.DiscardQueuedOutput;
+  if Assigned(FProcess) then
+    FProcess.DiscardQueuedOutput;
   FOutputBuffer.Clear;
   FOutputRenderPending := False;
   FAnsiParser.Reset;
-  FCmdShellProcess.SendCtrlC;
+  if Assigned(FProcess) then
+    FProcess.SendInterrupt;
 end;
 
 procedure TframeCmdShell.ClearOutput;
@@ -581,11 +592,11 @@ end;
 
 procedure TframeCmdShell.SendUserCommand(const AText: string);
 begin
-  if not FCmdShellProcess.Running then
+  if not (Assigned(FProcess) and FProcess.Running) then
     Exit;
   FHistory.Add(AText);
   FHistory.ResetPosition;
-  FCmdShellProcess.SendCommand(AText);
+  FProcess.WriteInput(AText + #13#10);
   FEditInput.Clear;
 end;
 
@@ -601,12 +612,28 @@ begin
   HandleOutput(Self, AText + #13#10);
 end;
 
+procedure TframeCmdShell.RecreateBackend;
+begin
+  FProcess := nil;
+  FreeAndNil(FProcessObj);
+  case FBackendKind of
+    tbConPty:
+      FProcessObj := TConPtyShell.Create;
+  else
+    FProcessObj := TCmdShellProcess.Create;
+  end;
+  Supports(FProcessObj, ITerminalProcess, FProcess);
+  FProcess.OnOutput := HandleOutput;
+  FProcess.OnProcessExit := HandleProcessExit;
+end;
+
 procedure TframeCmdShell.StartShell(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
 begin
   FCmdShellInfo := ACmdShellInfo;
   FWorkDir := AWorkDir;
   FShellUnavailable := False;
-  FCmdShellProcess.Start(ACmdShellInfo, AWorkDir);
+  RecreateBackend;
+  FProcess.Start(ACmdShellInfo, AWorkDir, DefaultTerminalSize);
 end;
 
 procedure TframeCmdShell.ShowStartupError(const ACmdShellInfo: TCmdShellInfo; const AMessage: string);
@@ -622,7 +649,8 @@ end;
 
 procedure TframeCmdShell.StopShell;
 begin
-  FCmdShellProcess.Terminate;
+  if Assigned(FProcess) then
+    FProcess.Terminate;
 end;
 
 function TframeCmdShell.GetShellType:TCmdShellType;

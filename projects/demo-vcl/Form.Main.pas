@@ -52,6 +52,9 @@ uses
 
 procedure TfrmMain.StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
 begin
+  {$IFDEF DEBUG}
+  AFrame.BackendKind := tbConPty;
+  {$ENDIF}
   try
     AFrame.StartShell(ACmdShellInfo, AWorkDir);
   except

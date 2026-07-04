@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.81.0
+- TframeCmdShell now drives the terminal through the ITerminalProcess abstraction and creates its backend on demand (BackendKind); the demo can force ConPTY via the DELPHI_TERMINAL_BACKEND env var. Legacy path unchanged.
+[#58](https://github.com/continuous-delphi/delphi-terminal/issues/58)
+
 ## v1.3.80.0
 - Added the ConPTY backend (TConPtyShell) implementing ITerminalProcess: owns the pseudoconsole session and reader, maps shells to a command line, handles input/interrupt/resize, and detects natural child exit via a process-handle watcher
 [#57](https://github.com/continuous-delphi/delphi-terminal/issues/57)

@@ -38,6 +38,9 @@ type
 
   TOutputEvent = procedure(Sender: TObject; const AText: string) of object;
 
+  ///<summary>Concrete backend selection. (The Auto setting resolves to one of these.)</summary>
+  TTerminalBackendKind = (tbLegacyPipe, tbConPty);
+
   ///<summary>Backend contract implemented by both the legacy pipe process (TCmdShellProcess) and the ConPTY backend, so the frame can drive either.</summary>
   ITerminalProcess = interface
     ['{7B3C1A44-9E2D-4C6F-9B1A-8D2E5F0A6C31}']

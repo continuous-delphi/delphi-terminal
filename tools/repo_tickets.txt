@@ -947,6 +947,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: wire TframeCmdShell to ITerminalProcess
 Issue: #58
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 1. Frame depends on the abstraction, not `TCmdShellProcess` directly.
