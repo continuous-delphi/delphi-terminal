@@ -15,7 +15,8 @@ unit Delphi.Terminal.CmdShell;
 interface
 
 uses
-  System.SysUtils, System.Classes, Winapi.Windows;
+  System.SysUtils, System.Classes, Winapi.Windows,
+  Delphi.Terminal.Pty;
 
 type
 
@@ -37,7 +38,27 @@ type
 
   TOutputEvent = procedure(Sender: TObject; const AText: string) of object;
 
-  TCmdShellProcess = class
+  ///<summary>Backend contract implemented by both the legacy pipe process (TCmdShellProcess) and the ConPTY backend, so the frame can drive either.</summary>
+  ITerminalProcess = interface
+    ['{7B3C1A44-9E2D-4C6F-9B1A-8D2E5F0A6C31}']
+    procedure Start(const AShellInfo: TCmdShellInfo; const AWorkDir: string; const ASize: TTerminalSize);
+    ///<summary>Writes raw text to the child's input (no line terminator added).</summary>
+    procedure WriteInput(const AText: string);
+    procedure SendInterrupt;
+    procedure Resize(const ASize: TTerminalSize);
+    procedure Terminate;
+    procedure DiscardQueuedOutput;
+    function GetRunning: Boolean;
+    function GetOnOutput: TOutputEvent;
+    procedure SetOnOutput(const AValue: TOutputEvent);
+    function GetOnProcessExit: TNotifyEvent;
+    procedure SetOnProcessExit(const AValue: TNotifyEvent);
+    property Running: Boolean read GetRunning;
+    property OnOutput: TOutputEvent read GetOnOutput write SetOnOutput;
+    property OnProcessExit: TNotifyEvent read GetOnProcessExit write SetOnProcessExit;
+  end;
+
+  TCmdShellProcess = class(TObject, ITerminalProcess)
   private
     FStdInWrite: THandle;
     FStdOutRead: THandle;
@@ -54,13 +75,28 @@ type
     procedure HandleNaturalExit;
     procedure QueueOutput(const AText: string);
     procedure FlushQueuedOutput;
+  protected
+    { non-reference-counted IInterface: lifetime stays with the explicit owner }
+    function QueryInterface(const IID: TGUID; out Obj): HRESULT; stdcall;
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+    { ITerminalProcess accessors }
+    function GetRunning: Boolean;
+    function GetOnOutput: TOutputEvent;
+    procedure SetOnOutput(const AValue: TOutputEvent);
+    function GetOnProcessExit: TNotifyEvent;
+    procedure SetOnProcessExit(const AValue: TNotifyEvent);
   public
     constructor Create;
     destructor Destroy; override;
     class function BuildEnvironmentBlock: TBytes;
-    procedure Start(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string = '');
+    procedure Start(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string = ''); overload;
+    procedure Start(const AShellInfo: TCmdShellInfo; const AWorkDir: string; const ASize: TTerminalSize); overload;
+    procedure WriteInput(const AText: string);
     procedure SendCommand(const ACommand: string);
+    procedure SendInterrupt;
     procedure SendCtrlC;
+    procedure Resize(const ASize: TTerminalSize);
     procedure DiscardQueuedOutput;
     procedure Terminate;
     property Running: Boolean read FRunning;
@@ -342,19 +378,86 @@ begin
   FReaderThread := TPipeReaderThread.Create(Self, FStdOutRead, FEncoding);
 end;
 
-procedure TCmdShellProcess.SendCommand(const ACommand: string);
+procedure TCmdShellProcess.WriteInput(const AText: string);
 var
   Bytes: TBytes;
   Written: DWORD;
 begin
   if not FRunning then
     Exit;
-  Bytes := FEncoding.GetBytes(ACommand + #13#10);
+  Bytes := FEncoding.GetBytes(AText);
+  if Length(Bytes) = 0 then
+    Exit;
   if not WriteFile(FStdInWrite, Bytes[0], Length(Bytes), Written, nil) then
   begin
     CloseHandle(FStdInWrite);
     FStdInWrite := INVALID_HANDLE_VALUE;
   end;
+end;
+
+procedure TCmdShellProcess.SendCommand(const ACommand: string);
+begin
+  // Legacy line-mode input: the command plus a CR/LF terminator.
+  WriteInput(ACommand + #13#10);
+end;
+
+procedure TCmdShellProcess.SendInterrupt;
+begin
+  SendCtrlC;
+end;
+
+procedure TCmdShellProcess.Resize(const ASize: TTerminalSize);
+begin
+  // No-op: anonymous pipes have no terminal dimensions to resize.
+end;
+
+procedure TCmdShellProcess.Start(const AShellInfo: TCmdShellInfo; const AWorkDir: string; const ASize: TTerminalSize);
+begin
+  // The legacy pipe backend has no terminal dimensions; ASize is ignored.
+  Start(AShellInfo, AWorkDir);
+end;
+
+function TCmdShellProcess.GetRunning: Boolean;
+begin
+  Result := FRunning;
+end;
+
+function TCmdShellProcess.GetOnOutput: TOutputEvent;
+begin
+  Result := FOnOutput;
+end;
+
+procedure TCmdShellProcess.SetOnOutput(const AValue: TOutputEvent);
+begin
+  FOnOutput := AValue;
+end;
+
+function TCmdShellProcess.GetOnProcessExit: TNotifyEvent;
+begin
+  Result := FOnProcessExit;
+end;
+
+procedure TCmdShellProcess.SetOnProcessExit(const AValue: TNotifyEvent);
+begin
+  FOnProcessExit := AValue;
+end;
+
+function TCmdShellProcess.QueryInterface(const IID: TGUID; out Obj): HRESULT;
+begin
+  if GetInterface(IID, Obj) then
+    Result := S_OK
+  else
+    Result := E_NOINTERFACE;
+end;
+
+function TCmdShellProcess._AddRef: Integer;
+begin
+  Result := -1;
+end;
+
+function TCmdShellProcess._Release: Integer;
+begin
+  Result := -1;
 end;
 
 function IgnoreCtrlHandler(dwCtrlType: DWORD): BOOL; stdcall;

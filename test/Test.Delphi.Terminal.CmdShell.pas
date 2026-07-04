@@ -46,6 +46,8 @@ type
     [Test] procedure ChangeDirectoryCommandShouldUseCdForCmd;
     [Test] procedure ChangeDirectoryCommandShouldUseSetLocationForPwsh;
     [Test] procedure ChangeDirectoryCommandShouldUseSetLocationForPowerShell;
+
+    [Test] procedure ImplementsTerminalProcessInterface;
   end;
 
 implementation
@@ -261,6 +263,14 @@ end;
 procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseSetLocationForPowerShell;
 begin
   Assert.AreEqual('Set-Location "C:\test"', TCmdUtils.ChangeDirectoryCommand(TCmdShellType.PowerShell, 'C:\test'));
+end;
+
+procedure TTestCmdShellProcess.ImplementsTerminalProcessInterface;
+var
+  LIntf: ITerminalProcess;
+begin
+  Assert.IsTrue(Supports(FShell, ITerminalProcess, LIntf), 'TCmdShellProcess should implement ITerminalProcess');
+  Assert.IsTrue(Assigned(LIntf), 'Interface reference should be resolved');
 end;
 
 initialization

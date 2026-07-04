@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.79.0
+- Introduced the ITerminalProcess backend abstraction; the legacy pipe process now implements it (WriteInput/SendInterrupt/Resize), so the frame can drive either backend
+[#56](https://github.com/continuous-delphi/delphi-terminal/issues/56)
+
 ## v1.3.78.0
 - ConPTY availability is gated to Windows 10 1903+ (build 18362), detected via RtlGetVersion so a missing app manifest cannot falsely disable it
 [#55](https://github.com/continuous-delphi/delphi-terminal/issues/55)

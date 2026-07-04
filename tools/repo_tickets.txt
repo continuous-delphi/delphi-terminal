@@ -905,6 +905,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: ITerminalProcess abstraction; adapt legacy TCmdShellProcess
 Issue: #56
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 1. One backend contract both paths implement. Effort: M. Verify: unit
