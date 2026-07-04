@@ -135,6 +135,7 @@ type
     property OnMouseDown;
     property OnMouseMove;
     property OnMouseUp;
+    property OnResize;
   end;
 
 implementation

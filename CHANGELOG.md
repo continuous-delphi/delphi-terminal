@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v1.3.93.0
+- ConPTY mode now renders through TTerminalView (VT parser -> screen model -> view) instead of the RichEdit; the legacy pipe backend keeps using the RichEdit. Resizing the terminal (or its font metrics) reflows the shell via ResizePseudoConsole, and the view's Copy/Paste/Clear/Stop menu is wired to the live process.
+[#69](https://github.com/continuous-delphi/delphi-terminal/issues/69)
+
 ## v1.3.92.0
 - TTerminalView gained vertical scrollback (mouse wheel over history), mouse selection with clipboard copy, and a Copy / Paste / Clear / Stop context menu (Copy handled internally; Paste/Clear/Stop surfaced as events for the host). Selection maths / document addressing factored into a VCL-free unit.
 [#68](https://github.com/continuous-delphi/delphi-terminal/issues/68)

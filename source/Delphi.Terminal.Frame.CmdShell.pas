@@ -30,6 +30,10 @@ uses
   Delphi.Terminal.CmdShell,
   Delphi.Terminal.CommandHistory,
   Delphi.Terminal.AnsiParser,
+  Delphi.Terminal.Pty,
+  Delphi.Terminal.ScreenBuffer,
+  Delphi.Terminal.VTParser,
+  Delphi.Terminal.TerminalView,
   Delphi.Terminal.Settings;
 
 type
@@ -43,7 +47,10 @@ type
     FBtnCommands: TSpeedButton;
     FBtnClear: TSpeedButton;
     FBtnStop: TSpeedButton;
-    FRichOutput: TRichEdit;
+    FRichOutput: TRichEdit;               // legacy pipe backend renderer
+    FTermView: TTerminalView;             // ConPTY backend renderer
+    FScreen: TScreenBuffer;               // ConPTY screen model (nil until ConPTY starts)
+    FVTParser: TVTParser;                 // ConPTY VT parser driving FScreen
     FPanelInput: TPanel;
     FCmdLabel: TEdit;
     FEditInput: TEdit;
@@ -76,6 +83,12 @@ type
     procedure BuildControls;
     procedure RecreateBackend;
     function GetShellType:TCmdShellType;
+    // ConPTY renderer plumbing (#69)
+    function CurrentTerminalSize: TTerminalSize;
+    procedure EnsureConPtyModel;
+    procedure SyncTerminalSize;
+    procedure HandleTermViewResize(Sender: TObject);
+    procedure HandleTermViewPaste(Sender: TObject);
   protected
     procedure WndProc(var Message: TMessage); override;
   public
@@ -103,7 +116,7 @@ type
 implementation
 
 uses
-  Delphi.Terminal.Pty,
+  Vcl.Clipbrd,
   Delphi.Terminal.ConPtyShell;
 
 {$R *.dfm}
@@ -128,6 +141,8 @@ destructor TframeCmdShell.Destroy;
 begin
   FProcess := nil;
   FreeAndNil(FProcessObj);
+  FVTParser.Free;
+  FScreen.Free;
   FOutputBuffer.Free;
   FAnsiParser.Free;
   FHistory.Free;
@@ -245,6 +260,21 @@ begin
   FRichOutput.WordWrap := False;
   FRichOutput.WantReturns := False;
   FRichOutput.PlainText := False;
+
+  // ConPTY renderer. Both output controls are alClient; only the one matching the
+  // active backend is visible (toggled in RecreateBackend). Legacy = RichEdit.
+  FTermView := TTerminalView.Create(Self);
+  FTermView.Parent := Self;
+  FTermView.Align := alClient;
+  FTermView.Font.Name := TerminalFont;
+  FTermView.Font.Size := TerminalFontSize;
+  FTermView.DefaultBackground := TerminalBg;
+  FTermView.DefaultForeground := TerminalFg;
+  FTermView.Visible := False;
+  FTermView.OnResize := HandleTermViewResize;
+  FTermView.OnClearRequested := HandleClearClick;
+  FTermView.OnInterruptRequested := HandleStopClick;
+  FTermView.OnPasteRequested := HandleTermViewPaste;
 end;
 
 procedure TframeCmdShell.HandleOutput(Sender: TObject; const AText: string);
@@ -276,6 +306,22 @@ begin
 
   Text := FOutputBuffer.ToString(0, Count);
   FOutputBuffer.Remove(0, Count);
+
+  if FBackendKind = tbConPty then
+  begin
+    // ConPTY: drive the screen model through the VT parser and repaint incrementally.
+    if Assigned(FVTParser) then
+      FVTParser.Parse(Text);
+    if Assigned(FTermView) then
+      FTermView.UpdateView;
+    if FOutputBuffer.Length > 0 then
+    begin
+      FOutputRenderPending := True;
+      PostMessage(Handle, WM_RENDER_OUTPUT, 0, 0);
+    end;
+    Exit;
+  end;
+
   Segments := FAnsiParser.Parse(Text);
   SendMessage(FRichOutput.Handle, WM_SETREDRAW, 0, 0);
   try
@@ -387,8 +433,7 @@ begin
         Exit;
       FEditInput.ReadOnly := False;
       FEditInput.TextHint := '';
-      FRichOutput.Clear;
-      FAnsiParser.Reset;
+      ClearOutput;
       StartShell(FCmdShellInfo, FWorkDir);
       Exit;
     end;
@@ -555,9 +600,10 @@ begin
     Exit;
   Cmd := TCmdUtils.ChangeDirectoryCommand(FCmdShellInfo.ShellType, APath);
   FProcess.WriteInput(Cmd + #13#10);
-  //  FRichOutput.SelStart := FRichOutput.GetTextLen;
-  //  SendMessage(FRichOutput.Handle, EM_SCROLLCARET, 0, 0);
-  SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+  if FBackendKind = tbConPty then
+    FTermView.ScrollToBottom
+  else
+    SendMessage(FRichOutput.Handle, WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
 procedure TframeCmdShell.HandleClearClick(Sender: TObject);
@@ -571,7 +617,13 @@ begin
     FProcess.DiscardQueuedOutput;
   FOutputBuffer.Clear;
   FOutputRenderPending := False;
-  FAnsiParser.Reset;
+  if FBackendKind = tbConPty then
+  begin
+    if Assigned(FVTParser) then
+      FVTParser.Reset;
+  end
+  else
+    FAnsiParser.Reset;
   if Assigned(FProcess) then
     FProcess.SendInterrupt;
 end;
@@ -580,8 +632,24 @@ procedure TframeCmdShell.ClearOutput;
 begin
   FOutputBuffer.Clear;
   FOutputRenderPending := False;
-  FRichOutput.Clear;
-  FAnsiParser.Reset;
+  if FBackendKind = tbConPty then
+  begin
+    if Assigned(FVTParser) then
+      FVTParser.Reset;
+    if Assigned(FScreen) then
+      FScreen.ClearAll;
+    if Assigned(FTermView) then
+    begin
+      FTermView.ClearSelection;
+      FTermView.ScrollToBottom;
+      FTermView.RefreshAll;
+    end;
+  end
+  else
+  begin
+    FRichOutput.Clear;
+    FAnsiParser.Reset;
+  end;
 end;
 
 procedure TframeCmdShell.FocusInput;
@@ -625,6 +693,74 @@ begin
   Supports(FProcessObj, ITerminalProcess, FProcess);
   FProcess.OnOutput := HandleOutput;
   FProcess.OnProcessExit := HandleProcessExit;
+
+  // Show the renderer for the active backend; hide the other.
+  FRichOutput.Visible := FBackendKind <> tbConPty;
+  FTermView.Visible := FBackendKind = tbConPty;
+end;
+
+function TframeCmdShell.CurrentTerminalSize: TTerminalSize;
+begin
+  // Derive cols/rows from the view's font metrics and client area; fall back to a
+  // sane default before the view has a handle (e.g. plugin dock not yet shown).
+  if (FTermView <> nil) and FTermView.HandleAllocated and (FTermView.VisibleCols > 1) and (FTermView.VisibleRows > 1) then
+  begin
+    Result.Cols := FTermView.VisibleCols;
+    Result.Rows := FTermView.VisibleRows;
+  end
+  else
+    Result := DefaultTerminalSize;
+end;
+
+procedure TframeCmdShell.EnsureConPtyModel;
+var
+  LSize: TTerminalSize;
+begin
+  LSize := CurrentTerminalSize;
+  if FScreen = nil then
+    FScreen := TScreenBuffer.Create(LSize.Cols, LSize.Rows)
+  else
+    FScreen.Resize(LSize.Cols, LSize.Rows);
+  FScreen.ClearAll;
+
+  if FVTParser = nil then
+    FVTParser := TVTParser.Create(FScreen)
+  else
+    FVTParser.Reset;
+
+  FTermView.Buffer := FScreen;
+  FTermView.ScrollToBottom;
+end;
+
+procedure TframeCmdShell.SyncTerminalSize;
+var
+  LSize: TTerminalSize;
+begin
+  if (FBackendKind <> tbConPty) or (FScreen = nil) or (FTermView = nil) then
+    Exit;
+  LSize := CurrentTerminalSize;
+  if (LSize.Cols = FScreen.Cols) and (LSize.Rows = FScreen.Rows) then
+    Exit;
+  FScreen.Resize(LSize.Cols, LSize.Rows);
+  FTermView.RefreshAll;
+  if Assigned(FProcess) and FProcess.Running then
+    FProcess.Resize(LSize);
+end;
+
+procedure TframeCmdShell.HandleTermViewResize(Sender: TObject);
+begin
+  SyncTerminalSize;
+end;
+
+procedure TframeCmdShell.HandleTermViewPaste(Sender: TObject);
+var
+  LText: string;
+begin
+  if not (Assigned(FProcess) and FProcess.Running) then
+    Exit;
+  LText := Clipboard.AsText;
+  if LText <> '' then
+    FProcess.WriteInput(LText);
 end;
 
 procedure TframeCmdShell.StartShell(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
@@ -633,8 +769,10 @@ begin
   FWorkDir := AWorkDir;
   FShellUnavailable := False;
   RecreateBackend;
+  if FBackendKind = tbConPty then
+    EnsureConPtyModel;
   try
-    FProcess.Start(ACmdShellInfo, AWorkDir, DefaultTerminalSize);
+    FProcess.Start(ACmdShellInfo, AWorkDir, CurrentTerminalSize);
   except
     on E: Exception do
     begin

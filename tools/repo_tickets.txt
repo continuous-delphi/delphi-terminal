@@ -1150,6 +1150,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: frame integration of TTerminalView and resize wiring
 Issue: #69
+Status: closed
 Labels: enhancement, conpty
 Body:
 Phase 5. Effort: M. Verify: manual.
