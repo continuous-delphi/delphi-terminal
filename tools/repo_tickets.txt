@@ -1346,3 +1346,40 @@ Implement the standard in-place editing CSIs in TScreenBuffer + TVTParser:
 Acceptance criteria:
 - [ ] Editing a wrapped prediction line leaves no stale glyphs on the continuation line
 - [ ] ECH/ICH/DCH/IL/DL implemented with unit tests
+
+---
+Title: ConPTY: win32-input-mode input encoding (rich keys + pwsh block paste)
+Issue: #80
+Status: closed
+Labels: enhancement, conpty
+Body:
+CLOSED as not-needed: the block-paste premise was disproven. pwsh runs multi-line
+paste line-by-line identically in conhost, Windows Terminal, and our VCLDemo (it
+never enables ?2004 in any host), so there is no fidelity gap to close. No key
+input problems have been observed either. Reopen with concrete evidence if a real
+win32-input-mode need surfaces.
+
+Captured during #71 verification. Windows console line editors (cmd, pwsh,
+PowerShell) request win32-input-mode (`ESC[?9001h`) and do NOT enable classic
+bracketed paste (`ESC[?2004h`); only Linux apps under WSL/bash enable `?2004`.
+We currently send legacy VT input, which ConPTY converts to console key events.
+
+Consequences:
+- pwsh/PSReadLine cannot tell pasted text from typing, so multi-line paste runs
+  line-by-line instead of inserting as an editable block (differs from Windows
+  Terminal). Paste into WSL/bash already works as a block because bash enables
+  `?2004` (handled by #71).
+- Legacy VT input loses fidelity that win32-input-mode conveys: key-up events,
+  Enter vs Ctrl+M distinction, richer modifier reporting that some TUIs want.
+
+Implement win32-input-mode: when the app enables `ESC[?9001h`, encode keyboard
+and paste input as win32-input-mode records
+(`ESC[<Vk>;<Sc>;<Uc>;<Kd>;<Cs>;<Rc>_`) instead of legacy VT, and gate on it
+(fall back to legacy VT when not requested). This yields pwsh block-paste and
+better key fidelity. Effort: L. Verify: manual (capture-assisted). Optional for
+the 2.0 milestone -- Claude Code and interactive editing already work without it.
+
+Acceptance criteria:
+- [ ] When the app requests ?9001h, keyboard input is sent as win32-input-mode records; legacy VT otherwise
+- [ ] Multi-line paste into pwsh inserts as an editable block (no premature execution)
+- [ ] Existing typing / editing / TUI behavior is unaffected in both modes

@@ -134,7 +134,7 @@ const
   WM_SYNC_TERM_SIZE = WM_APP + 102;
   MAX_RENDER_CHARS_PER_PASS = 65536;
 
-{$DEFINE PTY_CAPTURE}  // Diagnostic: raw ConPTY stream capture to <exe dir>\pty-capture.log. Enable (remove the dot) and rebuild to capture.
+{.$DEFINE PTY_CAPTURE}  // Diagnostic: raw ConPTY stream capture to <exe dir>\pty-capture.log. Enable (remove the dot) and rebuild to capture.
 
 {$IFDEF PTY_CAPTURE}
 var
@@ -935,7 +935,11 @@ begin
   // Use bracketed paste only when the running app asked for it (DEC ?2004), so it can
   // treat the paste as literal text instead of interpreting embedded newlines/keys.
   LBracketed := (FBackendKind = tbConPty) and Assigned(FScreen) and FScreen.BracketedPaste;
-  FProcess.WriteInput(BuildPasteSequence(LText, LBracketed));
+  LText := BuildPasteSequence(LText, LBracketed);
+  {$IFDEF PTY_CAPTURE}
+  PtyCapture('IN  ' + Name + ' PASTE', LText);
+  {$ENDIF}
+  FProcess.WriteInput(LText);
 end;
 
 procedure TframeCmdShell.StartShell(const ACmdShellInfo: TCmdShellInfo; const AWorkDir: string);
