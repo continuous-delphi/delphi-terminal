@@ -1427,3 +1427,186 @@ Acceptance criteria:
 - [ ] Interactive: pick a command, Run, see stats; result appended to the CSV
 - [ ] Batch build auto-runs the full list and writes a timestamped CSV, then exits
 - [ ] Bounded (exit-signaled) and timed (windowed) commands both report correctly
+
+---
+Title: Saved commands: fix ConPTY run and preview-to-edit mechanics
+Issue: #82
+Status: closed
+Labels: bug, conpty
+Body:
+Tracing the palette execution path (`Delphi.Terminal.Plugin.DockForm.pas`
+`HandleCommandPaletteRequested`, lines 479-584) into the frame surfaced two
+correctness defects in the ConPTY backend that predate the 2.0 merge. Neither
+is about the injection-hazard policy (see the separate suppression ticket) --
+these are plain mechanical bugs.
+
+1. Run-now sends the wrong line ending. `TframeCmdShell.SendUserCommand`
+   (`source/Delphi.Terminal.Frame.CmdShell.pas:860`) unconditionally writes
+   `AText + #13#10`. `RunCommandLine` (same unit, line 974) was already fixed
+   to be backend-aware -- CR (`#13`) for ConPTY, CRLF (`#13#10`) for the legacy
+   pipe -- as part of the #81 line-ending work, but `SendUserCommand` (the path
+   the Ctrl+P palette uses for "run now", via `paRun`) was missed. In ConPTY the
+   trailing LF is a second Enter at the prompt (stray blank line / re-prompt).
+
+2. Preview-to-edit is a no-op in ConPTY. The palette's default action `paEdit`
+   ("Enter previews the command in the input field for editing") calls
+   `TframeCmdShell.InsertCommandText` (line 870), which sets `FEditInput.Text`
+   and focuses it. But in ConPTY mode the entire input panel is hidden
+   (`FPanelInput.Visible := FBackendKind <> tbConPty`, line 900), so the text
+   lands in a control the user cannot see, edit, or submit. The "edit before
+   running" affordance silently does nothing in ConPTY.
+
+Implementation notes:
+- Make `SendUserCommand` use the same backend-aware terminator as
+  `RunCommandLine` (CR for `tbConPty`, CRLF otherwise). Consider routing both
+  through a single private helper so the two paths cannot diverge again.
+- Give `paEdit` a working ConPTY path: write the command text to the PTY line
+  editor WITHOUT the terminating CR, so the shell's own line editor shows it and
+  the user edits inline and presses Enter themselves. (The hidden `TEdit` cannot
+  serve this in ConPTY.) The suppression ticket gates whether this is allowed
+  when a foreground app is active.
+
+Acceptance criteria:
+- [ ] Saved-command run-now (Ctrl+P, paRun) submits exactly one line in ConPTY (no stray blank line) and is unchanged in legacy
+- [ ] Saved-command preview-to-edit (paEdit) places an editable command at the ConPTY prompt that the user can modify and submit
+- [ ] Legacy backend behavior for both paths is unchanged
+- [ ] Existing tests continue to pass
+
+---
+Title: Auto-CD applies to the legacy pipe backend only
+Issue: #83
+Labels: enhancement, conpty
+Body:
+Auto-CD-on-project-switch injects a `cd` command into the shell whenever the
+active IDE project changes (`Delphi.Terminal.Plugin.DockForm.pas`
+`HandleActiveProjectChanged`, line 371, calling `TframeCmdShell.SetWorkingDirectory`).
+This made sense in the 1.0 line-command model, where the shell always sits at a
+prompt and the user's own typing went into a separate input `TEdit`. Under the
+ConPTY backend `WriteInput` is raw keystroke injection into the foreground
+program: if Claude Code, a REPL, or a full-screen TUI is running, the `cd ...`
+plus Enter is typed into THAT app, not a shell prompt. Even at a bare ConPTY
+prompt it clobbers a half-typed command line, because there is no separate input
+box anymore.
+
+Decision: Auto-CD is a legacy-pipe-only feature. In ConPTY it is suppressed
+entirely, and the config screen states the scope. (A future, safe ConPTY Auto-CD
+gated on the OSC 133 prompt-state predicate is explicitly out of scope for this
+ticket -- see that ticket.)
+
+Note: ConPTY is the default backend in 2.0, so out of the box most users will
+not get Auto-CD. This is the intended trade against ever injecting into an
+interactive session.
+
+Implementation notes:
+- Gate the automatic call site only: in `HandleActiveProjectChanged`, skip
+  frames whose `BackendKind <> tbLegacyPipe` (the frame already exposes
+  `property BackendKind`, `Frame.CmdShell.pas:133`). Applies to both the
+  active-tab and all-tabs modes.
+- Do NOT change the Project Dir / File Dir toolbar buttons
+  (`Frame.CmdShell.pas:754,767`) -- those call `SetWorkingDirectory` on an
+  explicit user click and should keep working in both backends.
+- Config screen: annotate the Auto-cd control (`FCboAutoCd`,
+  `Delphi.Terminal.Plugin.OptionsFrame.pas:190-198`), e.g. caption
+  "Auto-cd on project switch (Legacy Pipes only):" or a note label beside it.
+
+Acceptance criteria:
+- [ ] Switching the active project changes the working directory in legacy-pipe tabs only
+- [ ] ConPTY tabs receive no injected cd on project switch (no keystrokes sent to a running interactive app)
+- [ ] Project Dir / File Dir toolbar buttons still change directory in both backends
+- [ ] The config screen states that Auto-cd applies to the Legacy Pipes backend only
+- [ ] Existing tests continue to pass
+
+---
+Title: Saved commands: suppress injection when a ConPTY foreground app is active
+Issue: #84
+Labels: enhancement, conpty
+Body:
+Saved commands run via the Ctrl+P palette are written straight to the PTY
+(`TframeCmdShell.SendUserCommand`). Like Auto-CD, in ConPTY this is keystroke
+injection into whatever owns the foreground: if Claude Code / a REPL / vim is
+running, the saved command -- authored for a shell, and already run through
+`TCmdUtils.GetCDAndRunCommand` to build shell-specific `cd && run` syntax -- is
+typed into that app instead, and the trailing Enter submits garbage.
+
+Unlike Auto-CD this is user-initiated (the user opened the palette and chose
+run), so the correct response when the shell is busy is a visible WARNING, not
+silent suppression, and the feature must keep working in ConPTY (running a build
+in a fresh pwsh prompt is a prime ConPTY use case) -- so the legacy-only
+treatment used for Auto-CD is wrong here.
+
+This ticket consumes the shared "shell is idle at a prompt" predicate delivered
+by the OSC 133 prompt-state ticket (dependency). All programmatic writes to the
+shell should route through that one predicate with per-feature policy; this
+ticket wires the saved-command paths.
+
+Implementation notes:
+- Depends on the OSC 133 prompt-state predicate ticket for the idle check.
+- Run-now (`SendUserCommand`) and preview-to-edit (`InsertCommandText`, ConPTY
+  path): when the predicate reports the shell is NOT idle (a foreground child /
+  TUI is active), do not inject; instead surface a message via
+  `TframeCmdShell.ShowMessage` (e.g. "[delphi-terminal] Cannot run a saved
+  command while an interactive program is active -- stop it first").
+- Do NOT gate ordinary paste (`PasteToShell`) -- pasting into whatever is focused
+  is normal terminal behavior.
+- Legacy backend is unaffected (always at a prompt; separate input box).
+
+Acceptance criteria:
+- [ ] Running a saved command at an idle ConPTY prompt works as today
+- [ ] Running a saved command while an interactive app is foreground shows a warning and injects nothing
+- [ ] The same guard applies to the preview-to-edit path
+- [ ] Paste is not affected by the guard
+- [ ] Legacy backend behavior is unchanged
+- [ ] Unit tests cover the idle/busy decision where feasible
+
+---
+Title: ConPTY: OSC 133 shell-integration prompt-state predicate
+Issue: #85
+Labels: enhancement, conpty
+Body:
+Every place delphi-terminal programmatically writes to the shell shares one
+precondition in ConPTY: the shell prompt must be the foreground, not an
+interactive child. Provide a single shared "shell is idle at a prompt" predicate
+that those call sites (saved-command run/preview; any future safe ConPTY Auto-CD)
+consult, so the busy/idle logic lives in one place instead of being duplicated
+per feature.
+
+Primary signal: OSC 133 semantic prompt markers (`ESC]133;A` prompt start,
+`;B` command-input start, `;C` command executed, `;D` command finished). The VT
+parser already buffers and dispatches OSC (`source/Delphi.Terminal.VTParser.pas`
+`DispatchOSC`, line 261, handling Ps 0/2 titles); add a `133` case that tracks
+prompt state on the screen model. "Idle at a prompt" == last saw A/B and not yet
+C. Because the markers ride the PTY stream from inside the shell, this works for
+WSL, where a Windows-side process/Job heuristic cannot see the in-VM child.
+
+OSC 133 is emitted by a shell prompt hook, not by the shell inherently -- none of
+cmd/pwsh/PowerShell/WSL send it out of the box (needs PSReadLine/profile snippet,
+bashrc integration, clink, etc.). So define the fallback when no 133 markers have
+been observed this session. Options to weigh during implementation:
+- Job Object active-process count as a fallback busy check (query
+  `JOBOBJECT_BASIC_ACCOUNTING_INFORMATION.ActiveProcesses` -- only
+  `SetInformationJobObject` is currently declared in `source/WinAPI.ConPty.pas`;
+  add `QueryInformationJobObject` + the accounting struct). Shell-only == 1 ==
+  idle. Blind spot: WSL (child runs in the VM, not the Windows Job), so pair it
+  with the alt-screen flag and prefer OSC 133 when present.
+- Alt-screen active (`FScreen` `?1049`) is always a "busy" signal regardless of
+  markers.
+
+Expose the predicate as a single method/property the frame and dock form can
+call (e.g. `TScreenBuffer`/`TVTParser` prompt-state + a frame-level
+`ShellIsIdleAtPrompt`). Half-typed-line note: with 133 present we can also track
+"has the user sent a keystroke since the last 133;B" for a stricter idle check;
+capture that as a refinement, not a hard requirement.
+
+Implementation notes:
+- Parse OSC 133 A/B/C/D in `DispatchOSC`; store prompt state on the screen model.
+- Decide and implement the no-marker fallback (Job accounting +/- alt-screen).
+- Surface one shared idle predicate consumed by the saved-command suppression
+  ticket.
+
+Acceptance criteria:
+- [ ] OSC 133 A/B/C/D markers update a prompt-state on the screen model
+- [ ] A single shared "shell idle at prompt" predicate is exposed for the frame/dock form
+- [ ] When markers are present, an executing command (post-133;C) reports not-idle; a fresh prompt reports idle -- including under WSL
+- [ ] A defined fallback covers shells that emit no 133 markers
+- [ ] Alt-screen active always reports not-idle
+- [ ] Unit tests cover marker parsing and the idle/busy predicate

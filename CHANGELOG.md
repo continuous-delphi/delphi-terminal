@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.107.0
+- Fixed two ConPTY saved-command defects: "run now" from the Ctrl+P palette sent CRLF (a stray extra Enter) instead of the backend-correct CR, and "preview to edit" wrote to the hidden line-entry box so it did nothing. Run-now now submits exactly one line; preview places an editable command at the ConPTY prompt. Both submit paths share one helper so they cannot diverge again.
+[#82](https://github.com/continuous-delphi/delphi-terminal/issues/82)
+
 ## v2.0.104.0
 - Output rendering is now coalesced to ~60fps on a render timer instead of one parse+paint pass per reader chunk. Under heavy output this cuts render passes ~50x (measured: 14-18k -> ~300 for a 50k-line dump), so the UI stays responsive during floods; memory remains bounded. Benefits both the ConPTY and legacy renderers.
 [#77](https://github.com/continuous-delphi/delphi-terminal/issues/77)

@@ -105,6 +105,8 @@ type
     procedure HandleTermViewResize(Sender: TObject);
     procedure HandleTermViewPaste(Sender: TObject);
     procedure PasteToShell;
+    ///<summary>Writes AText plus the backend-appropriate line terminator (CR for ConPTY, CRLF for the legacy pipe) to submit a line.</summary>
+    procedure SubmitLineToShell(const AText: string);
   protected
     procedure WndProc(var Message: TMessage); override;
   public
@@ -863,14 +865,25 @@ begin
     Exit;
   FHistory.Add(AText);
   FHistory.ResetPosition;
-  FProcess.WriteInput(AText + #13#10);
+  SubmitLineToShell(AText);
   FEditInput.Clear;
 end;
 
 procedure TframeCmdShell.InsertCommandText(const AText: string);
 begin
-  FEditInput.Text := AText;
-  FEditInput.SelStart := Length(AText);
+  if FBackendKind = tbConPty then
+  begin
+    // No line-entry box in ConPTY (the input panel is hidden). Place the text at
+    // the shell's own prompt WITHOUT a terminator so the user can edit it inline
+    // and press Enter themselves.
+    if Assigned(FProcess) and FProcess.Running then
+      FProcess.WriteInput(AText);
+  end
+  else
+  begin
+    FEditInput.Text := AText;
+    FEditInput.SelStart := Length(AText);
+  end;
   FocusInput;
 end;
 
@@ -972,6 +985,13 @@ begin
 end;
 
 procedure TframeCmdShell.RunCommandLine(const AText: string);
+begin
+  if not (Assigned(FProcess) and FProcess.Running) then
+    Exit;
+  SubmitLineToShell(AText);
+end;
+
+procedure TframeCmdShell.SubmitLineToShell(const AText: string);
 begin
   if not (Assigned(FProcess) and FProcess.Running) then
     Exit;
