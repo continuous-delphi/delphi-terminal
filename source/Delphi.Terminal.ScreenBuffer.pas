@@ -704,9 +704,15 @@ end;
 
 function TScreenBuffer.IdleState(AForegroundChild: Boolean): TShellIdleState;
 begin
-  // Fail safe: any positive BUSY signal wins, even over a prompt marker -- a full-screen
-  // app (alternate screen), a 133/633 "command executed" marker (C), or a live child in
-  // the Job Object (shell + something running).
+  // Fail safe: any positive BUSY signal wins, even over a prompt (B) marker.
+  //  - FAltActive: a full-screen app (vim/less/htop) on the alternate screen.
+  //  - spsExecuting: OSC 133/633 C -- a command is running.
+  //  - AForegroundChild: a live child in the Job Object. This OR is LOAD-BEARING even
+  //    when markers are present: a partial integration that emits B but never C would
+  //    leave PromptState stuck at B while a command runs, and only the child count would
+  //    catch it. Do NOT drop it as "redundant" -- that reopens the #87 false-idle.
+  //    (Accepted tradeoff: a legitimate background job also trips this -> BUSY at an
+  //    otherwise-idle prompt. That is the tolerable direction, false-busy, not a defect.)
   if FAltActive or (FPromptState = spsExecuting) or AForegroundChild then
     Exit(sisBusy);
   // IDLE is asserted only by OSC 133/633, and only in the input window: after B

@@ -42,6 +42,7 @@ type
     [Test] procedure OSC133_MarkersUpdatePromptState;
     [Test] procedure OSC133_CommandFinishedIgnoresExitCode;
     [Test] procedure OSC633_MarkersUpdatePromptState;
+    [Test] procedure DECMode_AltScreen_47And1047;
   end;
 
 implementation
@@ -614,6 +615,30 @@ begin
     // 633;E (command line) is not a state marker and must not change prompt state.
     LP.Parse(ESC + ']633;E;somecmd' + BEL);
     Assert.IsTrue(LScr.PromptState = spsExecuting, '633;E ignored, state unchanged');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.DECMode_AltScreen_47And1047;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    // The idle-gate BUSY override depends on the alt-screen flag, which must be set for
+    // the older alternate-screen modes (?47, ?1047), not only ?1049.
+    LP.Parse(ESC + '[?47h');
+    Assert.IsTrue(LScr.AltActive, '?47h enters the alt screen');
+    LP.Parse(ESC + '[?47l');
+    Assert.IsFalse(LScr.AltActive, '?47l exits the alt screen');
+    LP.Parse(ESC + '[?1047h');
+    Assert.IsTrue(LScr.AltActive, '?1047h enters the alt screen');
+    LP.Parse(ESC + '[?1047l');
+    Assert.IsFalse(LScr.AltActive, '?1047l exits the alt screen');
   finally
     LP.Free;
     LScr.Free;

@@ -1749,3 +1749,62 @@ Acceptance criteria:
 - [ ] OSC 633 A/B/C/D handled like 133; trailing params tolerated
 - [ ] A WSL tab with no markers this session never returns Idle
 - [ ] Unit tests cover the three-state matrix and the tightened FSM
+
+---
+Title: Idle gate hardening: document load-bearing child-count OR; lock alt-screen 47/1047 (review follow-up to #87)
+Issue: #88
+Status: closed
+Labels: conpty, test
+Body:
+Verification/hardening pass on the #87 idle gate. Two of the three review items
+turned out already-correct in the code; the value here is a regression-guard
+comment and test lock-ins so they stay correct.
+
+1. Restart reset -- VERIFIED, no change. The one item that could produce a real
+   false-idle: a reused screen/parser carrying a stale B (command-input) marker
+   across a shell restart would read IDLE before the new shell is ready. Confirmed
+   safe: RestartShell -> StartShell -> EnsureConPtyModel sets
+   `FScreen.PromptState := spsUnknown` on every (re)start (and the constructor
+   inits spsUnknown), so a restarted or never-marked session is UNKNOWN, never
+   IDLE. ClearOutput (Ctrl+L) intentionally does not reset PromptState (clearing
+   the display does not move the shell off its prompt), and it is moot regardless
+   since restart always re-inits via StartShell.
+
+2. Child-count OR is load-bearing -- add a comment. `TScreenBuffer.IdleState`
+   marks BUSY on AForegroundChild even when PromptState = B. That looks redundant
+   once markers exist but guards a partial integration that emits B and never C:
+   PromptState would stay at B while a command runs, and only the child count
+   flags it. Comment it so a maintainer does not "simplify" the OR away and
+   silently reopen the #87 false-idle. Also name the accepted tradeoffs so they
+   are not "fixed": a legitimate background job trips child-count -> BUSY at an
+   otherwise-idle prompt (accepted false-busy); and a hand-rolled B-only
+   integration on a WSL tab running a line-oriented child is the one uncoverable
+   combination (child in the VM, no alt-screen, PromptState stuck at B) -- a
+   documented assumption, not a handled case.
+
+3. Alt-screen completeness -- already handled; add tests. The hard-BUSY override
+   needs the alt-screen flag set for all three alternate-screen modes (?1049,
+   ?1047, ?47). DispatchPrivateMode already sets it for `47, 1047, 1049`
+   together, but only ?1049 is tested. Add tests for ?47 and ?1047 so the older
+   modes cannot regress out of the BUSY override.
+
+Deferred/notes (no action now):
+- 633;E (VS Code command-line report) is the natural exact input for the future
+  strict-idle refinement ("is the input line empty since B"), with the
+  keystroke-since-B heuristic as the fallback for 133-only integrations. We
+  already parse and ignore 633;E today.
+- User-facing warnings should distinguish BUSY ("a program is running") from
+  UNKNOWN ("can't confirm the shell is at a prompt"). #84 only warns on BUSY so
+  its message is already BUSY-specific; #86 should do the same, and any future
+  consumer that warns on UNKNOWN must use a distinct message.
+
+Implementation notes:
+- Strengthen the comment at the BUSY-override in `TScreenBuffer.IdleState`.
+- Add VTParser tests: ?47 and ?1047 set/clear the alt-screen flag (parity with
+  the existing ?1049 test).
+
+Acceptance criteria:
+- [ ] IdleState's BUSY-override comment explains the load-bearing child-count OR and the accepted tradeoffs
+- [ ] Tests confirm ?47 and ?1047 (not only ?1049) set and clear the alt-screen flag
+- [ ] Restart-reset behavior recorded as verified (no code change)
+- [ ] All tests pass
