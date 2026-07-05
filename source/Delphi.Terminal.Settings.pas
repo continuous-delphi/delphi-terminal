@@ -29,7 +29,6 @@ type
     FDefaultShell: string;
     FFontName: string;
     FFontSize: Integer;
-    FAutoCdMode: Integer;  // 0 = active tab only, 1 = all tabs
     FBackendSetting: TTerminalBackendSetting;
     FSavedCommands: TSavedCommandList;
   public
@@ -45,7 +44,6 @@ type
     property DefaultShell: string read FDefaultShell write FDefaultShell;
     property FontName: string read FFontName write FFontName;
     property FontSize: Integer read FFontSize write FFontSize;
-    property AutoCdMode: Integer read FAutoCdMode write FAutoCdMode;
     property BackendSetting: TTerminalBackendSetting read FBackendSetting write FBackendSetting;
     property SavedCommands: TSavedCommandList read FSavedCommands;
   end;
@@ -100,7 +98,6 @@ begin
   FDefaultShell := 'pwsh.exe';
   FFontName := 'Cascadia Mono';
   FFontSize := 12;
-  FAutoCdMode := 0;
   FBackendSetting := bsAuto;
 end;
 
@@ -130,8 +127,6 @@ begin
       FFontName := Reg.ReadString('FontName');
     if Reg.ValueExists('FontSize') then
       FFontSize := Reg.ReadInteger('FontSize');
-    if Reg.ValueExists('AutoCdMode') then
-      FAutoCdMode := Reg.ReadInteger('AutoCdMode');
     if Reg.ValueExists('BackendSetting') then
     begin
       LInt := Reg.ReadInteger('BackendSetting');
@@ -164,7 +159,6 @@ begin
     Reg.WriteString('DefaultShell', FDefaultShell);
     Reg.WriteString('FontName', FFontName);
     Reg.WriteInteger('FontSize', FFontSize);
-    Reg.WriteInteger('AutoCdMode', FAutoCdMode);
     Reg.WriteInteger('BackendSetting', Ord(FBackendSetting));
     Reg.WriteString('SavedCommands', FSavedCommands.ToJSON);
     Reg.CloseKey;

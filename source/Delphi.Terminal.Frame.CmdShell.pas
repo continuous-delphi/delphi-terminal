@@ -130,8 +130,7 @@ type
     /// OSC 133/633 prompt state, the alternate screen, and the Job Object; legacy pipe tabs
     /// are always sisIdle (line-oriented). Fail safe: only OSC 133/633 asserts sisIdle, so an
     /// unknown state never reads as idle. Consumed by saved commands (#84) and the working-dir
-    /// buttons (#86); Auto-CD (#83) injects only on sisIdle, user actions treat sisUnknown per
-    /// their own policy.</summary>
+    /// buttons (#86), which refuse on sisBusy and proceed otherwise (user chose the moment).</summary>
     function ShellIdleState: TShellIdleState;
 
     ///<summary>Writes AText followed by Enter to the running shell (used by the perf harness).</summary>
@@ -787,8 +786,7 @@ begin
     Exit;
   // #86: the Project Dir / File Dir buttons are user-initiated injection, same policy as
   // saved commands (#84) -- refuse over a running foreground program. The gate reports
-  // sisBusy only for ConPTY; legacy (and the legacy-only Auto-CD path) is always sisIdle,
-  // so its behaviour is unchanged.
+  // sisBusy only for ConPTY; legacy is always sisIdle, so its behaviour is unchanged.
   if ShellIdleState = sisBusy then
   begin
     WarnShellBusy('change directory');

@@ -49,7 +49,8 @@ real terminal (**ConPTY**), so interactive console programs and full-screen TUIs
   - Up / Down -- navigate command history
 - **IDE integration** -- dockable form with persistent dock state,
   `View` menu item, and config screen in `Tools>Options>Third Party>delphi-terminal`
-- Auto change-directory option when the active Project changes
+- **Working directory buttons** -- Project Dir / File Dir toolbar buttons switch
+  the shell to the active project's or file's folder on demand
 - Configurable Font Name + Font Size used in console window
 
 ## Terminal backends (ConPTY)

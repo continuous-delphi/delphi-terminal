@@ -1809,3 +1809,46 @@ Acceptance criteria:
 - [ ] Tests confirm ?47 and ?1047 (not only ?1049) set and clear the alt-screen flag
 - [ ] Restart-reset behavior recorded as verified (no code change)
 - [ ] All tests pass
+
+---
+Title: Retire the Auto-CD-on-project-switch feature
+Issue: #89
+Status: closed
+Labels: enhancement, conpty
+Body:
+Remove the Auto-CD-on-active-project-switch feature entirely (reverses the
+original #14). Rationale: as of 2.0 it is vestigial -- #83 made it legacy-pipe
+only, and ConPTY is the default backend, so most users never get it. In the
+legacy case it is noisy (a `cd` injected into every affected tab on every project
+switch, e.g. constant switching in a project group). The Project Dir / File Dir
+toolbar buttons already cover the use case on demand and are gate-safe (#86), so
+the automatic behavior is redundant. Removing it also simplifies the config
+screen and deletes a whole IDE notifier.
+
+Scope (3 code files + docs; no test changes -- nothing tests auto-cd, and
+ChangeDirectoryCommand stays because the buttons use it):
+- DockForm: the IOTAIDENotifier (TDelphiTerminalIDENotifier) exists solely for
+  auto-cd (BeforeCompile/AfterCompile are unused; FileNotification only calls
+  HandleActiveProjectChanged), so remove the whole notifier, its register/
+  unregister, HandleActiveProjectChanged, FLastProjectDir, FGroupOpening, and
+  FNotifierIndex. Keep GetActiveProjectDir etc. (the palette's ${ProjectDir}
+  resolution uses them).
+- Settings: remove FAutoCdMode (property, init, registry load/save). Existing
+  registry AutoCdMode values simply go unread -- harmless, no migration.
+- OptionsFrame: remove FCboAutoCd, its label, the "Legacy Pipes only" note, and
+  the LoadSettings/SaveSettings references.
+- Docs: drop the auto-cd bullet from README.md and the auto-cd lifecycle mention
+  from CLAUDE.md; note the removal in CHANGELOG.md.
+
+Note: this also retires the potential future "gate-gated ConPTY Auto-CD" that
+#85's idle gate could have enabled (it was listed as a possible rider). The gate
+remains fully justified by saved commands (#84) and the working-dir buttons
+(#86); if gate-gated auto-cd is ever wanted it would be re-added as a consumer.
+
+Acceptance criteria:
+- [ ] AutoCdMode removed from settings; no registry read/write of it remains
+- [ ] The IDE notifier and HandleActiveProjectChanged are removed; switching the active project no longer injects cd into any tab
+- [ ] The Auto-cd option (combo + note) is gone from Tools > Options
+- [ ] Project Dir / File Dir buttons still work (both backends)
+- [ ] Plugin builds; existing tests pass
+- [ ] README, CLAUDE.md, and CHANGELOG updated

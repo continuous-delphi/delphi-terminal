@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.114.0
+- Retired the Auto-CD-on-project-switch feature. It was legacy-pipe only as of 2.0 (so most users never saw it under the default ConPTY backend) and got noisy when switching projects frequently. The Project Dir / File Dir toolbar buttons cover the same need on demand and are gate-safe. Removed the IDE notifier, the setting, and the Tools > Options control; the buttons are unchanged.
+[#89](https://github.com/continuous-delphi/delphi-terminal/issues/89)
+
 ## v2.0.113.0
 - The Project Dir / File Dir toolbar buttons now ride the ConPTY idle gate too: clicking one while a foreground program is active (Busy) is refused with a message instead of typing `cd` into that program. At an idle prompt they work as before, and the legacy backend (including its Auto-CD) is unchanged. Also fixed the buttons' line ending under ConPTY (they sent a stray extra Enter). Busy warnings now name the blocked action ("change directory" vs "run a saved command").
 [#86](https://github.com/continuous-delphi/delphi-terminal/issues/86)

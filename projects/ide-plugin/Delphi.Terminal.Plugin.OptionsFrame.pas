@@ -30,7 +30,6 @@ type
     FCboDefaultShell: TComboBox;
     FEdtFontName: TEdit;
     FEdtFontSize: TEdit;
-    FCboAutoCd: TComboBox;
     FCboBackend: TComboBox;
     FBtnSavedCommands: TButton;
     FLblHomepage: TLabel;
@@ -182,25 +181,10 @@ begin
   FEdtFontSize.Width := 60;
   Inc(Y, 36);
 
-  // --- Auto-cd ---
+  // --- Behavior ---
   Lbl := CreateLabel(Self, Y, 'Behavior');
   Lbl.Font.Style := [TFontStyle.fsBold];
   Inc(Y, 24);
-
-  CreateLabel(Self, Y + 3, 'Auto-cd on project switch:');
-  FCboAutoCd := TComboBox.Create(Self);
-  FCboAutoCd.Parent := Self;
-  FCboAutoCd.Left := Col2;
-  FCboAutoCd.Top := Y;
-  FCboAutoCd.Width := 180;
-  FCboAutoCd.Style := csDropDownList;
-  FCboAutoCd.Items.Add('Active tab only');
-  FCboAutoCd.Items.Add('All tabs');
-  Inc(Y, 26);
-
-  Lbl := CreateLabel(Self, Y, 'Applies to the Legacy Pipes backend only; ConPTY tabs are user-driven.');
-  Lbl.Font.Color := clGrayText;
-  Inc(Y, 26);
 
   CreateLabel(Self, Y + 3, 'Terminal backend:');
   FCboBackend := TComboBox.Create(Self);
@@ -212,6 +196,7 @@ begin
   FCboBackend.Items.Add('Automatic');
   FCboBackend.Items.Add('ConPTY (Windows 10 1903+)');
   FCboBackend.Items.Add('Legacy pipes');
+
   Inc(Y, 36);
 
   // --- Saved Commands ---
@@ -276,7 +261,6 @@ begin
     FCboDefaultShell.ItemIndex := 1;
   FEdtFontName.Text := S.FontName;
   FEdtFontSize.Text := IntToStr(S.FontSize);
-  FCboAutoCd.ItemIndex := S.AutoCdMode;
   FCboBackend.ItemIndex := Ord(S.BackendSetting);
 end;
 
@@ -293,7 +277,6 @@ begin
     S.DefaultShell := FCboDefaultShell.Items[FCboDefaultShell.ItemIndex];
   S.FontName := FEdtFontName.Text;
   S.FontSize := StrToIntDef(FEdtFontSize.Text, 12);
-  S.AutoCdMode := FCboAutoCd.ItemIndex;
   if FCboBackend.ItemIndex >= 0 then
     S.BackendSetting := TTerminalBackendSetting(FCboBackend.ItemIndex);
 end;
