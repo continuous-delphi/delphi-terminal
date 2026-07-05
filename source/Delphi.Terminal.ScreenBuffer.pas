@@ -47,10 +47,17 @@ type
     Style: TCellStyle;
   end;
 
-  ///<summary>Shell prompt state as reported by OSC 133 shell-integration markers
+  ///<summary>Shell prompt state as reported by OSC 133 / 633 shell-integration markers
   /// (A prompt start, B command-input start, C command executed, D command finished).
   /// spsUnknown means the shell has emitted no markers this session.</summary>
   TShellPromptState = (spsUnknown, spsPromptStart, spsCommandInput, spsExecuting, spsCommandFinished);
+
+  ///<summary>Three-state "safe to inject" gate. Fail safe (bias to not-idle): only OSC
+  /// 133/633 can assert sisIdle; the Windows-side fallback (alternate screen, Job child
+  /// count) can only assert sisBusy or leave sisUnknown -- it must never return sisIdle,
+  /// because a line-oriented program waiting at its own prompt (a REPL, a WSL process) is
+  /// indistinguishable from an idle shell to those signals.</summary>
+  TShellIdleState = (sisUnknown, sisIdle, sisBusy);
 
   TScreenBuffer = class
   private
@@ -149,11 +156,11 @@ type
     ///<summary>Reads a cell (returns a blank cell for out-of-range coordinates).</summary>
     function GetCell(ACol, ARow: Integer): TTerminalCell;
 
-    ///<summary>Whether the shell is safe to inject into: not on the alternate screen, and
-    /// -- per OSC 133 markers when present -- at/awaiting a prompt rather than running a
-    /// command. With no markers, falls back to AForegroundChild (a live child in the Job
-    /// Object means a foreground command is running).</summary>
-    function IsIdleAtPrompt(AForegroundChild: Boolean): Boolean;
+    ///<summary>Three-state safe-to-inject gate (fail safe: only OSC 133/633 asserts Idle).
+    /// Busy when on the alternate screen, running a command (133/633 C), or a live child is
+    /// in the Job (AForegroundChild). Idle only in the input window (133/633 B, before C).
+    /// Otherwise Unknown -- never downgraded to Idle.</summary>
+    function IdleState(AForegroundChild: Boolean): TShellIdleState;
 
     property Cols: Integer read FCols;
     property Rows: Integer read FRows;
@@ -695,19 +702,22 @@ begin
     Result := BlankCell;
 end;
 
-function TScreenBuffer.IsIdleAtPrompt(AForegroundChild: Boolean): Boolean;
+function TScreenBuffer.IdleState(AForegroundChild: Boolean): TShellIdleState;
 begin
-  // A full-screen app (alternate screen: vim/less/htop/TUI) is never a safe target.
-  if FAltActive then
-    Exit(False);
-  // Prefer OSC 133 semantic markers when the shell emits them: safe only when at or
-  // awaiting a prompt (A/B) or just after a command finished (D) -- never while a
-  // command is executing (C).
-  if FPromptState <> spsUnknown then
-    Exit(FPromptState in [spsPromptStart, spsCommandInput, spsCommandFinished]);
-  // Fallback for shells without shell-integration markers: a live child in the Job
-  // Object (shell + something) means a foreground command is running.
-  Result := not AForegroundChild;
+  // Fail safe: any positive BUSY signal wins, even over a prompt marker -- a full-screen
+  // app (alternate screen), a 133/633 "command executed" marker (C), or a live child in
+  // the Job Object (shell + something running).
+  if FAltActive or (FPromptState = spsExecuting) or AForegroundChild then
+    Exit(sisBusy);
+  // IDLE is asserted only by OSC 133/633, and only in the input window: after B
+  // (command-input start) and before C. Prompt-start (A) still races the prompt render,
+  // and command-finished (D) is between commands -- neither is IDLE.
+  if FPromptState = spsCommandInput then
+    Exit(sisIdle);
+  // No positive proof of idle (no markers this session, or mid-lifecycle). Never
+  // downgrade to Idle: the Windows-side signals cannot distinguish an idle shell from a
+  // line-oriented program (a REPL, a WSL process) waiting at its own prompt.
+  Result := sisUnknown;
 end;
 
 end.

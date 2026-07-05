@@ -34,9 +34,9 @@ type
     [Test] procedure AltScreen_SwapsAndRestores;
     [Test] procedure Resize_PreservesContentAndClampsCursor;
     [Test] procedure Dirty_MarksAndResets;
-    [Test] procedure IsIdleAtPrompt_NoMarkers_FallsBackToForegroundChild;
-    [Test] procedure IsIdleAtPrompt_Markers_OverrideForegroundChild;
-    [Test] procedure IsIdleAtPrompt_AltScreen_NeverIdle;
+    [Test] procedure IdleState_NoMarkers_NeverIdle;
+    [Test] procedure IdleState_OnlyInputWindowIsIdle;
+    [Test] procedure IdleState_BusySignalsOverridePrompt;
   end;
 
 implementation
@@ -488,50 +488,54 @@ begin
   end;
 end;
 
-procedure TScreenBufferTests.IsIdleAtPrompt_NoMarkers_FallsBackToForegroundChild;
+procedure TScreenBufferTests.IdleState_NoMarkers_NeverIdle;
 var
   LBuf: TScreenBuffer;
 begin
   LBuf := TScreenBuffer.Create(10, 3);
   try
-    // spsUnknown (no shell-integration markers): decision follows the Job fallback.
+    // Fail safe: with no shell-integration markers the gate is never Idle. No child ->
+    // Unknown (indistinguishable from a line-oriented program at its own prompt); a live
+    // child -> Busy.
     Assert.IsTrue(LBuf.PromptState = spsUnknown, 'no markers by default');
-    Assert.IsTrue(LBuf.IsIdleAtPrompt(False), 'no child -> idle');
-    Assert.IsFalse(LBuf.IsIdleAtPrompt(True), 'foreground child -> not idle');
+    Assert.IsTrue(LBuf.IdleState(False) = sisUnknown, 'no markers, no child -> Unknown (never Idle)');
+    Assert.IsTrue(LBuf.IdleState(True) = sisBusy, 'no markers, foreground child -> Busy');
   finally
     LBuf.Free;
   end;
 end;
 
-procedure TScreenBufferTests.IsIdleAtPrompt_Markers_OverrideForegroundChild;
+procedure TScreenBufferTests.IdleState_OnlyInputWindowIsIdle;
 var
   LBuf: TScreenBuffer;
 begin
   LBuf := TScreenBuffer.Create(10, 3);
   try
-    // When markers are present they take precedence over the Job fallback.
+    // Idle only in the input window (after B, before C). A and D are not Idle.
     LBuf.PromptState := spsCommandInput;
-    Assert.IsTrue(LBuf.IsIdleAtPrompt(True), 'at prompt (B) -> idle even with a child present');
+    Assert.IsTrue(LBuf.IdleState(False) = sisIdle, 'command-input (B) -> Idle');
     LBuf.PromptState := spsPromptStart;
-    Assert.IsTrue(LBuf.IsIdleAtPrompt(True), 'prompt start (A) -> idle');
+    Assert.IsTrue(LBuf.IdleState(False) = sisUnknown, 'prompt-start (A) -> Unknown, not Idle');
     LBuf.PromptState := spsCommandFinished;
-    Assert.IsTrue(LBuf.IsIdleAtPrompt(True), 'command finished (D) -> idle');
+    Assert.IsTrue(LBuf.IdleState(False) = sisUnknown, 'command-finished (D) -> Unknown, not Idle');
     LBuf.PromptState := spsExecuting;
-    Assert.IsFalse(LBuf.IsIdleAtPrompt(False), 'executing (C) -> not idle even with no child');
+    Assert.IsTrue(LBuf.IdleState(False) = sisBusy, 'executing (C) -> Busy even with no child');
   finally
     LBuf.Free;
   end;
 end;
 
-procedure TScreenBufferTests.IsIdleAtPrompt_AltScreen_NeverIdle;
+procedure TScreenBufferTests.IdleState_BusySignalsOverridePrompt;
 var
   LBuf: TScreenBuffer;
 begin
   LBuf := TScreenBuffer.Create(10, 3);
   try
+    // A positive Busy signal wins even over a B (input) marker.
+    LBuf.PromptState := spsCommandInput;
+    Assert.IsTrue(LBuf.IdleState(True) = sisBusy, 'input marker + live child -> Busy');
     LBuf.EnterAltScreen;
-    LBuf.PromptState := spsCommandInput;   // even a "prompt" marker cannot override alt screen
-    Assert.IsFalse(LBuf.IsIdleAtPrompt(False), 'alt screen (TUI) -> never idle');
+    Assert.IsTrue(LBuf.IdleState(False) = sisBusy, 'input marker + alt screen -> Busy');
   finally
     LBuf.Free;
   end;

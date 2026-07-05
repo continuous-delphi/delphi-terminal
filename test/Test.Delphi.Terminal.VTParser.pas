@@ -41,6 +41,7 @@ type
     [Test] procedure DECMode_BracketedPaste;
     [Test] procedure OSC133_MarkersUpdatePromptState;
     [Test] procedure OSC133_CommandFinishedIgnoresExitCode;
+    [Test] procedure OSC633_MarkersUpdatePromptState;
   end;
 
 implementation
@@ -591,6 +592,28 @@ begin
     // 133;D can carry an exit code (e.g. "133;D;0"); the trailing param is ignored.
     LP.Parse(ESC + ']133;D;0' + BEL);
     Assert.IsTrue(LScr.PromptState = spsCommandFinished, '133;D;0 = command finished, exit code ignored');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.OSC633_MarkersUpdatePromptState;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    // OSC 633 (VS Code superset) shares 133's A/B/C/D semantics.
+    LP.Parse(ESC + ']633;B' + BEL);
+    Assert.IsTrue(LScr.PromptState = spsCommandInput, '633;B = command-input start');
+    LP.Parse(ESC + ']633;C' + BEL);
+    Assert.IsTrue(LScr.PromptState = spsExecuting, '633;C = command executing');
+    // 633;E (command line) is not a state marker and must not change prompt state.
+    LP.Parse(ESC + ']633;E;somecmd' + BEL);
+    Assert.IsTrue(LScr.PromptState = spsExecuting, '633;E ignored, state unchanged');
   finally
     LP.Free;
     LScr.Free;

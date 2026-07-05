@@ -274,12 +274,14 @@ begin
     SetTitle(Copy(AData, LSep + 1, MaxInt));
     Exit;
   end;
-  if LPs = '133' then
+  if (LPs = '133') or (LPs = '633') then
   begin
-    // OSC 133 ; <A|B|C|D> [; ...] -- FinalTerm/iTerm2 semantic prompt markers used
-    // for shell integration: A prompt start, B command-input start, C command
-    // executed, D command finished. Drives the screen model's prompt state (the
-    // "safe to inject" idle gate); any trailing params (e.g. D's exit code) are ignored.
+    // OSC 133 ; <A|B|C|D> [; ...] -- FinalTerm/iTerm2 semantic prompt markers used for
+    // shell integration: A prompt start, B command-input start, C command executed, D
+    // command finished. OSC 633 is VS Code's superset with the same A/B/C/D semantics
+    // (its other subcommands -- E command-line, P property -- fall through harmlessly).
+    // Drives the screen model's prompt state (the "safe to inject" idle gate); switch on
+    // the first sub-parameter and ignore any trailing params (e.g. D's exit code).
     LArg := Copy(AData, LSep + 1, MaxInt);
     if LArg <> '' then
       case LArg[Low(LArg)] of

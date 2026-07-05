@@ -1673,3 +1673,78 @@ Acceptance criteria:
 - [ ] Legacy backend behavior is unchanged
 - [ ] The buttons ride the same #85 gate as saved commands (no separate idle logic)
 - [ ] Existing tests continue to pass
+
+---
+Title: ConPTY idle gate: three-state + fail-safe hardening (follow-up to #85)
+Issue: #87
+Status: closed
+Labels: bug, conpty
+Body:
+Review follow-up to #85. As first implemented the gate was a Boolean
+(`TScreenBuffer.IsIdleAtPrompt` / `TframeCmdShell.ShellIsIdleAtPrompt`), and its
+no-marker fallback returned True (idle) on "no alt-screen and no Windows child".
+That is a false-idle -- the exact hazard #83 exists to prevent: a line-oriented
+program (a REPL, or Claude Code) sitting at its own prompt has no alt-screen and
+(for WSL) no Windows child, so it is indistinguishable from an idle shell. The
+fallback can prove BUSY but can never prove IDLE, so it must never return idle.
+
+Governing principle: fail safe (bias to false-busy). False-busy (refuse to inject
+when actually idle) is a mild annoyance; false-idle (inject when actually busy) is
+the hazard. Every ambiguous/unknown state must resolve to not-idle.
+
+Make the gate three-state -- IDLE / BUSY / UNKNOWN -- not Boolean:
+- IDLE: positively established; only OSC 133/633 asserts it (input window: after B,
+  before C).
+- BUSY: positively established (alt-screen active, Job child count > 1, or 133/633 C).
+- UNKNOWN: no markers this session and nothing proves busy. Never collapses to IDLE.
+
+OSC 133 FSM tightened: idle window is "seen B, not yet C" -- require B
+(command-input start), not A. A is prompt-start (still rendering the prompt);
+injecting in the A->B window races the prompt. Robust mapping: A -> prompt-start
+(not idle), B -> input-start (idle-eligible), C -> executing (busy), D -> finished
+(not idle). Any BUSY signal overrides an idle marker.
+
+Also:
+- Handle OSC 633 (VS Code superset) with the same A/B/C/D semantics -- near-free
+  alongside the 133 case; ignore its other subcommands (E command-line, P property).
+- Tolerate trailing params: split on ';', switch on the first sub-parameter (A/B/C/D),
+  ignore the rest (133;D;<exit>, 133;A;<key=val>).
+- Fallback honesty: alt-screen (?1049) -> hard BUSY (rides the PTY stream, so it
+  covers WSL full-screen apps too). Job ActiveProcesses > 1 -> BUSY (catches non-WSL
+  child REPLs/agents). Neither ever asserts IDLE. WSL blind spot: a line-oriented
+  program inside the VM is invisible to the Windows Job and sets no alt-screen, so a
+  WSL tab with no 133 this session is UNKNOWN, never IDLE (this falls out of the
+  three-state model automatically).
+
+Rider policy mapping (implemented by #83/#84/#86, recorded here for reference):
+- Auto-CD (unsolicited): inject only on IDLE; UNKNOWN stays suppressed (continuity
+  with #83 -- Auto-CD stays off in ConPTY until shell integration is present).
+- Saved-command run and Project/File Dir buttons (user-initiated): IDLE -> inject;
+  UNKNOWN -> #84 policy (warn-and-proceed/refuse); BUSY -> refuse/warn.
+- Paste: ungated.
+
+Notes verified for this codebase:
+- Threading: OSC parsing runs on the main thread (FlushOutputBuffer <- render timer),
+  and consumers (button clicks, Auto-CD events, palette) are also main-thread, so the
+  prompt-state write and the gate read are same-thread -- no cross-thread publication
+  or TOCTOU window. (If parsing ever moves off the main thread, revisit.)
+- Per-tab: the gate is per-frame (own parser/screen/Job/markers); consumers must query
+  the target tab's gate (e.g. Auto-CD all-tabs checks each tab; a shell-targeted saved
+  command checks that shell's tab).
+- Half-typed-line ("any keystroke since last B") remains a deferred refinement.
+
+Implementation notes:
+- Replace the Boolean with `TShellIdleState = (sisUnknown, sisIdle, sisBusy)`.
+- `TScreenBuffer.IdleState(AForegroundChild)`: BUSY if alt-screen or PromptState C or
+  AForegroundChild; IDLE only if PromptState B; else UNKNOWN.
+- Add `633` alongside `133` in `DispatchOSC`.
+- `TframeCmdShell.ShellIdleState: TShellIdleState` (legacy -> sisIdle).
+
+Acceptance criteria:
+- [ ] Gate is three-state (Idle / Busy / Unknown), not Boolean
+- [ ] Only OSC 133/633 asserts Idle; the alt-screen/Job fallback only asserts Busy or leaves Unknown, never Idle
+- [ ] Idle only in the input window (after B, before C); A and D are not Idle
+- [ ] Any Busy signal (alt-screen, 133/633 C, Job child > 1) overrides an Idle marker
+- [ ] OSC 633 A/B/C/D handled like 133; trailing params tolerated
+- [ ] A WSL tab with no markers this session never returns Idle
+- [ ] Unit tests cover the three-state matrix and the tightened FSM

@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.110.0
+- Hardened the ConPTY idle gate (review follow-up to #85): it is now three-state (Idle / Busy / Unknown) and fails safe. Only OSC 133/633 shell-integration markers can assert Idle -- and only in the input window (after B, before C); the alternate-screen and Job-child-count fallbacks can only assert Busy, never Idle, so a program waiting at its own prompt (a REPL, a WSL process) is never mistaken for an idle shell. Also handles VS Code's OSC 633 alongside 133.
+[#87](https://github.com/continuous-delphi/delphi-terminal/issues/87)
+
 ## v2.0.109.0
 - Added the shared "safe to inject" idle gate for ConPTY (foundation for the saved-command and working-dir-button guards). The VT parser now tracks OSC 133 shell-integration prompt markers (A/B/C/D) on the screen model, and a single predicate reports whether the shell is idle at a prompt: OSC 133 when the shell emits it (works under WSL), the alternate screen always counting as busy, and a Job-Object active-process-count fallback (shell only = idle; a live child = a foreground command) for shells with no shell integration. No behavior change yet -- consumers are wired in later tickets.
 [#85](https://github.com/continuous-delphi/delphi-terminal/issues/85)
