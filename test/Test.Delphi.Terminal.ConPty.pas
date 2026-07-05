@@ -18,6 +18,9 @@ type
     ///<summary>The child process must be assigned to TConPty's kill-on-close Job Object (so descendants die on Close).</summary>
     [Test]
     procedure ChildIsAssignedToJob;
+    ///<summary>An idle shell prompt has exactly one live process in the Job (the shell) -- the #85 idle-gate fallback invariant.</summary>
+    [Test]
+    procedure IdleShell_HasSingleActiveProcess;
     ///<summary>The build gate (CONPTY_MIN_BUILD) excludes pre-1903 builds and admits 1903+.</summary>
     [Test]
     procedure BuildGate_ExcludesBelow1903;
@@ -211,6 +214,51 @@ begin
       CloseHandle(LProbe);
       Assert.AreNotEqual(DWORD(STILL_ACTIVE), LExitCode, 'Child process should have terminated after Close');
     end;
+  finally
+    LPty.Free;
+  end;
+end;
+
+procedure TConPtyTests.IdleShell_HasSingleActiveProcess;
+var
+  LPty: TConPty;
+  LReader: TConPtyReader;
+  LCollector: TOutputCollector;
+  LDeadline: UInt64;
+  LCount: Integer;
+begin
+  LPty := TConPty.Create;
+  try
+    if not LPty.IsAvailable then
+    begin
+      Assert.Pass('ConPTY not available on this OS (requires Windows 10 1809+); skipping.');
+      Exit;
+    end;
+
+    LCollector := TOutputCollector.Create;
+    LReader := nil;
+    try
+      Assert.IsTrue(LPty.Start('cmd.exe', ''), 'TConPty.Start failed');
+      LReader := TConPtyReader.Create(LPty.OutputRead, LCollector.HandleOutput, LCollector.HandleExit);
+      LPty.RegisterReader(LReader);
+
+      // Let cmd.exe reach its idle prompt (first VT output), then sample the job.
+      LDeadline := GetTickCount64 + 5000;
+      while (not LCollector.Output.Contains(#27)) and (GetTickCount64 < LDeadline) do
+        CheckSynchronize(50);
+
+      LCount := LPty.ActiveProcessCount;
+
+      LReader.Terminate;
+      LPty.Close;
+    finally
+      LReader.Free;
+      LCollector.Free;
+    end;
+
+    // At an idle prompt the job holds only the shell. This is the invariant the
+    // idle-gate fallback relies on (count = 1 idle; > 1 means a foreground command).
+    Assert.AreEqual(NativeInt(1), NativeInt(LCount), 'Idle cmd.exe should have exactly one live process in the job');
   finally
     LPty.Free;
   end;

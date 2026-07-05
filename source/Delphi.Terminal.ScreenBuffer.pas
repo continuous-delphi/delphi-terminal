@@ -47,6 +47,11 @@ type
     Style: TCellStyle;
   end;
 
+  ///<summary>Shell prompt state as reported by OSC 133 shell-integration markers
+  /// (A prompt start, B command-input start, C command executed, D command finished).
+  /// spsUnknown means the shell has emitted no markers this session.</summary>
+  TShellPromptState = (spsUnknown, spsPromptStart, spsCommandInput, spsExecuting, spsCommandFinished);
+
   TScreenBuffer = class
   private
     FCols: Integer;
@@ -67,6 +72,7 @@ type
     FScrollbackLimit: Integer;
     FCursorVisible: Boolean;
     FBracketedPaste: Boolean;
+    FPromptState: TShellPromptState;   // OSC 133 shell-integration prompt state
     FWrapPending: Boolean;   // DECAWM: cursor sits past the last column awaiting the next char
     FDirty: TArray<Boolean>;
     function IndexOf(ACol, ARow: Integer): Integer; inline;
@@ -143,6 +149,12 @@ type
     ///<summary>Reads a cell (returns a blank cell for out-of-range coordinates).</summary>
     function GetCell(ACol, ARow: Integer): TTerminalCell;
 
+    ///<summary>Whether the shell is safe to inject into: not on the alternate screen, and
+    /// -- per OSC 133 markers when present -- at/awaiting a prompt rather than running a
+    /// command. With no markers, falls back to AForegroundChild (a live child in the Job
+    /// Object means a foreground command is running).</summary>
+    function IsIdleAtPrompt(AForegroundChild: Boolean): Boolean;
+
     property Cols: Integer read FCols;
     property Rows: Integer read FRows;
     property CursorCol: Integer read FCursorCol;
@@ -155,6 +167,8 @@ type
     property CursorVisible: Boolean read FCursorVisible write FCursorVisible;
     ///<summary>Whether bracketed paste mode is active (DEC mode ?2004); read by the input path.</summary>
     property BracketedPaste: Boolean read FBracketedPaste write FBracketedPaste;
+    ///<summary>Shell prompt state from OSC 133 markers; set by the VT parser, read by the idle gate.</summary>
+    property PromptState: TShellPromptState read FPromptState write FPromptState;
     property CurrentForeground: TCellColor read FForeground write FForeground;
     property CurrentBackground: TCellColor read FBackground write FBackground;
     property CurrentStyle: TCellStyle read FStyle write FStyle;
@@ -207,6 +221,7 @@ begin
   FScrollbackLimit := 1000;
   FCursorVisible := True;
   FBracketedPaste := False;
+  FPromptState := spsUnknown;
   FScrollback := TList<TArray<TTerminalCell>>.Create;
   ClearAll;
 end;
@@ -678,6 +693,21 @@ begin
     Result := FCells[IndexOf(ACol, ARow)]
   else
     Result := BlankCell;
+end;
+
+function TScreenBuffer.IsIdleAtPrompt(AForegroundChild: Boolean): Boolean;
+begin
+  // A full-screen app (alternate screen: vim/less/htop/TUI) is never a safe target.
+  if FAltActive then
+    Exit(False);
+  // Prefer OSC 133 semantic markers when the shell emits them: safe only when at or
+  // awaiting a prompt (A/B) or just after a command finished (D) -- never while a
+  // command is executing (C).
+  if FPromptState <> spsUnknown then
+    Exit(FPromptState in [spsPromptStart, spsCommandInput, spsCommandFinished]);
+  // Fallback for shells without shell-integration markers: a live child in the Job
+  // Object (shell + something) means a foreground command is running.
+  Result := not AForegroundChild;
 end;
 
 end.

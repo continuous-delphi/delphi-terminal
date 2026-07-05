@@ -71,6 +71,9 @@ type
     ///<summary>Resizes the pseudoconsole buffers.</summary>
     function Resize(const ASize: TTerminalSize): Boolean;
 
+    ///<summary>Live process count in the child's Job Object (shell + descendants), or -1 if unavailable. 1 == idle shell prompt; > 1 == a foreground command is running.</summary>
+    function ActiveProcessCount: Integer;
+
     ///<summary>Registers the reader that consumes OutputRead so Close can join it before closing that handle. Non-owning: the caller retains ownership and frees the reader after Close returns.</summary>
     procedure RegisterReader(const AReader: IPtyReader);
 
@@ -281,6 +284,12 @@ begin
   Result := Succeeded(FConPtyAPI.ResizePseudoConsole(FhPC, LSize));
   if Result then
     FSize := LSize;
+end;
+
+
+function TConPty.ActiveProcessCount: Integer;
+begin
+  Result := JobActiveProcessCount(FJob);
 end;
 
 

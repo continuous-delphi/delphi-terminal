@@ -54,6 +54,8 @@ type
     procedure Resize(const ASize: TTerminalSize);
     procedure Terminate;
     procedure DiscardQueuedOutput;
+    ///<summary>ConPTY only: True when a foreground command/child is running (not just the shell at a prompt). Always False for the legacy pipe (line-oriented, always at a prompt).</summary>
+    function HasForegroundChild: Boolean;
     function GetRunning: Boolean;
     function GetOnOutput: TOutputEvent;
     procedure SetOnOutput(const AValue: TOutputEvent);
@@ -104,6 +106,7 @@ type
     procedure SendCtrlC;
     procedure Resize(const ASize: TTerminalSize);
     procedure DiscardQueuedOutput;
+    function HasForegroundChild: Boolean;
     procedure Terminate;
     property Running: Boolean read FRunning;
     property OnOutput: TOutputEvent read FOnOutput write FOnOutput;
@@ -317,6 +320,13 @@ begin
   finally
     TMonitor.Exit(FOutputLock);
   end;
+end;
+
+function TCmdShellProcess.HasForegroundChild: Boolean;
+begin
+  // The legacy pipe is line-oriented and always effectively at a prompt; the idle
+  // gate is a no-op for it (see TframeCmdShell.ShellIsIdleAtPrompt).
+  Result := False;
 end;
 
 class function TCmdShellProcess.BuildEnvironmentBlock: TBytes;

@@ -1562,14 +1562,28 @@ Acceptance criteria:
 ---
 Title: ConPTY: OSC 133 shell-integration prompt-state predicate
 Issue: #85
+Status: closed
 Labels: enhancement, conpty
 Body:
-Every place delphi-terminal programmatically writes to the shell shares one
-precondition in ConPTY: the shell prompt must be the foreground, not an
-interactive child. Provide a single shared "shell is idle at a prompt" predicate
-that those call sites (saved-command run/preview; any future safe ConPTY Auto-CD)
-consult, so the busy/idle logic lives in one place instead of being duplicated
-per feature.
+delphi-terminal writes to the shell programmatically from several places, and in
+ConPTY every one of them shares a single precondition: the shell prompt must be
+the foreground, not an interactive child. This ticket builds ONE shared
+"safe to inject" gate that all of those paths ride. It is NOT a "bring back
+Auto-CD" ticket, and the predicate must not be implemented per feature -- each
+consumer just calls the one gate.
+
+Riders on the single gate (each keeps its own policy, but they share this one
+idle check -- do not reimplement it):
+- Saved-command run / preview (#84) -- user-initiated; warn + do not inject when
+  not idle.
+- Project Dir / File Dir toolbar buttons (#86) -- user-initiated; same policy as
+  saved-command run.
+- ConPTY Auto-CD -- #83 made Auto-CD legacy-only precisely because there was no
+  idle gate. Once this gate exists, a ConPTY tab may auto-cd only when the gate
+  reports idle. This is a rider on the gate, not a separate "re-enable Auto-CD"
+  feature.
+- Paste (`PasteToShell`) is deliberately NOT gated -- pasting into whatever is
+  focused is normal terminal behavior.
 
 Primary signal: OSC 133 semantic prompt markers (`ESC]133;A` prompt start,
 `;B` command-input start, `;C` command executed, `;D` command finished). The VT
@@ -1601,13 +1615,61 @@ capture that as a refinement, not a hard requirement.
 Implementation notes:
 - Parse OSC 133 A/B/C/D in `DispatchOSC`; store prompt state on the screen model.
 - Decide and implement the no-marker fallback (Job accounting +/- alt-screen).
-- Surface one shared idle predicate consumed by the saved-command suppression
-  ticket.
+- Expose ONE shared idle gate and wire every injection path to it: the
+  saved-command paths (#84), the Project/File Dir buttons (#86), and ConPTY
+  Auto-CD. Do not duplicate the predicate per feature.
 
 Acceptance criteria:
 - [ ] OSC 133 A/B/C/D markers update a prompt-state on the screen model
-- [ ] A single shared "shell idle at prompt" predicate is exposed for the frame/dock form
+- [ ] A single shared "shell idle at prompt" gate is exposed for the frame/dock form and consumed by all injection paths (no per-feature reimplementation)
 - [ ] When markers are present, an executing command (post-133;C) reports not-idle; a fresh prompt reports idle -- including under WSL
 - [ ] A defined fallback covers shells that emit no 133 markers
 - [ ] Alt-screen active always reports not-idle
+- [ ] Saved commands (#84), the Project/File Dir buttons (#86), and ConPTY Auto-CD all gate on this one predicate
 - [ ] Unit tests cover marker parsing and the idle/busy predicate
+
+---
+Title: ConPTY: Project Dir / File Dir buttons inject into the foreground app (gate + line ending)
+Issue: #86
+Labels: bug, conpty
+Body:
+The Project Dir and File Dir toolbar buttons call
+`TframeCmdShell.SetWorkingDirectory` (`source/Delphi.Terminal.Frame.CmdShell.pas`),
+which writes the cd straight to the PTY: `FProcess.WriteInput(Cmd + #13#10)`
+(around line 780). #83 made the AUTOMATIC project-switch auto-cd legacy-only, but
+the manual buttons still call `SetWorkingDirectory` in ConPTY, so they remain a
+live injection hazard: clicking Project Dir / File Dir while Claude Code, a REPL,
+or any TUI is running types `cd ...` into that program instead of a shell prompt.
+
+These buttons are user-initiated, so -- exactly like saved-command run (#84) --
+the right response when the shell is busy is a visible warning, not silent
+suppression, and they must keep working in ConPTY at an idle prompt. They are
+another rider on the single "safe to inject" gate from #85, with the same policy
+as saved-command run (they are NOT a legacy-only feature like automatic Auto-CD).
+
+Second, a latent line-ending defect on the same path: `SetWorkingDirectory`
+hardcodes `#13#10`. In ConPTY that CR+LF is a stray extra Enter -- the #82 class
+of bug, which #82 did not touch because it only fixed the palette methods. Route
+the write through the `SubmitLineToShell` helper added in #82 (CR for ConPTY,
+CRLF for legacy) so the terminator is backend-correct. Auto-cd's legacy callers
+are unaffected (CRLF is right there).
+
+Depends on #85 (the shared idle gate). Sibling of #84; should land in the same
+pass, before the 2.0 release.
+
+Implementation notes:
+- Gate the ConPTY write in `SetWorkingDirectory` on the #85 idle predicate: when
+  not idle, do not inject; surface a message via `TframeCmdShell.ShowMessage`
+  (e.g. "[delphi-terminal] Cannot change directory while an interactive program
+  is active -- stop it first").
+- Replace the hardcoded `Cmd + #13#10` write with `SubmitLineToShell(Cmd)` so the
+  terminator is backend-correct.
+- Legacy backend behavior is unchanged; the buttons still cd at an idle ConPTY
+  prompt.
+
+Acceptance criteria:
+- [ ] Clicking Project Dir / File Dir at an idle ConPTY prompt changes directory with a single line (no stray blank line)
+- [ ] Clicking either button while an interactive app is foreground shows a warning and injects nothing
+- [ ] Legacy backend behavior is unchanged
+- [ ] The buttons ride the same #85 gate as saved commands (no separate idle logic)
+- [ ] Existing tests continue to pass

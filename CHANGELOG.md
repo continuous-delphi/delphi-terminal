@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.109.0
+- Added the shared "safe to inject" idle gate for ConPTY (foundation for the saved-command and working-dir-button guards). The VT parser now tracks OSC 133 shell-integration prompt markers (A/B/C/D) on the screen model, and a single predicate reports whether the shell is idle at a prompt: OSC 133 when the shell emits it (works under WSL), the alternate screen always counting as busy, and a Job-Object active-process-count fallback (shell only = idle; a live child = a foreground command) for shells with no shell integration. No behavior change yet -- consumers are wired in later tickets.
+[#85](https://github.com/continuous-delphi/delphi-terminal/issues/85)
+
 ## v2.0.108.0
 - Auto-cd on project switch now applies to the Legacy Pipes backend only. Under ConPTY, injecting a `cd` would type keystrokes into whatever program is running in the foreground (e.g. Claude Code, a REPL, a TUI) instead of a shell prompt, so it is suppressed there. The Project Dir / File Dir toolbar buttons still work in both backends (explicit user actions), and the config screen notes the scope.
 [#83](https://github.com/continuous-delphi/delphi-terminal/issues/83)

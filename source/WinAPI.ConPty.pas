@@ -219,6 +219,28 @@ function AssignProcessToJobObject(hJob, hProcess: THandle): BOOL; stdcall; exter
 function IsProcessInJob(ProcessHandle, JobHandle: THandle; var Result: ByteBool): ByteBool; stdcall; external kernel32 name 'IsProcessInJob';
 {$IFEND}
 
+{ Job Object active-process accounting -- used to tell an idle shell prompt (the
+  job holds only the shell: count = 1) from a running foreground command (the shell
+  plus a child: count > 1). Declared with a unique name bound to the same kernel32
+  export and a locally-named record, so it is available and collision-free on every
+  target RTL regardless of the guarded job block above. }
+type
+  TDTJobBasicAccounting = record
+    TotalUserTime: Int64;
+    TotalKernelTime: Int64;
+    ThisPeriodTotalUserTime: Int64;
+    ThisPeriodTotalKernelTime: Int64;
+    TotalPageFaultCount: DWORD;
+    TotalProcesses: DWORD;
+    ActiveProcesses: DWORD;
+    TotalTerminatedProcesses: DWORD;
+  end;
+
+function DTQueryInformationJobObject(hJob: THandle; InfoClass: DWORD; Info: Pointer; InfoLen: DWORD; RetLen: PDWORD): BOOL; stdcall; external kernel32 name 'QueryInformationJobObject';
+
+///<summary>Number of live processes in the Job Object, or -1 if unavailable. 1 == just the shell (idle prompt); > 1 == a foreground command is running.</summary>
+function JobActiveProcessCount(hJob: THandle): Integer;
+
 
 type
   TConPtyAPI = record
@@ -297,6 +319,21 @@ begin
             Assigned(InitializeProcThreadAttributeList) and
             Assigned(UpdateProcThreadAttribute) and
             Assigned(DeleteProcThreadAttributeList);
+end;
+
+function JobActiveProcessCount(hJob: THandle): Integer;
+const
+  cJobObjectBasicAccountingInformation = 1;
+var
+  LInfo: TDTJobBasicAccounting;
+  LRet: DWORD;
+begin
+  Result := -1;
+  if hJob = 0 then
+    Exit;
+  FillChar(LInfo, SizeOf(LInfo), 0);
+  if DTQueryInformationJobObject(hJob, cJobObjectBasicAccountingInformation, @LInfo, SizeOf(LInfo), @LRet) then
+    Result := Integer(LInfo.ActiveProcesses);
 end;
 
 end.

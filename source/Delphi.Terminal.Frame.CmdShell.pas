@@ -124,6 +124,11 @@ type
     procedure SendUserCommand(const AText: string);
     procedure InsertCommandText(const AText: string);
     procedure ShowMessage(const AText: string);
+    ///<summary>The shared "safe to inject" gate (#85): True when it is safe to write to the
+    /// shell -- ConPTY tabs consult OSC 133 prompt state and the Job Object; legacy pipe tabs
+    /// are always idle (line-oriented). Consumed by saved commands (#84) and the working-dir
+    /// buttons (#86) to avoid injecting into a running foreground program.</summary>
+    function ShellIsIdleAtPrompt: Boolean;
 
     ///<summary>Writes AText followed by Enter to the running shell (used by the perf harness).</summary>
     procedure RunCommandLine(const AText: string);
@@ -892,6 +897,17 @@ begin
   HandleOutput(Self, AText + #13#10);
 end;
 
+function TframeCmdShell.ShellIsIdleAtPrompt: Boolean;
+begin
+  // The gate only constrains ConPTY, where writes are raw keystroke injection into
+  // the foreground program. The legacy pipe is line-oriented and always effectively
+  // at a prompt, so it is always "idle". Not-running is treated as idle (injection
+  // is a no-op then; callers guard on Running separately).
+  if (FBackendKind <> tbConPty) or (FScreen = nil) or not (Assigned(FProcess) and FProcess.Running) then
+    Exit(True);
+  Result := FScreen.IsIdleAtPrompt(FProcess.HasForegroundChild);
+end;
+
 procedure TframeCmdShell.RecreateBackend;
 begin
   FProcess := nil;
@@ -939,6 +955,9 @@ begin
   else
     FScreen.Resize(LSize.Cols, LSize.Rows);
   FScreen.ClearAll;
+  // Fresh session (start or restart): no OSC 133 markers seen yet, so the idle gate
+  // uses its Job-Object fallback until the shell reports prompt state.
+  FScreen.PromptState := spsUnknown;
 
   if FVTParser = nil then
     FVTParser := TVTParser.Create(FScreen)

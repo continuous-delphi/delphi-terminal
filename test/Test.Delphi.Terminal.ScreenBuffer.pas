@@ -34,6 +34,9 @@ type
     [Test] procedure AltScreen_SwapsAndRestores;
     [Test] procedure Resize_PreservesContentAndClampsCursor;
     [Test] procedure Dirty_MarksAndResets;
+    [Test] procedure IsIdleAtPrompt_NoMarkers_FallsBackToForegroundChild;
+    [Test] procedure IsIdleAtPrompt_Markers_OverrideForegroundChild;
+    [Test] procedure IsIdleAtPrompt_AltScreen_NeverIdle;
   end;
 
 implementation
@@ -480,6 +483,55 @@ begin
     Assert.IsFalse(LBuf.IsRowDirty(2), 'untouched row stays clean');
     LBuf.ResetDirty;
     Assert.IsFalse(LBuf.IsRowDirty(1), 'clean again after reset');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.IsIdleAtPrompt_NoMarkers_FallsBackToForegroundChild;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(10, 3);
+  try
+    // spsUnknown (no shell-integration markers): decision follows the Job fallback.
+    Assert.IsTrue(LBuf.PromptState = spsUnknown, 'no markers by default');
+    Assert.IsTrue(LBuf.IsIdleAtPrompt(False), 'no child -> idle');
+    Assert.IsFalse(LBuf.IsIdleAtPrompt(True), 'foreground child -> not idle');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.IsIdleAtPrompt_Markers_OverrideForegroundChild;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(10, 3);
+  try
+    // When markers are present they take precedence over the Job fallback.
+    LBuf.PromptState := spsCommandInput;
+    Assert.IsTrue(LBuf.IsIdleAtPrompt(True), 'at prompt (B) -> idle even with a child present');
+    LBuf.PromptState := spsPromptStart;
+    Assert.IsTrue(LBuf.IsIdleAtPrompt(True), 'prompt start (A) -> idle');
+    LBuf.PromptState := spsCommandFinished;
+    Assert.IsTrue(LBuf.IsIdleAtPrompt(True), 'command finished (D) -> idle');
+    LBuf.PromptState := spsExecuting;
+    Assert.IsFalse(LBuf.IsIdleAtPrompt(False), 'executing (C) -> not idle even with no child');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.IsIdleAtPrompt_AltScreen_NeverIdle;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(10, 3);
+  try
+    LBuf.EnterAltScreen;
+    LBuf.PromptState := spsCommandInput;   // even a "prompt" marker cannot override alt screen
+    Assert.IsFalse(LBuf.IsIdleAtPrompt(False), 'alt screen (TUI) -> never idle');
   finally
     LBuf.Free;
   end;

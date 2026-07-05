@@ -64,6 +64,7 @@ type
     procedure SendInterrupt;
     procedure Resize(const ASize: TTerminalSize);
     procedure DiscardQueuedOutput;
+    function HasForegroundChild: Boolean;
     procedure Terminate;
     property Running: Boolean read GetRunning;
     property OnOutput: TOutputEvent read FOnOutput write FOnOutput;
@@ -185,6 +186,14 @@ procedure TConPtyShell.DiscardQueuedOutput;
 begin
   // No-op: ConPTY output is delivered promptly by the reader and is not
   // separately buffered here. Screen-state clearing belongs to the renderer.
+end;
+
+function TConPtyShell.HasForegroundChild: Boolean;
+begin
+  // The Job Object holds the shell plus any descendants. More than one live process
+  // means the shell has a foreground command running (its own count is 1 at an idle
+  // prompt). A failed/unavailable query (-1) reports False so the gate does not block.
+  Result := FPty.IsRunning and (FPty.ActiveProcessCount > 1);
 end;
 
 procedure TConPtyShell.Terminate;

@@ -262,6 +262,7 @@ procedure TVTParser.DispatchOSC(const AData: string);
 var
   LSep: Integer;
   LPs: string;
+  LArg: string;
 begin
   // OSC form is "Ps ; Pt". Ps 0 (icon + title) and 2 (title) set the window title.
   LSep := Pos(';', AData);
@@ -269,7 +270,25 @@ begin
     Exit;
   LPs := Copy(AData, 1, LSep - 1);
   if (LPs = '0') or (LPs = '2') then
+  begin
     SetTitle(Copy(AData, LSep + 1, MaxInt));
+    Exit;
+  end;
+  if LPs = '133' then
+  begin
+    // OSC 133 ; <A|B|C|D> [; ...] -- FinalTerm/iTerm2 semantic prompt markers used
+    // for shell integration: A prompt start, B command-input start, C command
+    // executed, D command finished. Drives the screen model's prompt state (the
+    // "safe to inject" idle gate); any trailing params (e.g. D's exit code) are ignored.
+    LArg := Copy(AData, LSep + 1, MaxInt);
+    if LArg <> '' then
+      case LArg[Low(LArg)] of
+        'A': FScreen.PromptState := spsPromptStart;
+        'B': FScreen.PromptState := spsCommandInput;
+        'C': FScreen.PromptState := spsExecuting;
+        'D': FScreen.PromptState := spsCommandFinished;
+      end;
+  end;
 end;
 
 procedure TVTParser.DispatchPrivateMode(AFinal: Char);

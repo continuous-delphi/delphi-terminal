@@ -39,6 +39,8 @@ type
     [Test] procedure DECMode_CursorVisibility;
     [Test] procedure DECMode_AltScreen;
     [Test] procedure DECMode_BracketedPaste;
+    [Test] procedure OSC133_MarkersUpdatePromptState;
+    [Test] procedure OSC133_CommandFinishedIgnoresExitCode;
   end;
 
 implementation
@@ -549,6 +551,46 @@ begin
     Assert.IsTrue(LScr.BracketedPaste, '?2004h enables bracketed paste');
     LP.Parse(ESC + '[?2004l');
     Assert.IsFalse(LScr.BracketedPaste, '?2004l disables bracketed paste');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.OSC133_MarkersUpdatePromptState;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    Assert.IsTrue(LScr.PromptState = spsUnknown, 'no markers seen yet');
+    LP.Parse(ESC + ']133;A' + BEL);
+    Assert.IsTrue(LScr.PromptState = spsPromptStart, '133;A = prompt start');
+    LP.Parse(ESC + ']133;B' + BEL);
+    Assert.IsTrue(LScr.PromptState = spsCommandInput, '133;B = command-input start');
+    LP.Parse(ESC + ']133;C' + BEL);
+    Assert.IsTrue(LScr.PromptState = spsExecuting, '133;C = command executing');
+    LP.Parse(ESC + ']133;D' + BEL);
+    Assert.IsTrue(LScr.PromptState = spsCommandFinished, '133;D = command finished');
+  finally
+    LP.Free;
+    LScr.Free;
+  end;
+end;
+
+procedure TVTParserTests.OSC133_CommandFinishedIgnoresExitCode;
+var
+  LScr: TScreenBuffer;
+  LP: TVTParser;
+begin
+  LScr := TScreenBuffer.Create(10, 3);
+  LP := TVTParser.Create(LScr);
+  try
+    // 133;D can carry an exit code (e.g. "133;D;0"); the trailing param is ignored.
+    LP.Parse(ESC + ']133;D;0' + BEL);
+    Assert.IsTrue(LScr.PromptState = spsCommandFinished, '133;D;0 = command finished, exit code ignored');
   finally
     LP.Free;
     LScr.Free;
