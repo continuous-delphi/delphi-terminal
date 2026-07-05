@@ -196,7 +196,11 @@ begin
   FCboAutoCd.Style := csDropDownList;
   FCboAutoCd.Items.Add('Active tab only');
   FCboAutoCd.Items.Add('All tabs');
-  Inc(Y, 36);
+  Inc(Y, 26);
+
+  Lbl := CreateLabel(Self, Y, 'Applies to the Legacy Pipes backend only; ConPTY tabs are user-driven.');
+  Lbl.Font.Color := clGrayText;
+  Inc(Y, 26);
 
   CreateLabel(Self, Y + 3, 'Terminal backend:');
   FCboBackend := TComboBox.Create(Self);

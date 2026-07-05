@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.108.0
+- Auto-cd on project switch now applies to the Legacy Pipes backend only. Under ConPTY, injecting a `cd` would type keystrokes into whatever program is running in the foreground (e.g. Claude Code, a REPL, a TUI) instead of a shell prompt, so it is suppressed there. The Project Dir / File Dir toolbar buttons still work in both backends (explicit user actions), and the config screen notes the scope.
+[#83](https://github.com/continuous-delphi/delphi-terminal/issues/83)
+
 ## v2.0.107.0
 - Fixed two ConPTY saved-command defects: "run now" from the Ctrl+P palette sent CRLF (a stray extra Enter) instead of the backend-correct CR, and "preview to edit" wrote to the hidden line-entry box so it did nothing. Run-now now submits exactly one line; preview places an editable command at the ConPTY prompt. Both submit paths share one helper so they cannot diverge again.
 [#82](https://github.com/continuous-delphi/delphi-terminal/issues/82)

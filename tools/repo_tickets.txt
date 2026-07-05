@@ -1475,6 +1475,7 @@ Acceptance criteria:
 ---
 Title: Auto-CD applies to the legacy pipe backend only
 Issue: #83
+Status: closed
 Labels: enhancement, conpty
 Body:
 Auto-CD-on-project-switch injects a `cd` command into the shell whenever the

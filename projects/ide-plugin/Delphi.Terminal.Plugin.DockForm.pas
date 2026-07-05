@@ -372,6 +372,20 @@ procedure TfrmDelphiTerminalDock.HandleActiveProjectChanged;
 var
   ProjectDir: string;
   I: Integer;
+
+  // Auto-cd is a legacy-pipe-only feature (#83). In ConPTY, WriteInput is raw
+  // keystroke injection into the foreground program, so an automatic cd would be
+  // typed into whatever is running (Claude Code, a REPL, a TUI) rather than a
+  // shell prompt -- and would clobber a half-typed line even at a bare prompt.
+  // The Project Dir / File Dir toolbar buttons remain available in both backends
+  // because they are explicit user actions.
+  procedure AutoCdFrame(AControl: TControl);
+  begin
+    if AControl is TframeCmdShell then
+      if TframeCmdShell(AControl).BackendKind = tbLegacyPipe then
+        TframeCmdShell(AControl).SetWorkingDirectory(ProjectDir);
+  end;
+
 begin
   ProjectDir := GetActiveProjectDir;
   if (ProjectDir = '') or SameText(ProjectDir, FLastProjectDir) then
@@ -383,15 +397,13 @@ begin
     // All tabs
     for I := 0 to FPageControl.PageCount - 1 do
       if FPageControl.Pages[I].ControlCount > 0 then
-        if FPageControl.Pages[I].Controls[0] is TframeCmdShell then
-          TframeCmdShell(FPageControl.Pages[I].Controls[0]).SetWorkingDirectory(ProjectDir);
+        AutoCdFrame(FPageControl.Pages[I].Controls[0]);
   end
   else
   begin
     // Active tab only
     if (FPageControl.ActivePage <> nil) and (FPageControl.ActivePage.ControlCount > 0) then
-      if FPageControl.ActivePage.Controls[0] is TframeCmdShell then
-        TframeCmdShell(FPageControl.ActivePage.Controls[0]).SetWorkingDirectory(ProjectDir);
+      AutoCdFrame(FPageControl.ActivePage.Controls[0]);
   end;
 end;
 
