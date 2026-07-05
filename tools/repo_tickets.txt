@@ -1852,3 +1852,54 @@ Acceptance criteria:
 - [ ] Project Dir / File Dir buttons still work (both backends)
 - [ ] Plugin builds; existing tests pass
 - [ ] README, CLAUDE.md, and CHANGELOG updated
+
+---
+Title: Post-2.0 ConPTY idle-gate refinements (deferred from #84-#88)
+Issue: #90
+Labels: enhancement, conpty
+Body:
+Tracking ticket for refinements consciously deferred while building the ConPTY
+injection-safety gate (#84-#88). Each item is independent and optional; captured
+here so they are not lost in closed tickets. None blocks 2.0 -- the gate is
+correct and verified as shipped.
+
+1. Strict-idle refinement: "input line non-empty since last B" (from #85/#87/#88).
+   Today IDLE is asserted for the whole 133/633 B..C window regardless of whether
+   the user has started typing a command. A tighter signal would treat a non-empty
+   input line as not-idle. Two data sources, in preference order:
+   - OSC 633;E (VS Code integration) carries the current command line verbatim, so
+     an empty E == empty prompt -- a clean, exact signal. We already parse and
+     ignore 633;E today; this would consume it.
+   - "any keystroke forwarded since the last B" as a coarse over-approximation
+     (treats typed-then-deleted as still-typed -- the safe direction) for 133-only
+     integrations without E.
+   Lower value now that unsolicited Auto-CD is retired (#89); it only sharpens
+   user-initiated refusals, where the user already chose the moment.
+
+2. WSL-without-133 blind spot (from #84/#85/#87). A line-oriented program running
+   inside the WSL VM (a REPL, WSL-hosted Claude Code) is invisible to the Windows
+   Job Object (only wsl.exe is Windows-side) and sets no alt-screen, so a WSL tab
+   with no 133 markers reads as UNKNOWN. For user-initiated actions (saved
+   commands #84, working-dir buttons #86) UNKNOWN proceeds, so injection can reach
+   that program. Accepted tradeoff (user chose the moment), but candidate
+   mitigations to evaluate: document/recommend OSC 133 bash integration in the WSL
+   ~/.bashrc (flips the gate to BUSY over the PTY stream), and/or a WSL-side
+   foreground-process probe. Full-screen WSL apps (vim) are already caught by
+   alt-screen.
+
+3. Non-intrusive busy warning (from #84/#86). WarnShellBusy surfaces the refusal
+   via ShowMessage, which feeds the text through the VT parser into the live
+   screen at the cursor -- so under a running TUI (e.g. Claude Code) the message
+   lands mid-frame and overlaps its rendering (cosmetic, self-healing on the app's
+   next repaint; no keystrokes reach the app). A tidier version would surface the
+   refusal outside the terminal surface: a MessageBeep, or a transient toolbar /
+   status flash.
+
+4. Distinguish UNKNOWN vs BUSY in warnings (from #88). The three-state gate allows
+   a more precise message: BUSY -> "a program is running"; UNKNOWN -> "can't
+   confirm the shell is at a prompt". Currently moot -- consumers only warn on
+   BUSY (UNKNOWN proceeds) -- but if any future consumer warns on UNKNOWN it
+   should use a distinct message rather than reusing the BUSY text.
+
+Acceptance criteria:
+- [ ] Each item is either implemented or explicitly declined with a rationale (they are independent; partial completion is fine)
