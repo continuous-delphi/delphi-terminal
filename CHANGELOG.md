@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.113.0
+- The Project Dir / File Dir toolbar buttons now ride the ConPTY idle gate too: clicking one while a foreground program is active (Busy) is refused with a message instead of typing `cd` into that program. At an idle prompt they work as before, and the legacy backend (including its Auto-CD) is unchanged. Also fixed the buttons' line ending under ConPTY (they sent a stray extra Enter). Busy warnings now name the blocked action ("change directory" vs "run a saved command").
+[#86](https://github.com/continuous-delphi/delphi-terminal/issues/86)
+
 ## v2.0.112.0
 - Idle-gate hardening (review follow-up to #87): documented that the idle gate's child-process check is load-bearing even when OSC 133/633 markers are present (it catches a partial integration that emits the prompt marker but never the command marker), and added tests locking the alternate-screen "busy" override for the older ?47 and ?1047 modes, not just ?1049. Verified that a shell restart resets prompt state (no false-idle). No behavior change.
 [#88](https://github.com/continuous-delphi/delphi-terminal/issues/88)

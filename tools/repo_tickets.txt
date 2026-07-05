@@ -1632,6 +1632,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: Project Dir / File Dir buttons inject into the foreground app (gate + line ending)
 Issue: #86
+Status: closed
 Labels: bug, conpty
 Body:
 The Project Dir and File Dir toolbar buttons call

@@ -107,8 +107,8 @@ type
     procedure PasteToShell;
     ///<summary>Writes AText plus the backend-appropriate line terminator (CR for ConPTY, CRLF for the legacy pipe) to submit a line.</summary>
     procedure SubmitLineToShell(const AText: string);
-    ///<summary>Surfaces the "shell is busy" refusal message when the idle gate blocks a user-initiated injection (#84).</summary>
-    procedure WarnShellBusy;
+    ///<summary>Surfaces the "shell is busy" refusal message (naming the blocked action) when the idle gate blocks a user-initiated injection (#84/#86).</summary>
+    procedure WarnShellBusy(const AAction: string);
   protected
     procedure WndProc(var Message: TMessage); override;
   public
@@ -785,8 +785,19 @@ var
 begin
   if not (Assigned(FProcess) and FProcess.Running) then
     Exit;
+  // #86: the Project Dir / File Dir buttons are user-initiated injection, same policy as
+  // saved commands (#84) -- refuse over a running foreground program. The gate reports
+  // sisBusy only for ConPTY; legacy (and the legacy-only Auto-CD path) is always sisIdle,
+  // so its behaviour is unchanged.
+  if ShellIdleState = sisBusy then
+  begin
+    WarnShellBusy('change directory');
+    Exit;
+  end;
   Cmd := TCmdUtils.ChangeDirectoryCommand(FCmdShellInfo.ShellType, APath);
-  FProcess.WriteInput(Cmd + #13#10);
+  // Backend-correct terminator (CR for ConPTY, CRLF for legacy) -- previously hardcoded
+  // CRLF, which sent a stray extra Enter at a ConPTY prompt (the #82 line-ending class).
+  SubmitLineToShell(Cmd);
   if FBackendKind = tbConPty then
     FTermView.ScrollToBottom
   else
@@ -877,7 +888,7 @@ begin
   // the user chose the moment and nothing proves the shell is busy.
   if ShellIdleState = sisBusy then
   begin
-    WarnShellBusy;
+    WarnShellBusy('run a saved command');
     Exit;
   end;
   FHistory.Add(AText);
@@ -893,7 +904,7 @@ begin
     // #84: same guard as the run path -- do not inject into a running foreground program.
     if ShellIdleState = sisBusy then
     begin
-      WarnShellBusy;
+      WarnShellBusy('insert a saved command');
       Exit;
     end;
     // No line-entry box in ConPTY (the input panel is hidden). Place the text at
@@ -915,9 +926,9 @@ begin
   HandleOutput(Self, AText + #13#10);
 end;
 
-procedure TframeCmdShell.WarnShellBusy;
+procedure TframeCmdShell.WarnShellBusy(const AAction: string);
 begin
-  ShowMessage('[delphi-terminal] Cannot run a saved command while an interactive program is active -- stop it first (Ctrl+C).');
+  ShowMessage(Format('[delphi-terminal] Cannot %s while an interactive program is active -- stop it first (Ctrl+C).', [AAction]));
 end;
 
 function TframeCmdShell.ShellIdleState: TShellIdleState;
