@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.111.0
+- Saved commands now ride the ConPTY idle gate: running (or previewing) a saved command while a foreground program is active (the gate reports Busy -- a full-screen app, an OSC 133/633 "executing" marker, or a live child process) is refused with a message instead of typing the command into that program. At an idle or unproven prompt it runs as before, and paste and the legacy backend are unaffected.
+[#84](https://github.com/continuous-delphi/delphi-terminal/issues/84)
+
 ## v2.0.110.0
 - Hardened the ConPTY idle gate (review follow-up to #85): it is now three-state (Idle / Busy / Unknown) and fails safe. Only OSC 133/633 shell-integration markers can assert Idle -- and only in the input window (after B, before C); the alternate-screen and Job-child-count fallbacks can only assert Busy, never Idle, so a program waiting at its own prompt (a REPL, a WSL process) is never mistaken for an idle shell. Also handles VS Code's OSC 633 alongside 133.
 [#87](https://github.com/continuous-delphi/delphi-terminal/issues/87)

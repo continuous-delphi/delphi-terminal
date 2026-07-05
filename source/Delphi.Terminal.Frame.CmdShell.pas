@@ -107,6 +107,8 @@ type
     procedure PasteToShell;
     ///<summary>Writes AText plus the backend-appropriate line terminator (CR for ConPTY, CRLF for the legacy pipe) to submit a line.</summary>
     procedure SubmitLineToShell(const AText: string);
+    ///<summary>Surfaces the "shell is busy" refusal message when the idle gate blocks a user-initiated injection (#84).</summary>
+    procedure WarnShellBusy;
   protected
     procedure WndProc(var Message: TMessage); override;
   public
@@ -870,6 +872,14 @@ procedure TframeCmdShell.SendUserCommand(const AText: string);
 begin
   if not (Assigned(FProcess) and FProcess.Running) then
     Exit;
+  // #84: refuse to inject a saved command over a running foreground program (the gate
+  // only reports sisBusy for ConPTY; legacy is always sisIdle). sisUnknown proceeds --
+  // the user chose the moment and nothing proves the shell is busy.
+  if ShellIdleState = sisBusy then
+  begin
+    WarnShellBusy;
+    Exit;
+  end;
   FHistory.Add(AText);
   FHistory.ResetPosition;
   SubmitLineToShell(AText);
@@ -880,6 +890,12 @@ procedure TframeCmdShell.InsertCommandText(const AText: string);
 begin
   if FBackendKind = tbConPty then
   begin
+    // #84: same guard as the run path -- do not inject into a running foreground program.
+    if ShellIdleState = sisBusy then
+    begin
+      WarnShellBusy;
+      Exit;
+    end;
     // No line-entry box in ConPTY (the input panel is hidden). Place the text at
     // the shell's own prompt WITHOUT a terminator so the user can edit it inline
     // and press Enter themselves.
@@ -897,6 +913,11 @@ end;
 procedure TframeCmdShell.ShowMessage(const AText: string);
 begin
   HandleOutput(Self, AText + #13#10);
+end;
+
+procedure TframeCmdShell.WarnShellBusy;
+begin
+  ShowMessage('[delphi-terminal] Cannot run a saved command while an interactive program is active -- stop it first (Ctrl+C).');
 end;
 
 function TframeCmdShell.ShellIdleState: TShellIdleState;

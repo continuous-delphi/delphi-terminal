@@ -1520,6 +1520,7 @@ Acceptance criteria:
 ---
 Title: Saved commands: suppress injection when a ConPTY foreground app is active
 Issue: #84
+Status: closed
 Labels: enhancement, conpty
 Body:
 Saved commands run via the Ctrl+P palette are written straight to the PTY
