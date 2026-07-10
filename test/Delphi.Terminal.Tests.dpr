@@ -40,8 +40,24 @@ uses
   Delphi.Terminal.Settings in '..\source\Delphi.Terminal.Settings.pas',
   Delphi.Terminal.SavedCommands in '..\source\Delphi.Terminal.SavedCommands.pas',
   Delphi.Terminal.VariableExpander in '..\source\Delphi.Terminal.VariableExpander.pas',
+  Delphi.Terminal.TextDecode in '..\source\Delphi.Terminal.TextDecode.pas',
+  WinAPI.ConPty in '..\source\WinAPI.ConPty.pas',
+  Delphi.Terminal.Pty in '..\source\Delphi.Terminal.Pty.pas',
+  Delphi.Terminal.ConPtyReader in '..\source\Delphi.Terminal.ConPtyReader.pas',
+  Delphi.Terminal.ConPtyShell in '..\source\Delphi.Terminal.ConPtyShell.pas',
+  Delphi.Terminal.ScreenBuffer in '..\source\Delphi.Terminal.ScreenBuffer.pas',
+  Delphi.Terminal.VTParser in '..\source\Delphi.Terminal.VTParser.pas',
+  Delphi.Terminal.TerminalColors in '..\source\Delphi.Terminal.TerminalColors.pas',
+  Delphi.Terminal.TerminalSelection in '..\source\Delphi.Terminal.TerminalSelection.pas',
+  Delphi.Terminal.KeyInput in '..\source\Delphi.Terminal.KeyInput.pas',
   Test.Delphi.Terminal.SavedCommands in 'Test.Delphi.Terminal.SavedCommands.pas',
-  Test.Delphi.Terminal.VariableExpander in 'Test.Delphi.Terminal.VariableExpander.pas';
+  Test.Delphi.Terminal.VariableExpander in 'Test.Delphi.Terminal.VariableExpander.pas',
+  Test.Delphi.Terminal.ConPty in 'Test.Delphi.Terminal.ConPty.pas',
+  Test.Delphi.Terminal.ScreenBuffer in 'Test.Delphi.Terminal.ScreenBuffer.pas',
+  Test.Delphi.Terminal.VTParser in 'Test.Delphi.Terminal.VTParser.pas',
+  Test.Delphi.Terminal.TerminalColors in 'Test.Delphi.Terminal.TerminalColors.pas',
+  Test.Delphi.Terminal.TerminalSelection in 'Test.Delphi.Terminal.TerminalSelection.pas',
+  Test.Delphi.Terminal.KeyInput in 'Test.Delphi.Terminal.KeyInput.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

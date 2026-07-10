@@ -58,6 +58,17 @@ contains
   Delphi.Terminal.CmdShell in '..\..\source\Delphi.Terminal.CmdShell.pas',
   Delphi.Terminal.SavedCommands in '..\..\source\Delphi.Terminal.SavedCommands.pas',
   Delphi.Terminal.VariableExpander in '..\..\source\Delphi.Terminal.VariableExpander.pas',
+  Delphi.Terminal.TextDecode in '..\..\source\Delphi.Terminal.TextDecode.pas',
+  WinAPI.ConPty in '..\..\source\WinAPI.ConPty.pas',
+  Delphi.Terminal.Pty in '..\..\source\Delphi.Terminal.Pty.pas',
+  Delphi.Terminal.ConPtyReader in '..\..\source\Delphi.Terminal.ConPtyReader.pas',
+  Delphi.Terminal.ConPtyShell in '..\..\source\Delphi.Terminal.ConPtyShell.pas',
+  Delphi.Terminal.ScreenBuffer in '..\..\source\Delphi.Terminal.ScreenBuffer.pas',
+  Delphi.Terminal.VTParser in '..\..\source\Delphi.Terminal.VTParser.pas',
+  Delphi.Terminal.TerminalColors in '..\..\source\Delphi.Terminal.TerminalColors.pas',
+  Delphi.Terminal.TerminalSelection in '..\..\source\Delphi.Terminal.TerminalSelection.pas',
+  Delphi.Terminal.KeyInput in '..\..\source\Delphi.Terminal.KeyInput.pas',
+  Delphi.Terminal.TerminalView in '..\..\source\Delphi.Terminal.TerminalView.pas',
   Delphi.Terminal.Plugin.SavedCommandsEditor in 'Delphi.Terminal.Plugin.SavedCommandsEditor.pas',
   Delphi.Terminal.Plugin.CommandPalette in 'Delphi.Terminal.Plugin.CommandPalette.pas';
 

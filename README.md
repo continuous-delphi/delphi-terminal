@@ -8,13 +8,20 @@
 [![Continuous Delphi](https://img.shields.io/badge/org-continuous--delphi-red)](https://github.com/continuous-delphi)
 
 Dockable terminal panel for **RAD Studio**. Run CMD, PowerShell 7 (pwsh),
-and legacy PowerShell sessions directly inside the IDE.
+legacy PowerShell, and WSL sessions directly inside the IDE -- now backed by a
+real terminal (**ConPTY**), so interactive console programs and full-screen TUIs
+(e.g. Claude Code) work, not just line-at-a-time commands.
 
 ## Features
 
-- **Three shell tabs** -- CMD, pwsh, and PowerShell in a single panel
-- **ANSI color rendering** -- SGR escape sequences rendered with the
-  Windows Terminal Campbell palette via TRichEdit
+- **Four shell tabs** -- CMD, pwsh, PowerShell, and WSL in a single panel
+- **Real terminal (ConPTY)** -- a built-in pseudoconsole backend with its own
+  VT/ANSI screen model and renderer, so interactive programs and TUIs
+  (Claude Code, editors, pagers) run correctly. Falls back to the classic
+  pipe backend automatically on older systems. See
+  [Terminal backends](#terminal-backends-conpty).
+- **ANSI/VT color rendering** -- SGR escape sequences (16 / 256 / 24-bit
+  truecolor) with the Windows Terminal Campbell palette
 - **Command history** -- Up/Down arrow keys recall previous commands
 - **Working directory shortcuts** -- Project Dir and File Dir toolbar
   buttons resolve paths via ToolsAPI in the IDE (folder picker in
@@ -42,8 +49,54 @@ and legacy PowerShell sessions directly inside the IDE.
   - Up / Down -- navigate command history
 - **IDE integration** -- dockable form with persistent dock state,
   `View` menu item, and config screen in `Tools>Options>Third Party>delphi-terminal`
-- Auto change-directory option when the active Project changes
+- **Working directory buttons** -- Project Dir / File Dir toolbar buttons switch
+  the shell to the active project's or file's folder on demand
 - Configurable Font Name + Font Size used in console window
+
+## Terminal backends (ConPTY)
+
+delphi-terminal has two terminal backends, selectable under
+**Tools > Options > Third Party > delphi-terminal**:
+
+- **Automatic** (default) -- uses **ConPTY** on supported systems, otherwise
+  the legacy pipe backend.
+- **ConPTY** -- forces the pseudoconsole backend (falls back to legacy if it
+  cannot start).
+- **Legacy pipes** -- forces the classic redirected-pipe backend.
+
+**ConPTY** is a real Windows pseudoconsole. delphi-terminal parses the VT/ANSI
+stream into a screen model and paints it with a cursor-addressed renderer, so
+cursor movement, colors, alternate-screen apps, and interactive input all behave
+like a normal terminal. **ConPTY requires Windows 10 version 1903 (build 18362)
+or later.**
+
+The **legacy** backend redirects stdin/stdout through anonymous pipes. It is a
+line-oriented pipe, **not a true terminal** -- it is fine for running commands
+and viewing colored output, but interactive, cursor-addressed programs (REPLs,
+editors, `less`, and TUIs such as Claude Code) will not render or accept input
+correctly. Those require ConPTY.
+
+### Troubleshooting
+
+- **An interactive program shows garbled output or ignores my keystrokes.**
+  You are almost certainly on the legacy backend. Set the backend to
+  *Automatic* or *ConPTY* and confirm you are on Windows 10 1903+.
+- **I forced ConPTY but the tab says `[ConPTY unavailable, using legacy backend]`.**
+  ConPTY could not start on this system; it fell back to legacy. This is
+  expected on pre-1903 Windows.
+- **Multi-line paste runs each line immediately in pwsh.** That matches a normal
+  pwsh console (conhost); pwsh does not enable bracketed paste. Apps that do
+  (e.g. bash under WSL) receive the paste as a single editable block.
+
+### Verifying with Claude Code
+
+A quick acceptance matrix (works in both the plugin and the demo app):
+
+| Scenario | Backend | Expected |
+|---|---|---|
+| `claude -p "hi"` (argument) | ConPTY or legacy | prints a one-shot reply |
+| `echo "hi" \| claude -p` (piped) | ConPTY or legacy | prints a one-shot reply |
+| interactive `claude` (type / Backspace / arrows / paste / Ctrl+C) | **ConPTY** | full interactive session; Ctrl+C interrupts |
 
 ## Project Layout
 
@@ -78,8 +131,11 @@ and command history.
 but old versions are untested.
 
 Optional
+- Windows 10 version 1903 (build 18362) or later for the **ConPTY** backend;
+  older systems fall back to the legacy pipe backend automatically
 - Defaults to `Cascadia Mono` font (ships with Windows Terminal)
 - PowerShell 7+ (`pwsh.exe`) for the pwsh tab
+- WSL for the WSL tab
 
 ## Installation
 

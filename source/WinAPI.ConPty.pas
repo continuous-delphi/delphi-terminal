@@ -1,0 +1,339 @@
+(*
+
+  delphi-terminal
+  https://github.com/continuous-delphi/delphi-terminal
+
+  Dockable terminal panel for RAD Studio with CMD, pwsh, and PowerShell tabs,
+  ANSI color rendering, and command history
+
+  License: MIT
+  Copyright (c) 2026 Darian Miller
+
+  ---------------------------------------------------------------------------
+
+  Self-contained declarations for the Windows Pseudo Console (ConPTY) API, the
+  process-thread attribute-list functions it depends on, and the Job Object API
+  used to terminate the child process tree on teardown.
+
+  These are declared here rather than taken from WinAPI.Windows on purpose:
+
+    - The ConPTY functions (CreatePseudoConsole / ResizePseudoConsole /
+      ClosePseudoConsole) are not declared by WinAPI.Windows in any supported
+      version, and only exist at runtime on Windows 10 1809+.
+
+    - The attribute-list functions (Initialize/Update/DeleteProcThreadAttributeList)
+      DO exist at runtime back to Windows Vista, but the WinAPI.Windows
+      *declarations* for them differ across compiler versions (absent in XE6,
+      record-by-value in 10.2-11, pointer overloads in 12+). Binding our own
+      function-pointer types to the kernel32 exports gives one stable signature
+      that compiles identically on XE6 through the latest release.
+
+  Only the volatile declarations live here. Stable primitives (THandle, DWORD,
+  HRESULT, BOOL, TCoord, TStartupInfoW, SIZE_T, PSIZE_T, DWORD_PTR) are reused
+  from WinAPI.Windows, which declares them consistently on every target.
+
+  The actual dynamic loading and call wrappers live in Delphi.Terminal.Pty.
+
+  Reference -- Microsoft's "Creating a Pseudoconsole session" walkthrough:
+  https://learn.microsoft.com/en-us/windows/console/creating-a-pseudoconsole-session
+
+*)
+unit WinAPI.ConPty;
+
+interface
+
+uses
+  WinAPI.Windows;
+
+const
+  ///<summary>Attribute value used with UpdateProcThreadAttribute to associate a pseudoconsole with a child process.</summary>
+  ///<remarks>Not declared by WinAPI.Windows in any supported version.</remarks>
+  PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = $00020016;
+
+  ///<summary>dwFlags value for CreatePseudoConsole: inherit the cursor position of the calling console.</summary>
+  PSEUDOCONSOLE_INHERIT_CURSOR = $00000001;
+
+  ///<summary>First Windows 10 build with stable ConPTY (version 1903). 1809 shipped ConPTY but with resize/alt-screen defects, so it is excluded.</summary>
+  CONPTY_MIN_BUILD = 18362;
+
+{$IF not Declared(EXTENDED_STARTUPINFO_PRESENT)}
+  // Present in WinAPI.Windows on 12+, absent prior
+  EXTENDED_STARTUPINFO_PRESENT = $00080000;
+{$IFEND}
+
+type
+
+  ///<summary>Handle to a pseudoconsole.</summary>
+  HPCON = THandle;
+  PHPCON = ^HPCON;
+
+  ///<summary>Opaque pointer to a process-thread attribute list.</summary>
+  ///<remarks>Declared locally as an untyped pointer so the signatures below are independent of the WinAPI.Windows version, which does not declare this type on XE6.</remarks>
+  ///https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-initializeprocthreadattributelist
+  LPPROC_THREAD_ATTRIBUTE_LIST = type Pointer;
+
+  (*
+    https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-startupinfoexw
+
+    typedef struct _STARTUPINFOEXW {
+      STARTUPINFOW                 StartupInfo;
+      LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList;
+    } STARTUPINFOEXW, *LPSTARTUPINFOEXW;
+  *)
+  TStartupInfoExW = record
+    StartupInfo: TStartupInfoW;                    // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow
+    lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST;
+  end;
+  PStartupInfoExW = ^TStartupInfoExW;
+
+
+  ///<summary>Creates a new pseudoconsole object for the calling process.</summary>
+  ///<see>https://learn.microsoft.com/en-us/windows/console/createpseudoconsole</see>
+  ///<c>
+  ///  HRESULT WINAPI CreatePseudoConsole(    If this method succeeds, it returns S_OK. Otherwise, it returns an HRESULT error code.
+  ///    _In_ COORD size,                     The dimensions of the window/buffer in count of characters that will be used on initial creation of the pseudoconsole. This can be adjusted later with ResizePseudoConsole.
+  ///    _In_ HANDLE hInput,                  An open handle to a stream of data that represents user input to the device. This is currently restricted to synchronous I/O.
+  ///    _In_ HANDLE hOutput,                 An open handle to a stream of data that represents application output from the device. This is currently restricted to synchronous I/O.
+  ///    _In_ DWORD dwFlags,                  The value can be one of the following: 0	Perform a standard pseudoconsole creation.   PSEUDOCONSOLE_INHERIT_CURSOR (DWORD)	The created pseudoconsole session will attempt to inherit the cursor position of the parent console.
+  ///    _Out_ HPCON* phPC                    Pointer to a location that will receive a handle to the new pseudoconsole device.
+  ///  );
+  ///</c>
+  TCreatePseudoConsoleFunc = function(size: TCoord;
+                                      hInput: THandle;
+                                      hOutput: THandle;
+                                      dwFlags: DWORD;
+                                      out phPC: HPCON): HRESULT; stdcall;
+
+  ///<summary>Resizes the internal buffers for a pseudoconsole to the given size.</summary>
+  ///<see>https://learn.microsoft.com/en-us/windows/console/resizepseudoconsole</see>
+  ///<c>
+  ///  HRESULT WINAPI ResizePseudoConsole(
+  ///      _In_ HPCON hPC ,
+  ///      _In_ COORD size
+  ///  );
+  ///</c>
+  TResizePseudoConsoleFunc = function(hPC: HPCON; size: TCoord): HRESULT; stdcall;
+
+
+  ///<summary>Shuts down and releases resources associated with the given pseudoconsole.</summary>
+  ///<see>https://learn.microsoft.com/en-us/windows/console/closepseudoconsole</see>
+  ///<c>
+  ///  void WINAPI ClosePseudoConsole(
+  ///      _In_ HPCON hPC
+  ///  );
+  ///</c>
+  TClosePseudoConsoleFunc = procedure(hPC: HPCON); stdcall;
+
+
+  ///<summary>Allocates and initializes a list of attributes for process and thread creation.</summary>
+  ///<see>https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-initializeprocthreadattributelist</see>
+  ///<remarks>Call once with lpAttributeList = nil to obtain the required size in lpSize, then again with an allocated buffer.</remarks>
+  ///<c>
+  ///  BOOL InitializeProcThreadAttributeList(
+  ///    _Out_opt_ LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList,
+  ///    _In_ DWORD dwAttributeCount,
+  ///    _Reserved_ DWORD dwFlags,
+  ///    _Inout_ PSIZE_T lpSize
+  ///  );
+  ///</c>
+  TInitializeProcThreadAttributeListFunc = function(lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST;
+                                                    dwAttributeCount: DWORD;
+                                                    dwFlags: DWORD;
+                                                    lpSize: PSIZE_T): BOOL; stdcall;
+
+  ///<summary>Updates the specified attribute in a list of attributes for process and thread creation.</summary>
+  ///<see>https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute</see>
+  ///<remarks>lpReturnSize may be nil.</remarks>
+  ///<c>
+  ///  BOOL UpdateProcThreadAttribute(
+  ///    _Inout_ LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList,
+  ///    _In_ DWORD dwFlags,
+  ///    _In_ DWORD_PTR Attribute,
+  ///    _In_ PVOID lpValue,
+  ///    _In_ SIZE_T cbSize,
+  ///    _Out_opt_ PVOID lpPreviousValue,
+  ///    _In_opt_ PSIZE_T lpReturnSize
+  ///  );
+  ///</c>
+  TUpdateProcThreadAttributeFunc = function(lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST;
+                                            dwFlags: DWORD;
+                                            Attribute: DWORD_PTR;
+                                            lpValue: Pointer;
+                                            cbSize: SIZE_T;
+                                            lpPreviousValue: Pointer;
+                                            lpReturnSize: PSIZE_T): BOOL; stdcall;
+
+  ///<summary>Deletes the specified list of attributes for process and thread creation.</summary>
+  ///<see>https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist</see>
+  ///<c>
+  ///  void DeleteProcThreadAttributeList(
+  ///    _Inout_ LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList
+  ///  );
+  ///</c>
+  TDeleteProcThreadAttributeListFunc = procedure(lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST); stdcall;
+
+
+{ Job Objects -- used to terminate the child process tree (the shell plus any
+  descendants, e.g. the node.exe Claude Code spawns) on teardown. Absent from
+  WinAPI.Windows before Delphi 11, so declared here for XE6+; the whole block is
+  skipped when the RTL already provides these (identifiers match the RTL). }
+{$IF not Declared(JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE)}
+const
+  JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = $00002000;
+  JobObjectExtendedLimitInformation = 9;
+
+type
+  TIOCounters = record
+    ReadOperationCount: UInt64;
+    WriteOperationCount: UInt64;
+    OtherOperationCount: UInt64;
+    ReadTransferCount: UInt64;
+    WriteTransferCount: UInt64;
+    OtherTransferCount: UInt64;
+  end;
+
+  TJobObjectBasicLimitInformation = record
+    PerProcessUserTimeLimit: Int64;
+    PerJobUserTimeLimit: Int64;
+    LimitFlags: DWORD;
+    MinimumWorkingSetSize: SIZE_T;
+    MaximumWorkingSetSize: SIZE_T;
+    ActiveProcessLimit: DWORD;
+    Affinity: ULONG_PTR;
+    PriorityClass: DWORD;
+    SchedulingClass: DWORD;
+  end;
+
+  TJobObjectExtendedLimitInformation = record
+    BasicLimitInformation: TJobObjectBasicLimitInformation;
+    IoInfo: TIOCounters;
+    ProcessMemoryLimit: SIZE_T;
+    JobMemoryLimit: SIZE_T;
+    PeakProcessMemoryUsed: SIZE_T;
+    PeakJobMemoryUsed: SIZE_T;
+  end;
+
+function CreateJobObject(lpJobAttributes: PSecurityAttributes; lpName: PWideChar): THandle; stdcall; external kernel32 name 'CreateJobObjectW';
+function SetInformationJobObject(hJob: THandle; JobObjectInfoClass: DWORD; lpJobObjectInfo: Pointer; cbJobObjectInfoLength: DWORD): BOOL; stdcall; external kernel32 name 'SetInformationJobObject';
+function AssignProcessToJobObject(hJob, hProcess: THandle): BOOL; stdcall; external kernel32 name 'AssignProcessToJobObject';
+function IsProcessInJob(ProcessHandle, JobHandle: THandle; var Result: ByteBool): ByteBool; stdcall; external kernel32 name 'IsProcessInJob';
+{$IFEND}
+
+{ Job Object active-process accounting -- used to tell an idle shell prompt (the
+  job holds only the shell: count = 1) from a running foreground command (the shell
+  plus a child: count > 1). Declared with a unique name bound to the same kernel32
+  export and a locally-named record, so it is available and collision-free on every
+  target RTL regardless of the guarded job block above. }
+type
+  TDTJobBasicAccounting = record
+    TotalUserTime: Int64;
+    TotalKernelTime: Int64;
+    ThisPeriodTotalUserTime: Int64;
+    ThisPeriodTotalKernelTime: Int64;
+    TotalPageFaultCount: DWORD;
+    TotalProcesses: DWORD;
+    ActiveProcesses: DWORD;
+    TotalTerminatedProcesses: DWORD;
+  end;
+
+function DTQueryInformationJobObject(hJob: THandle; InfoClass: DWORD; Info: Pointer; InfoLen: DWORD; RetLen: PDWORD): BOOL; stdcall; external kernel32 name 'QueryInformationJobObject';
+
+///<summary>Number of live processes in the Job Object, or -1 if unavailable. 1 == just the shell (idle prompt); > 1 == a foreground command is running.</summary>
+function JobActiveProcessCount(hJob: THandle): Integer;
+
+
+type
+  TConPtyAPI = record
+  public
+    CreatePseudoConsole: TCreatePseudoConsoleFunc;
+    ResizePseudoConsole: TResizePseudoConsoleFunc;
+    ClosePseudoConsole: TClosePseudoConsoleFunc;
+    InitializeProcThreadAttributeList: TInitializeProcThreadAttributeListFunc;
+    UpdateProcThreadAttribute: TUpdateProcThreadAttributeFunc;
+    DeleteProcThreadAttributeList: TDeleteProcThreadAttributeListFunc;
+
+    function Initialize: Boolean;
+    function IsAvailable: Boolean;
+  end;
+
+
+///<summary>True when ABuildNumber meets the minimum for stable ConPTY (see CONPTY_MIN_BUILD).</summary>
+function ConPtyBuildSupported(ABuildNumber: DWORD): Boolean;
+
+
+implementation
+uses
+  System.SysUtils;
+
+// RtlGetVersion reports the true OS version regardless of the app's manifest
+// (GetVersionEx / Win32BuildNumber lie to unmanifested apps, reporting 6.2/9200).
+function RtlGetVersion(var AVersionInfo: TOSVersionInfoW): LongInt; stdcall; external 'ntdll.dll' name 'RtlGetVersion';
+
+function WindowsBuildNumber: DWORD;
+var
+  LInfo: TOSVersionInfoW;
+begin
+  ZeroMemory(@LInfo, SizeOf(LInfo));
+  LInfo.dwOSVersionInfoSize := SizeOf(LInfo);
+  if RtlGetVersion(LInfo) = 0 then
+    Result := LInfo.dwBuildNumber
+  else
+    Result := 0;
+end;
+
+function ConPtyBuildSupported(ABuildNumber: DWORD): Boolean;
+begin
+  Result := ABuildNumber >= CONPTY_MIN_BUILD;
+end;
+
+
+function TConPtyAPI.Initialize: Boolean;
+var
+  hModule: HINST;
+begin
+  Self := Default(TConPtyAPI);
+
+  // Primary gate is GetProcAddress below; the build check is a secondary filter
+  // that additionally excludes 1809 (which has ConPTY but with known defects).
+  if ConPtyBuildSupported(WindowsBuildNumber) then
+  begin
+    hModule:= GetModuleHandle(WinAPI.Windows.Kernel32);
+
+    CreatePseudoConsole := TCreatePseudoConsoleFunc(GetProcAddress(hModule, 'CreatePseudoConsole'));
+    ResizePseudoConsole := TResizePseudoConsoleFunc(GetProcAddress(hModule, 'ResizePseudoConsole'));
+    ClosePseudoConsole := TClosePseudoConsoleFunc(GetProcAddress(hModule, 'ClosePseudoConsole'));
+    InitializeProcThreadAttributeList := TInitializeProcThreadAttributeListFunc(GetProcAddress(hModule, 'InitializeProcThreadAttributeList'));
+    UpdateProcThreadAttribute := TUpdateProcThreadAttributeFunc(GetProcAddress(hModule, 'UpdateProcThreadAttribute'));
+    DeleteProcThreadAttributeList := TDeleteProcThreadAttributeListFunc(GetProcAddress(hModule, 'DeleteProcThreadAttributeList'));
+  end;
+
+  Result := IsAvailable;
+end;
+
+
+function TConPtyAPI.IsAvailable: Boolean;
+begin
+  Result := Assigned(CreatePseudoConsole) and
+            Assigned(ResizePseudoConsole) and
+            Assigned(ClosePseudoConsole) and
+            Assigned(InitializeProcThreadAttributeList) and
+            Assigned(UpdateProcThreadAttribute) and
+            Assigned(DeleteProcThreadAttributeList);
+end;
+
+function JobActiveProcessCount(hJob: THandle): Integer;
+const
+  cJobObjectBasicAccountingInformation = 1;
+var
+  LInfo: TDTJobBasicAccounting;
+  LRet: DWORD;
+begin
+  Result := -1;
+  if hJob = 0 then
+    Exit;
+  FillChar(LInfo, SizeOf(LInfo), 0);
+  if DTQueryInformationJobObject(hJob, cJobObjectBasicAccountingInformation, @LInfo, SizeOf(LInfo), @LRet) then
+    Result := Integer(LInfo.ActiveProcesses);
+end;
+
+end.

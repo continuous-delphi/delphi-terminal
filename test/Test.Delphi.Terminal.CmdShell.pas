@@ -35,7 +35,7 @@ type
     [Test] procedure PwshShouldProduceOutputFromEcho;
     [Test] procedure PwshShouldPersistSessionState;
     [Test] procedure PwshShouldTerminateCleanly;
-    [Test] procedure PwshShouldEmitAnsiSequences;
+    [Test] procedure AnsiEscapeSequencesPassThroughReader;
 
     [Test] procedure LegacyPSShouldStartAndReportRunning;
     [Test] procedure LegacyPSShouldProduceOutput;
@@ -46,6 +46,18 @@ type
     [Test] procedure ChangeDirectoryCommandShouldUseCdForCmd;
     [Test] procedure ChangeDirectoryCommandShouldUseSetLocationForPwsh;
     [Test] procedure ChangeDirectoryCommandShouldUseSetLocationForPowerShell;
+
+    [Test] procedure ImplementsTerminalProcessInterface;
+  end;
+
+  [TestFixture]
+  TBackendResolutionTests = class
+  public
+    [Test] procedure Legacy_AlwaysResolvesToLegacy;
+    [Test] procedure ConPty_ResolvesToConPtyWhenAvailable;
+    [Test] procedure ConPty_FallsBackToLegacyWhenUnavailable;
+    [Test] procedure Auto_ResolvesToConPtyWhenAvailable;
+    [Test] procedure Auto_FallsBackToLegacyWhenUnavailable;
   end;
 
 implementation
@@ -105,13 +117,13 @@ end;
 
 procedure TTestCmdShellProcess.CmdShouldStartAndReportRunning;
 begin
-  FShell.Start('cmd.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), GetEnvironmentVariable('TEMP'));
   Assert.IsTrue(FShell.Running, 'Shell should be running after Start');
 end;
 
 procedure TTestCmdShellProcess.CmdShouldProduceOutputFromEcho;
 begin
-  FShell.Start('cmd.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), GetEnvironmentVariable('TEMP'));
   FOutput := '';
   FShell.SendCommand('echo TESTMARKER_CMD');
   DrainQueueUntil('TESTMARKER_CMD');
@@ -120,7 +132,7 @@ end;
 
 procedure TTestCmdShellProcess.CmdShouldPersistSessionState;
 begin
-  FShell.Start('cmd.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), GetEnvironmentVariable('TEMP'));
   FShell.SendCommand('set _RADIDE_TEST_VAR_=persist_ok');
   DrainQueue(500);
   FOutput := '';
@@ -131,7 +143,7 @@ end;
 
 procedure TTestCmdShellProcess.CmdShouldTerminateCleanly;
 begin
-  FShell.Start('cmd.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), GetEnvironmentVariable('TEMP'));
   Assert.IsTrue(FShell.Running, 'Should be running before Terminate');
   FShell.Terminate;
   Assert.IsFalse(FShell.Running, 'Should not be running after Terminate');
@@ -151,7 +163,7 @@ end;
 
 procedure TTestCmdShellProcess.CmdShouldFireOnProcessExitWhenShellExits;
 begin
-  FShell.Start('cmd.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), GetEnvironmentVariable('TEMP'));
   FShell.SendCommand('exit');
   DrainQueueUntilExited;
   Assert.IsTrue(FProcessExited, 'OnProcessExit should have fired');
@@ -162,13 +174,13 @@ end;
 
 procedure TTestCmdShellProcess.PwshShouldStartAndReportRunning;
 begin
-  FShell.Start('pwsh.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), GetEnvironmentVariable('TEMP'));
   Assert.IsTrue(FShell.Running, 'PowerShell should be running after Start');
 end;
 
 procedure TTestCmdShellProcess.PwshShouldProduceOutputFromEcho;
 begin
-  FShell.Start('pwsh.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), GetEnvironmentVariable('TEMP'));
   FOutput := '';
   FShell.SendCommand('Write-Output "TESTMARKER_PWSH"');
   DrainQueueUntil('TESTMARKER_PWSH');
@@ -177,7 +189,7 @@ end;
 
 procedure TTestCmdShellProcess.PwshShouldPersistSessionState;
 begin
-  FShell.Start('pwsh.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), GetEnvironmentVariable('TEMP'));
   FShell.SendCommand('$_RADIDE_TEST_ = "persist_ok"');
   DrainQueue(500);
   FOutput := '';
@@ -188,32 +200,36 @@ end;
 
 procedure TTestCmdShellProcess.PwshShouldTerminateCleanly;
 begin
-  FShell.Start('pwsh.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), GetEnvironmentVariable('TEMP'));
   Assert.IsTrue(FShell.Running, 'Should be running before Terminate');
   FShell.Terminate;
   Assert.IsFalse(FShell.Running, 'Should not be running after Terminate');
 end;
 
-procedure TTestCmdShellProcess.PwshShouldEmitAnsiSequences;
+procedure TTestCmdShellProcess.AnsiEscapeSequencesPassThroughReader;
 begin
-  FShell.Start('pwsh.exe', GetEnvironmentVariable('TEMP'));
+  // Modern pwsh strips ANSI from output to a redirected pipe (the very limitation
+  // ConPTY exists to solve), so it cannot demonstrate pass-through. CMD echoes raw
+  // bytes verbatim -- use it to confirm the reader/UTF-8 decode path preserves ESC
+  // (SGR) sequences intact, which is what TAnsiParser consumes.
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.CMD), GetEnvironmentVariable('TEMP'));
   FOutput := '';
-  FShell.SendCommand('Write-Host "COLOR_CHECK" -ForegroundColor Red');
+  FShell.SendCommand('echo ' + #27 + '[31mCOLOR_CHECK' + #27 + '[0m');
   DrainQueueUntil('COLOR_CHECK');
-  Assert.IsTrue(FOutput.Contains(#27'['), 'Output should contain ANSI escape sequences now that NO_COLOR is removed');
+  Assert.IsTrue(FOutput.Contains(#27'['), 'ANSI escape sequence should pass through the reader intact');
 end;
 
 { Legacy PowerShell (powershell.exe) tests }
 
 procedure TTestCmdShellProcess.LegacyPSShouldStartAndReportRunning;
 begin
-  FShell.Start('powershell.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), GetEnvironmentVariable('TEMP'));
   Assert.IsTrue(FShell.Running, 'Legacy PowerShell should be running after Start');
 end;
 
 procedure TTestCmdShellProcess.LegacyPSShouldProduceOutput;
 begin
-  FShell.Start('powershell.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), GetEnvironmentVariable('TEMP'));
   FOutput := '';
   FShell.SendCommand('Write-Output "TESTMARKER_LEGACYPS"');
   DrainQueueUntil('TESTMARKER_LEGACYPS');
@@ -222,7 +238,7 @@ end;
 
 procedure TTestCmdShellProcess.LegacyPSShouldTerminateCleanly;
 begin
-  FShell.Start('powershell.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.PowerShell), GetEnvironmentVariable('TEMP'));
   Assert.IsTrue(FShell.Running, 'Should be running before Terminate');
   FShell.Terminate;
   Assert.IsFalse(FShell.Running, 'Should not be running after Terminate');
@@ -230,7 +246,7 @@ end;
 
 procedure TTestCmdShellProcess.PwshShouldDecodeMultiByteUTF8Correctly;
 begin
-  FShell.Start('pwsh.exe', GetEnvironmentVariable('TEMP'));
+  FShell.Start(TCmdUtils.CreateCmdShellInfo(TCmdShellType.pwsh), GetEnvironmentVariable('TEMP'));
   FOutput := '';
   // Emit a string with 2-byte (e-acute), 3-byte (Euro sign), and 4-byte (emoji) UTF-8 characters
   // surrounded by ASCII markers so we can verify no replacement characters appeared
@@ -246,20 +262,57 @@ end;
 
 procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseCdForCmd;
 begin
-  Assert.AreEqual('cd /d "C:\test"', TCmdShellProcess.ChangeDirectoryCommand('cmd.exe', 'C:\test'));
+  Assert.AreEqual('cd /d "C:\test"', TCmdUtils.ChangeDirectoryCommand(TCmdShellType.CMD, 'C:\test'));
 end;
 
 procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseSetLocationForPwsh;
 begin
-  Assert.AreEqual('Set-Location ''C:\test''', TCmdShellProcess.ChangeDirectoryCommand('pwsh.exe', 'C:\test'));
+  Assert.AreEqual('Set-Location "C:\test"', TCmdUtils.ChangeDirectoryCommand(TCmdShellType.pwsh, 'C:\test'));
 end;
 
 procedure TTestCmdShellProcess.ChangeDirectoryCommandShouldUseSetLocationForPowerShell;
 begin
-  Assert.AreEqual('Set-Location ''C:\test''', TCmdShellProcess.ChangeDirectoryCommand('powershell.exe', 'C:\test'));
+  Assert.AreEqual('Set-Location "C:\test"', TCmdUtils.ChangeDirectoryCommand(TCmdShellType.PowerShell, 'C:\test'));
+end;
+
+procedure TTestCmdShellProcess.ImplementsTerminalProcessInterface;
+var
+  LIntf: ITerminalProcess;
+begin
+  Assert.IsTrue(Supports(FShell, ITerminalProcess, LIntf), 'TCmdShellProcess should implement ITerminalProcess');
+  Assert.IsTrue(Assigned(LIntf), 'Interface reference should be resolved');
+end;
+
+{ TBackendResolutionTests }
+
+procedure TBackendResolutionTests.Legacy_AlwaysResolvesToLegacy;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsLegacyPipe, True) = tbLegacyPipe, 'Legacy setting must resolve to the pipe backend even when ConPTY is available');
+  Assert.IsTrue(ResolveTerminalBackend(bsLegacyPipe, False) = tbLegacyPipe, 'Legacy setting must resolve to the pipe backend when ConPTY is unavailable');
+end;
+
+procedure TBackendResolutionTests.ConPty_ResolvesToConPtyWhenAvailable;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsConPty, True) = tbConPty, 'Forced ConPTY must resolve to ConPTY when available');
+end;
+
+procedure TBackendResolutionTests.ConPty_FallsBackToLegacyWhenUnavailable;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsConPty, False) = tbLegacyPipe, 'Forced ConPTY must fall back to legacy when ConPTY is unavailable');
+end;
+
+procedure TBackendResolutionTests.Auto_ResolvesToConPtyWhenAvailable;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsAuto, True) = tbConPty, 'Auto must resolve to ConPTY when it is available');
+end;
+
+procedure TBackendResolutionTests.Auto_FallsBackToLegacyWhenUnavailable;
+begin
+  Assert.IsTrue(ResolveTerminalBackend(bsAuto, False) = tbLegacyPipe, 'Auto must fall back to legacy when ConPTY is unavailable');
 end;
 
 initialization
   TDUnitX.RegisterTestFixture(TTestCmdShellProcess);
+  TDUnitX.RegisterTestFixture(TBackendResolutionTests);
 
 end.

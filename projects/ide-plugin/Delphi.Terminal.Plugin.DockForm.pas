@@ -37,9 +37,7 @@ type
     FFramePwsh: TframeCmdShell;
     FFramePowerShell: TframeCmdShell;
     FFrameWSL:TFrameCmdShell;
-    FNotifierIndex: Integer;
-    FGroupOpening: Boolean;
-    FLastProjectDir: string;
+    FResolvedBackend: TTerminalBackendKind;
     procedure CreateTerminalTab(const ACaption: string; var AFrame: TframeCmdShell);
     procedure StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo:TCmdShellInfo; const AWorkDir: string);
     procedure HandleRequestProjectDir(Sender: TObject; var APath: string);
@@ -50,9 +48,6 @@ type
     procedure HandleFormClose(Sender: TObject; var Action: TCloseAction);
     procedure HandleCommandPaletteRequested(Sender: TObject);
     procedure FocusActiveFrame;
-    procedure RegisterIDENotifier;
-    procedure UnregisterIDENotifier;
-    procedure HandleActiveProjectChanged;
     function GetActiveProjectFile: string;
     function GetCurrentFilePath: string;
     function GetCurrentFileName: string;
@@ -77,54 +72,8 @@ uses
   Delphi.Terminal.Settings,
   Delphi.Terminal.SavedCommands,
   Delphi.Terminal.VariableExpander,
+  Delphi.Terminal.ConPtyShell,
   Delphi.Terminal.Plugin.CommandPalette;
-
-type
-  TDelphiTerminalIDENotifier = class(TNotifierObject, IOTAIDENotifier)
-  private
-    FOwner: TfrmDelphiTerminalDock;
-  public
-    constructor Create(AOwner: TfrmDelphiTerminalDock);
-    procedure FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
-    procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean); overload;
-    procedure AfterCompile(Succeeded: Boolean); overload;
-  end;
-
-{ TDelphiTerminalIDENotifier }
-
-constructor TDelphiTerminalIDENotifier.Create(AOwner: TfrmDelphiTerminalDock);
-begin
-  inherited Create;
-  FOwner := AOwner;
-end;
-
-procedure TDelphiTerminalIDENotifier.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
-begin
-  case NotifyCode of
-    {$IFDEF CD_DELPHI_10_4_OR_LATER}  //ofnBeginProjectGroupOpen + ofnEndProjectGroupOpen defined in TOOLSAPI starting in 10.4 Sydney
-    ofnBeginProjectGroupOpen:
-      FOwner.FGroupOpening := True;
-    ofnEndProjectGroupOpen:
-      begin
-        FOwner.FGroupOpening := False;
-        FOwner.HandleActiveProjectChanged;
-      end;
-   {$ENDIF}
-    ofnActiveProjectChanged:
-      if not FOwner.FGroupOpening then
-        FOwner.HandleActiveProjectChanged;
-  end;
-end;
-
-procedure TDelphiTerminalIDENotifier.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
-begin
-  // Not used
-end;
-
-procedure TDelphiTerminalIDENotifier.AfterCompile(Succeeded: Boolean);
-begin
-  // Not used
-end;
 
 var
   FInstance: TfrmDelphiTerminalDock;
@@ -195,6 +144,7 @@ begin
   OnClose := HandleFormClose;
 
   S := TerminalSettings;
+  FResolvedBackend := ResolveTerminalBackend(S.BackendSetting, TConPtyShell.IsSupported);
   if not S.ShowCmdTab and not S.ShowPwshTab and not S.ShowPowerShellTab then
     S.ShowCmdTab := True;
   WorkDir := GetInitialWorkDir;
@@ -237,14 +187,10 @@ begin
   end;
   if (DefaultIdx >= 0) and (DefaultIdx < FPageControl.PageCount) then
     FPageControl.ActivePageIndex := DefaultIdx;
-
-  FLastProjectDir := WorkDir;
-  RegisterIDENotifier;
 end;
 
 destructor TfrmDelphiTerminalDock.Destroy;
 begin
-  UnregisterIDENotifier;
   if FInstance = Self then
     FInstance := nil;
   if Assigned(FFrameWSL) then
@@ -272,6 +218,7 @@ begin
   AFrame.OnRequestProjectDir := HandleRequestProjectDir;
   AFrame.OnRequestFileDir := HandleRequestFileDir;
   AFrame.OnCommandPaletteRequested := HandleCommandPaletteRequested;
+  AFrame.BackendKind := FResolvedBackend;
 end;
 
 procedure TfrmDelphiTerminalDock.StartTerminalShell(AFrame: TframeCmdShell; const ACmdShellInfo:TCmdShellInfo; const AWorkDir: string);
@@ -341,54 +288,6 @@ begin
       TframeCmdShell(FPageControl.ActivePage.Controls[I]).FocusInput;
       Exit;
     end;
-end;
-
-procedure TfrmDelphiTerminalDock.RegisterIDENotifier;
-var
-  Services: IOTAServices;
-begin
-  FNotifierIndex := -1;
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
-    FNotifierIndex := Services.AddNotifier(TDelphiTerminalIDENotifier.Create(Self));
-end;
-
-procedure TfrmDelphiTerminalDock.UnregisterIDENotifier;
-var
-  Services: IOTAServices;
-begin
-  if FNotifierIndex >= 0 then
-  begin
-    if Supports(BorlandIDEServices, IOTAServices, Services) then
-      Services.RemoveNotifier(FNotifierIndex);
-    FNotifierIndex := -1;
-  end;
-end;
-
-procedure TfrmDelphiTerminalDock.HandleActiveProjectChanged;
-var
-  ProjectDir: string;
-  I: Integer;
-begin
-  ProjectDir := GetActiveProjectDir;
-  if (ProjectDir = '') or SameText(ProjectDir, FLastProjectDir) then
-    Exit;
-  FLastProjectDir := ProjectDir;
-
-  if TerminalSettings.AutoCdMode = 1 then
-  begin
-    // All tabs
-    for I := 0 to FPageControl.PageCount - 1 do
-      if FPageControl.Pages[I].ControlCount > 0 then
-        if FPageControl.Pages[I].Controls[0] is TframeCmdShell then
-          TframeCmdShell(FPageControl.Pages[I].Controls[0]).SetWorkingDirectory(ProjectDir);
-  end
-  else
-  begin
-    // Active tab only
-    if (FPageControl.ActivePage <> nil) and (FPageControl.ActivePage.ControlCount > 0) then
-      if FPageControl.ActivePage.Controls[0] is TframeCmdShell then
-        TframeCmdShell(FPageControl.ActivePage.Controls[0]).SetWorkingDirectory(ProjectDir);
-  end;
 end;
 
 function TfrmDelphiTerminalDock.GetActiveProjectFile: string;

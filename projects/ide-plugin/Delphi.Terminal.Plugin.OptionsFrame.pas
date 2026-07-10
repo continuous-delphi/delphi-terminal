@@ -17,6 +17,7 @@ interface
 uses
   System.SysUtils, System.Classes,
   Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Graphics,
+  Delphi.Terminal.CmdShell,
   Delphi.Terminal.Settings;
 
 type
@@ -29,7 +30,7 @@ type
     FCboDefaultShell: TComboBox;
     FEdtFontName: TEdit;
     FEdtFontSize: TEdit;
-    FCboAutoCd: TComboBox;
+    FCboBackend: TComboBox;
     FBtnSavedCommands: TButton;
     FLblHomepage: TLabel;
     FLblVersion: TLabel;
@@ -104,7 +105,7 @@ var
   Lbl: TLabel;
 begin
   Width := 500;
-  Height := 420;
+  Height := 460;
 
   Y := 10;
 
@@ -180,20 +181,22 @@ begin
   FEdtFontSize.Width := 60;
   Inc(Y, 36);
 
-  // --- Auto-cd ---
+  // --- Behavior ---
   Lbl := CreateLabel(Self, Y, 'Behavior');
   Lbl.Font.Style := [TFontStyle.fsBold];
   Inc(Y, 24);
 
-  CreateLabel(Self, Y + 3, 'Auto-cd on project switch:');
-  FCboAutoCd := TComboBox.Create(Self);
-  FCboAutoCd.Parent := Self;
-  FCboAutoCd.Left := Col2;
-  FCboAutoCd.Top := Y;
-  FCboAutoCd.Width := 180;
-  FCboAutoCd.Style := csDropDownList;
-  FCboAutoCd.Items.Add('Active tab only');
-  FCboAutoCd.Items.Add('All tabs');
+  CreateLabel(Self, Y + 3, 'Terminal backend:');
+  FCboBackend := TComboBox.Create(Self);
+  FCboBackend.Parent := Self;
+  FCboBackend.Left := Col2;
+  FCboBackend.Top := Y;
+  FCboBackend.Width := 220;
+  FCboBackend.Style := csDropDownList;
+  FCboBackend.Items.Add('Automatic');
+  FCboBackend.Items.Add('ConPTY (Windows 10 1903+)');
+  FCboBackend.Items.Add('Legacy pipes');
+
   Inc(Y, 36);
 
   // --- Saved Commands ---
@@ -258,7 +261,7 @@ begin
     FCboDefaultShell.ItemIndex := 1;
   FEdtFontName.Text := S.FontName;
   FEdtFontSize.Text := IntToStr(S.FontSize);
-  FCboAutoCd.ItemIndex := S.AutoCdMode;
+  FCboBackend.ItemIndex := Ord(S.BackendSetting);
 end;
 
 procedure TframeDelphiTerminalOptions.SaveSettings;
@@ -274,7 +277,8 @@ begin
     S.DefaultShell := FCboDefaultShell.Items[FCboDefaultShell.ItemIndex];
   S.FontName := FEdtFontName.Text;
   S.FontSize := StrToIntDef(FEdtFontSize.Text, 12);
-  S.AutoCdMode := FCboAutoCd.ItemIndex;
+  if FCboBackend.ItemIndex >= 0 then
+    S.BackendSetting := TTerminalBackendSetting(FCboBackend.ItemIndex);
 end;
 
 end.

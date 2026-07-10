@@ -2,6 +2,165 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.114.0
+- Retired the Auto-CD-on-project-switch feature. It was legacy-pipe only as of 2.0 (so most users never saw it under the default ConPTY backend) and got noisy when switching projects frequently. The Project Dir / File Dir toolbar buttons cover the same need on demand and are gate-safe. Removed the IDE notifier, the setting, and the Tools > Options control; the buttons are unchanged.
+[#89](https://github.com/continuous-delphi/delphi-terminal/issues/89)
+
+## v2.0.113.0
+- The Project Dir / File Dir toolbar buttons now ride the ConPTY idle gate too: clicking one while a foreground program is active (Busy) is refused with a message instead of typing `cd` into that program. At an idle prompt they work as before, and the legacy backend (including its Auto-CD) is unchanged. Also fixed the buttons' line ending under ConPTY (they sent a stray extra Enter). Busy warnings now name the blocked action ("change directory" vs "run a saved command").
+[#86](https://github.com/continuous-delphi/delphi-terminal/issues/86)
+
+## v2.0.112.0
+- Idle-gate hardening (review follow-up to #87): documented that the idle gate's child-process check is load-bearing even when OSC 133/633 markers are present (it catches a partial integration that emits the prompt marker but never the command marker), and added tests locking the alternate-screen "busy" override for the older ?47 and ?1047 modes, not just ?1049. Verified that a shell restart resets prompt state (no false-idle). No behavior change.
+[#88](https://github.com/continuous-delphi/delphi-terminal/issues/88)
+
+## v2.0.111.0
+- Saved commands now ride the ConPTY idle gate: running (or previewing) a saved command while a foreground program is active (the gate reports Busy -- a full-screen app, an OSC 133/633 "executing" marker, or a live child process) is refused with a message instead of typing the command into that program. At an idle or unproven prompt it runs as before, and paste and the legacy backend are unaffected.
+[#84](https://github.com/continuous-delphi/delphi-terminal/issues/84)
+
+## v2.0.110.0
+- Hardened the ConPTY idle gate (review follow-up to #85): it is now three-state (Idle / Busy / Unknown) and fails safe. Only OSC 133/633 shell-integration markers can assert Idle -- and only in the input window (after B, before C); the alternate-screen and Job-child-count fallbacks can only assert Busy, never Idle, so a program waiting at its own prompt (a REPL, a WSL process) is never mistaken for an idle shell. Also handles VS Code's OSC 633 alongside 133.
+[#87](https://github.com/continuous-delphi/delphi-terminal/issues/87)
+
+## v2.0.109.0
+- Added the shared "safe to inject" idle gate for ConPTY (foundation for the saved-command and working-dir-button guards). The VT parser now tracks OSC 133 shell-integration prompt markers (A/B/C/D) on the screen model, and a single predicate reports whether the shell is idle at a prompt: OSC 133 when the shell emits it (works under WSL), the alternate screen always counting as busy, and a Job-Object active-process-count fallback (shell only = idle; a live child = a foreground command) for shells with no shell integration. No behavior change yet -- consumers are wired in later tickets.
+[#85](https://github.com/continuous-delphi/delphi-terminal/issues/85)
+
+## v2.0.108.0
+- Auto-cd on project switch now applies to the Legacy Pipes backend only. Under ConPTY, injecting a `cd` would type keystrokes into whatever program is running in the foreground (e.g. Claude Code, a REPL, a TUI) instead of a shell prompt, so it is suppressed there. The Project Dir / File Dir toolbar buttons still work in both backends (explicit user actions), and the config screen notes the scope.
+[#83](https://github.com/continuous-delphi/delphi-terminal/issues/83)
+
+## v2.0.107.0
+- Fixed two ConPTY saved-command defects: "run now" from the Ctrl+P palette sent CRLF (a stray extra Enter) instead of the backend-correct CR, and "preview to edit" wrote to the hidden line-entry box so it did nothing. Run-now now submits exactly one line; preview places an editable command at the ConPTY prompt. Both submit paths share one helper so they cannot diverge again.
+[#82](https://github.com/continuous-delphi/delphi-terminal/issues/82)
+
+## v2.0.104.0
+- Output rendering is now coalesced to ~60fps on a render timer instead of one parse+paint pass per reader chunk. Under heavy output this cuts render passes ~50x (measured: 14-18k -> ~300 for a 50k-line dump), so the UI stays responsive during floods; memory remains bounded. Benefits both the ConPTY and legacy renderers.
+[#77](https://github.com/continuous-delphi/delphi-terminal/issues/77)
+
+## v2.0.103.0
+- Demo profiler: measures the ConPTY backend explicitly (independent of the DEBUG-gated default), increased the between-run settle for WSL's VM restart, and embeds the shared version resource so CSVs are version-keyed.
+- RunCommandLine now uses a backend-appropriate line ending (CR for ConPTY, CRLF for the legacy pipe shell) so injected commands submit correctly on either backend.
+[#81](https://github.com/continuous-delphi/delphi-terminal/issues/81)
+
+## v2.0.102.0
+- Demo: added a data-driven ConPTY performance-profiling harness (prep for #77). A Profiler tab runs a predefined command set (throughput dumps, huge line, full-screen redraws) measuring chars/sec, chunk/render-pass counts, and memory, using process-exit as the "done" signal (timed window for non-terminating commands). Build with the PROFILE_COMMANDS define for an unattended batch that runs the whole set and writes a timestamped, version-keyed CSV, then exits.
+[#81](https://github.com/continuous-delphi/delphi-terminal/issues/81)
+
+## v2.0.101.0 -- ConPTY 2.0
+
+Major release: delphi-terminal now embeds a real Windows pseudoconsole
+(**ConPTY**) terminal, so interactive console programs and full-screen TUIs
+(Claude Code, editors, pagers) work -- not just line-at-a-time commands. The
+classic pipe backend remains as an automatic fallback for older systems.
+
+- New ConPTY backend: pseudoconsole session with a kill-on-close Job Object,
+  UTF-8 reader, and a stateful VT/ANSI parser driving a cell-based screen model
+  (colors 16/256/truecolor, styles, cursor, scroll regions, alternate screen,
+  scrollback, DEC modes, OSC titles, in-place line editing) rendered by a
+  cursor-addressed TTerminalView (dirty-row painting, mouse selection + copy,
+  context menu).
+- Interactive input: focusable view with key->VT translation (arrows, editing
+  keys, Ctrl+C/D/L, etc.), paste with bracketed-paste support, and Stop /
+  double-Stop-to-restart / restart-on-exit semantics.
+- The Automatic backend setting selects ConPTY on Windows 10 1903+ and falls
+  back to legacy pipes elsewhere; a runtime fallback also covers start failures.
+- Documented backends, requirements, and troubleshooting in the README.
+[#31](https://github.com/continuous-delphi/delphi-terminal/issues/31)
+[#74](https://github.com/continuous-delphi/delphi-terminal/issues/74)
+
+## v1.3.100.0
+- The Automatic backend setting now selects ConPTY on supported systems (Windows 10 1903+) and falls back to legacy pipes elsewhere -- so the modern terminal is the default out of the box, with the runtime fallback intact.
+[#73](https://github.com/continuous-delphi/delphi-terminal/issues/73)
+
+## v1.3.99.0
+- Interrupt / restart semantics: Stop (or Ctrl+C) interrupts the foreground app; a second Stop within a short window -- or Stop/Enter after the shell has exited -- restarts the session, clearing the output queue, parser, and screen. Teardown already stops all terminals before releasing settings on IDE close / package unload.
+[#72](https://github.com/continuous-delphi/delphi-terminal/issues/72)
+
+## v1.3.97.0
+- ConPTY paste: Ctrl+V / Shift+Insert / context-menu Paste send the clipboard to the shell (newlines normalized to CR), wrapped in bracketed-paste markers (ESC[200~/ESC[201~) when the running app has enabled bracketed-paste mode.
+[#71](https://github.com/continuous-delphi/delphi-terminal/issues/71)
+
+## v1.3.96.0
+- VT parser now implements the in-place line-editing CSIs -- ECH (erase chars), ICH (insert chars), DCH (delete chars), IL (insert lines), DL (delete lines) -- so editing a wrapped line (e.g. a pwsh prediction) no longer leaves stale glyphs on the continuation line, and full-screen TUIs redraw correctly. Also retained an opt-in raw ConPTY stream capture diagnostic (disabled by default).
+[#79](https://github.com/continuous-delphi/delphi-terminal/issues/79)
+
+## v1.3.95.0
+- Fixed ConPTY display corruption when editing lines that reach the right margin (e.g. backspacing over a pwsh prediction): the screen model now uses deferred (pending) line wrap like a real terminal, and the pseudoconsole size reliably tracks the view's actual width so the shell wraps at the right column.
+[#78](https://github.com/continuous-delphi/delphi-terminal/issues/78)
+
+## v1.3.94.0
+- ConPTY mode is now interactive: TTerminalView takes keyboard focus and keystrokes are translated to VT sequences and sent to the shell (printables, Enter, Backspace, Tab/Shift+Tab, Esc, arrows, Home/End, Insert/Delete, PgUp/PgDn, Ctrl+letter incl. Ctrl+C/L/D). The line-entry TEdit is hidden in ConPTY mode; command history remains legacy line-mode only.
+[#70](https://github.com/continuous-delphi/delphi-terminal/issues/70)
+
+## v1.3.93.0
+- ConPTY mode now renders through TTerminalView (VT parser -> screen model -> view) instead of the RichEdit; the legacy pipe backend keeps using the RichEdit. Resizing the terminal (or its font metrics) reflows the shell via ResizePseudoConsole, and the view's Copy/Paste/Clear/Stop menu is wired to the live process.
+[#69](https://github.com/continuous-delphi/delphi-terminal/issues/69)
+
+## v1.3.92.0
+- TTerminalView gained vertical scrollback (mouse wheel over history), mouse selection with clipboard copy, and a Copy / Paste / Clear / Stop context menu (Copy handled internally; Paste/Clear/Stop surfaced as events for the host). Selection maths / document addressing factored into a VCL-free unit.
+[#68](https://github.com/continuous-delphi/delphi-terminal/issues/68)
+
+## v1.3.91.0
+- Added the terminal renderer (TTerminalView): a TCustomControl that paints a TScreenBuffer as a monospace cell grid with per-cell colours (16 / 256 / truecolor), bold/italic/underline/inverse, and a block cursor; incremental dirty-row repainting and double buffering. The VCL demo gains a canned-content 'TTerminalView' tab as an early visual smoke.
+[#67](https://github.com/continuous-delphi/delphi-terminal/issues/67)
+
+## v1.3.90.0
+- Renderer build-vs-reuse spike: surveyed permissively-licensed Delphi VT controls (SCShell, andrewd207/TerminalEmulator, pasterm, doublecmd) and decided to build TTerminalView from scratch. See docs/conpty-renderer-decision.md
+[#66](https://github.com/continuous-delphi/delphi-terminal/issues/66)
+
+## v1.3.89.0
+- VT parser now captures OSC window titles (BEL/ST terminated, reassembled across chunks, with an OnTitleChanged event) and handles DEC private modes: cursor show/hide (?25), alternate screen (?1049), and bracketed paste (?2004)
+[#65](https://github.com/continuous-delphi/delphi-terminal/issues/65)
+
+## v1.3.88.0
+- VT parser now handles cursor movement (CUU/CUD/CUF/CUB, CUP/HVP, CHA/VPA), save/restore (DECSC/DECRC, SCP/RCP), erase (ED/EL), and scrolling (DECSTBM scroll region, SU/SD, IND/RI/NEL)
+[#64](https://github.com/continuous-delphi/delphi-terminal/issues/64)
+
+## v1.3.87.0
+- Added the VT parser core (TVTParser): a stateful state machine driving TScreenBuffer with C0 controls and SGR (16 / 256 / 24-bit truecolor), handling escape sequences split across chunks and swallowing unknown/OSC sequences harmlessly
+[#63](https://github.com/continuous-delphi/delphi-terminal/issues/63)
+
+## v1.3.86.0
+- Extended the screen model with scroll regions, alternate screen, scrollback, resize (content-preserving, cursor-clamping), and dirty-row tracking
+[#62](https://github.com/continuous-delphi/delphi-terminal/issues/62)
+
+## v1.3.85.0
+- Added the terminal screen model (TScreenBuffer): a pure cell grid with per-cell colour/style, cursor, current attributes, write, and erase-in-line/display
+[#61](https://github.com/continuous-delphi/delphi-terminal/issues/61)
+
+## v1.3.83.0
+- Added a terminal backend setting (Automatic / ConPTY / Legacy pipes) on the Tools > Options page, persisted to the registry; the dock form resolves it and applies it to each terminal tab
+[#60](https://github.com/continuous-delphi/delphi-terminal/issues/60)
+
+## v1.3.82.0
+- Added pure backend-selection logic (ResolveTerminalBackend): honors forced Legacy/ConPTY, falls back to legacy when ConPTY is unavailable, and keeps Auto on legacy for now
+[#59](https://github.com/continuous-delphi/delphi-terminal/issues/59)
+
+## v1.3.81.0
+- TframeCmdShell now drives the terminal through the ITerminalProcess abstraction and creates its backend on demand (BackendKind); the demo can force ConPTY via the DELPHI_TERMINAL_BACKEND env var. Legacy path unchanged.
+[#58](https://github.com/continuous-delphi/delphi-terminal/issues/58)
+
+## v1.3.80.0
+- Added the ConPTY backend (TConPtyShell) implementing ITerminalProcess: owns the pseudoconsole session and reader, maps shells to a command line, handles input/interrupt/resize, and detects natural child exit via a process-handle watcher
+[#57](https://github.com/continuous-delphi/delphi-terminal/issues/57)
+
+## v1.3.79.0
+- Introduced the ITerminalProcess backend abstraction; the legacy pipe process now implements it (WriteInput/SendInterrupt/Resize), so the frame can drive either backend
+[#56](https://github.com/continuous-delphi/delphi-terminal/issues/56)
+
+## v1.3.78.0
+- ConPTY availability is gated to Windows 10 1903+ (build 18362), detected via RtlGetVersion so a missing app manifest cannot falsely disable it
+[#55](https://github.com/continuous-delphi/delphi-terminal/issues/55)
+
+## v1.3.77.0
+- ConPTY sessions assign the child to a kill-on-close Job Object so the whole process tree (shell + descendants) is terminated on teardown
+[#54](https://github.com/continuous-delphi/delphi-terminal/issues/54)
+
+## v1.3.76.0
+- ConPTY foundation wired into the plugin package and test project, with a TConPty/TConPtyReader round-trip smoke test; DUnitX suite unblocked and repaired
+[#52](https://github.com/continuous-delphi/delphi-terminal/issues/52) [#53](https://github.com/continuous-delphi/delphi-terminal/issues/53)
+
 ## v1.3.65.0
 - VCL demo app should not crash on startup when optional shells (pwsh, WSL) are not installed
 [#49](https://github.com/continuous-delphi/delphi-terminal/issues/49)
