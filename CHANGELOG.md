@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.115.0
+- Idle-gate busy refusals now flash on the toolbar (auto-clearing after a few seconds) instead of being written into the terminal stream, so the message no longer lands mid-frame and overlaps a running full-screen program's display. Groundwork added so the refusal can distinguish "a program is running" (Busy) from "can't confirm the shell is at a prompt" (Unknown), though consumers still only refuse on Busy today. The stricter idle signal (treat a non-empty input line as not-idle) and a WSL foreground-process probe were evaluated and declined -- see the issue for rationale.
+[#90](https://github.com/continuous-delphi/delphi-terminal/issues/90)
+
 ## v2.0.114.0
 - Retired the Auto-CD-on-project-switch feature. It was legacy-pipe only as of 2.0 (so most users never saw it under the default ConPTY backend) and got noisy when switching projects frequently. The Project Dir / File Dir toolbar buttons cover the same need on demand and are gate-safe. Removed the IDE notifier, the setting, and the Tools > Options control; the buttons are unchanged.
 [#89](https://github.com/continuous-delphi/delphi-terminal/issues/89)

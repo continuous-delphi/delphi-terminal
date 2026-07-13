@@ -48,6 +48,8 @@ type
     FBtnCommands: TSpeedButton;
     FBtnClear: TSpeedButton;
     FBtnStop: TSpeedButton;
+    FLblStatus: TLabel;                   // transient refusal/status flash on the toolbar, off the terminal surface (#90)
+    FStatusTimer: TTimer;                 // clears FLblStatus after STATUS_FLASH_MS (#90)
     FRichOutput: TRichEdit;               // legacy pipe backend renderer
     FTermView: TTerminalView;             // ConPTY backend renderer
     FScreen: TScreenBuffer;               // ConPTY screen model (nil until ConPTY starts)
@@ -93,6 +95,9 @@ type
     procedure HandleStopClick(Sender: TObject);
     procedure FlushOutputBuffer;
     procedure HandleRenderTick(Sender: TObject);
+    ///<summary>Shows AText in the toolbar status label and beeps, auto-cleared after STATUS_FLASH_MS (#90).</summary>
+    procedure FlashStatus(const AText: string);
+    procedure HandleStatusTimer(Sender: TObject);
     procedure ApplySegmentFormat(const AAttr: TAnsiAttributes);
     procedure TrimOutput;
     procedure BuildControls;
@@ -107,8 +112,10 @@ type
     procedure PasteToShell;
     ///<summary>Writes AText plus the backend-appropriate line terminator (CR for ConPTY, CRLF for the legacy pipe) to submit a line.</summary>
     procedure SubmitLineToShell(const AText: string);
-    ///<summary>Surfaces the "shell is busy" refusal message (naming the blocked action) when the idle gate blocks a user-initiated injection (#84/#86).</summary>
-    procedure WarnShellBusy(const AAction: string);
+    ///<summary>Surfaces the idle-gate refusal (naming the blocked action) when a user-initiated injection is blocked (#84/#86).
+    /// AState selects precise copy (#90 item 4): sisBusy -> "a program is running"; sisUnknown -> "can't confirm the shell is
+    /// at a prompt". Surfaced as a toolbar status flash + beep, not written into the terminal stream (#90 item 3).</summary>
+    procedure WarnShellBusy(const AAction: string; AState: TShellIdleState);
   protected
     procedure WndProc(var Message: TMessage); override;
   public
@@ -169,6 +176,7 @@ const
   MAX_RENDER_CHARS_PER_PASS = 65536;
   RENDER_INTERVAL_MS = 16;          // coalesce output and repaint at ~60fps (#77)
   STOP_RESTART_INTERVAL_MS = 400;   // a second Stop within this window restarts the shell
+  STATUS_FLASH_MS = 5000;           // how long a toolbar status flash (e.g. a busy-gate refusal) stays before it clears (#90)
 
 {.$DEFINE PTY_CAPTURE}  // Diagnostic: raw ConPTY stream capture to <exe dir>\pty-capture.log. Enable (remove the dot) and rebuild to capture.
 
@@ -236,6 +244,12 @@ begin
   FRenderTimer.Enabled := False;
   FRenderTimer.Interval := RENDER_INTERVAL_MS;
   FRenderTimer.OnTimer := HandleRenderTick;
+
+  // #90: clears the toolbar status flash (busy-gate refusals) after STATUS_FLASH_MS.
+  FStatusTimer := TTimer.Create(Self);
+  FStatusTimer.Enabled := False;
+  FStatusTimer.Interval := STATUS_FLASH_MS;
+  FStatusTimer.OnTimer := HandleStatusTimer;
 
   // The backend (legacy pipe or ConPTY) is created on demand in StartShell,
   // chosen by BackendKind (default: legacy pipe).
@@ -312,6 +326,21 @@ begin
   FBtnStop.Hint := 'Stop / interrupt (Ctrl+C). Click again to restart the shell.';
   FBtnStop.ShowHint := True;
   FBtnStop.OnClick := HandleStopClick;
+
+  // #90: transient status area filling the toolbar remainder (right of the buttons). Idle-gate
+  // refusals flash here (+ a beep) instead of being written into the terminal stream, where they
+  // would overlap a running TUI's frame. Cleared by FStatusTimer.
+  FLblStatus := TLabel.Create(Self);
+  FLblStatus.Parent := FPanelToolbar;
+  FLblStatus.AutoSize := False;
+  FLblStatus.Align := alClient;
+  FLblStatus.Alignment := taLeftJustify;
+  FLblStatus.Layout := tlCenter;
+  FLblStatus.Transparent := True;
+  FLblStatus.EllipsisPosition := epEndEllipsis;
+  FLblStatus.Font.Color := clMaroon;
+  FLblStatus.Font.Style := [fsBold];
+  FLblStatus.Caption := '';
 
   FPanelInput := TPanel.Create(Self);
   FPanelInput.Parent := Self;
@@ -781,15 +810,17 @@ end;
 procedure TframeCmdShell.SetWorkingDirectory(const APath: string);
 var
   Cmd: string;
+  LState: TShellIdleState;
 begin
   if not (Assigned(FProcess) and FProcess.Running) then
     Exit;
   // #86: the Project Dir / File Dir buttons are user-initiated injection, same policy as
   // saved commands (#84) -- refuse over a running foreground program. The gate reports
   // sisBusy only for ConPTY; legacy is always sisIdle, so its behaviour is unchanged.
-  if ShellIdleState = sisBusy then
+  LState := ShellIdleState;
+  if LState = sisBusy then
   begin
-    WarnShellBusy('change directory');
+    WarnShellBusy('change directory', LState);
     Exit;
   end;
   Cmd := TCmdUtils.ChangeDirectoryCommand(FCmdShellInfo.ShellType, APath);
@@ -878,15 +909,18 @@ begin
 end;
 
 procedure TframeCmdShell.SendUserCommand(const AText: string);
+var
+  LState: TShellIdleState;
 begin
   if not (Assigned(FProcess) and FProcess.Running) then
     Exit;
   // #84: refuse to inject a saved command over a running foreground program (the gate
   // only reports sisBusy for ConPTY; legacy is always sisIdle). sisUnknown proceeds --
   // the user chose the moment and nothing proves the shell is busy.
-  if ShellIdleState = sisBusy then
+  LState := ShellIdleState;
+  if LState = sisBusy then
   begin
-    WarnShellBusy('run a saved command');
+    WarnShellBusy('run a saved command', LState);
     Exit;
   end;
   FHistory.Add(AText);
@@ -896,13 +930,16 @@ begin
 end;
 
 procedure TframeCmdShell.InsertCommandText(const AText: string);
+var
+  LState: TShellIdleState;
 begin
   if FBackendKind = tbConPty then
   begin
     // #84: same guard as the run path -- do not inject into a running foreground program.
-    if ShellIdleState = sisBusy then
+    LState := ShellIdleState;
+    if LState = sisBusy then
     begin
-      WarnShellBusy('insert a saved command');
+      WarnShellBusy('insert a saved command', LState);
       Exit;
     end;
     // No line-entry box in ConPTY (the input panel is hidden). Place the text at
@@ -924,9 +961,34 @@ begin
   HandleOutput(Self, AText + #13#10);
 end;
 
-procedure TframeCmdShell.WarnShellBusy(const AAction: string);
+procedure TframeCmdShell.FlashStatus(const AText: string);
 begin
-  ShowMessage(Format('[delphi-terminal] Cannot %s while an interactive program is active -- stop it first (Ctrl+C).', [AAction]));
+  // #90 item 3: surface transient status (idle-gate refusals) on the toolbar, off the terminal
+  // surface. Restart the countdown so a repeated action re-shows the message for the full window.
+  FLblStatus.Caption := '  ' + AText;
+  FStatusTimer.Enabled := False;
+  FStatusTimer.Enabled := True;
+end;
+
+procedure TframeCmdShell.HandleStatusTimer(Sender: TObject);
+begin
+  FStatusTimer.Enabled := False;
+  FLblStatus.Caption := '';
+end;
+
+procedure TframeCmdShell.WarnShellBusy(const AAction: string; AState: TShellIdleState);
+var
+  Reason: string;
+begin
+  // #90 item 4: the three-state gate lets the refusal be precise. Consumers only warn on sisBusy
+  // today (sisUnknown proceeds), so the sisUnknown copy is infrastructure for a future consumer.
+  if AState = sisUnknown then
+    Reason := Format('Cannot %s -- can''t confirm the shell is at a prompt.', [AAction])
+  else
+    Reason := Format('Cannot %s while a program is running -- stop it first (Ctrl+C).', [AAction]);
+  // #90 item 3: flash on the toolbar instead of writing into the VT stream (ShowMessage), where
+  // the text would land mid-frame under a running TUI (e.g. Claude Code) and overlap its rendering.
+  FlashStatus('[delphi-terminal] ' + Reason);
 end;
 
 function TframeCmdShell.ShellIdleState: TShellIdleState;

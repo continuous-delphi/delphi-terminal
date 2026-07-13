@@ -1856,6 +1856,7 @@ Acceptance criteria:
 ---
 Title: Post-2.0 ConPTY idle-gate refinements (deferred from #84-#88)
 Issue: #90
+Status: closed
 Labels: enhancement, conpty
 Body:
 Tracking ticket for refinements consciously deferred while building the ConPTY
@@ -1903,3 +1904,45 @@ correct and verified as shipped.
 
 Acceptance criteria:
 - [ ] Each item is either implemented or explicitly declined with a rationale (they are independent; partial completion is fine)
+
+---
+Title: Document recommended WSL OSC 133 shell integration for the idle gate
+Issue: #91
+Labels: documentation, conpty
+Body:
+Follow-up to #90 item 2 (the WSL-without-133 blind spot), split out so the
+deferred documentation work is not lost.
+
+A line-oriented program running inside the WSL VM (a REPL, a WSL-hosted Claude
+Code) is invisible to the Windows Job Object -- only `wsl.exe` is Windows-side --
+and it sets no alternate screen, so a WSL tab with no OSC 133 markers reads as
+UNKNOWN. For user-initiated injection (saved commands #84, working-dir buttons
+#86) UNKNOWN proceeds, so a saved command / `cd` can reach that program even
+though it is not actually at a shell prompt. This is an accepted tradeoff (the
+user chose the moment), but it is avoidable with shell integration.
+
+If the user's WSL bash emits OSC 133 prompt markers, those markers travel over
+the same PTY stream delphi-terminal already parses, so the gate correctly flips
+to BUSY while a foreground program runs inside WSL -- closing the blind spot
+with no Windows-side probe.
+
+Scope (documentation only -- no code change):
+- Add a short section (README and/or docs/) recommending OSC 133 bash
+  integration in the WSL `~/.bashrc`, with a copy-pasteable snippet (e.g. the
+  standard `PROMPT_COMMAND` / `PS0`/`PS1` sequence that emits `133;A`/`B`/`C`/`D`,
+  or a pointer to a maintained integration script).
+- Explain the benefit in terms of the idle gate: with markers present, running a
+  saved command or clicking Project Dir / File Dir while something is active in
+  WSL is refused instead of injected.
+- Note the limitation this does NOT cover (a WSL program that emits no markers
+  and no alt screen remains UNKNOWN) and that full-screen WSL apps (vim) are
+  already caught by alt-screen regardless.
+
+Explicitly out of scope (declined in #90): a WSL-side foreground-process probe
+(spawning into the VM to inspect the foreground PID) -- fragile, latency-prone,
+and racy.
+
+Acceptance criteria:
+- [ ] README/docs describe recommended WSL OSC 133 bash integration with a working snippet
+- [ ] The idle-gate benefit and its remaining limitation are stated
+- [ ] No code change required
