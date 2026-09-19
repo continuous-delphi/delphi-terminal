@@ -1949,6 +1949,7 @@ Acceptance criteria:
 ---
 Title: ConPTY: resizing while on the alternate screen corrupts the main screen on exit
 Issue: #92
+Status: closed
 Labels: bug, conpty
 Body:
 `TScreenBuffer.Resize` rebuilds `FCells` for the new geometry but never touches

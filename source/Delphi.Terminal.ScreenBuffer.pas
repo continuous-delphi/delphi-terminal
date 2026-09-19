@@ -84,6 +84,10 @@ type
     FDirty: TArray<Boolean>;
     function IndexOf(ACol, ARow: Integer): Integer; inline;
     function BlankCell: TTerminalCell;
+    ///<summary>Rebuilds a cell array for a new geometry, preserving the overlapping
+    /// top-left region and blanking the rest. Used for both the active grid and the
+    /// saved main screen so the two never drift apart in size (#92).</summary>
+    function Reproject(const ASource: TArray<TTerminalCell>; AOldCols, AOldRows, ACols, ARows: Integer): TArray<TTerminalCell>;
     procedure FillAll;
     procedure ClampCursor;
     procedure PushScrollback(const ALine: TArray<TTerminalCell>);
@@ -140,7 +144,8 @@ type
     procedure ExitAltScreen;
 
     // --- Resize ---
-    ///<summary>Resizes the grid, preserving the top-left content, clamping the cursor, and resetting the scroll region.</summary>
+    ///<summary>Resizes the grid, preserving the top-left content, clamping the cursor, and resetting the scroll region.
+    /// When the alternate screen is active the saved main screen is reprojected to the new geometry as well.</summary>
     procedure Resize(ACols, ARows: Integer);
 
     // --- Dirty-row tracking (for incremental rendering) ---
@@ -622,28 +627,45 @@ begin
   MarkAllDirty;
 end;
 
-procedure TScreenBuffer.Resize(ACols, ARows: Integer);
+function TScreenBuffer.Reproject(const ASource: TArray<TTerminalCell>; AOldCols, AOldRows, ACols, ARows: Integer): TArray<TTerminalCell>;
 var
-  LNew: TArray<TTerminalCell>;
   LBlank: TTerminalCell;
   R, C, CopyCols, CopyRows: Integer;
+begin
+  SetLength(Result, ACols * ARows);
+  LBlank := BlankCell;
+  for R := 0 to High(Result) do
+    Result[R] := LBlank;
+
+  if AOldCols < 1 then Exit;
+
+  // Preserve the overlapping top-left region. CopyRows starts from the source's
+  // actual length rather than AOldRows so a short/empty source cannot over-read.
+  CopyRows := Length(ASource) div AOldCols;
+  if AOldRows < CopyRows then CopyRows := AOldRows;
+  if ARows < CopyRows then CopyRows := ARows;
+  CopyCols := AOldCols;
+  if ACols < CopyCols then CopyCols := ACols;
+
+  for R := 0 to CopyRows - 1 do
+    for C := 0 to CopyCols - 1 do
+      Result[R * ACols + C] := ASource[R * AOldCols + C];
+end;
+
+procedure TScreenBuffer.Resize(ACols, ARows: Integer);
 begin
   if ACols < 1 then ACols := 1;
   if ARows < 1 then ARows := 1;
 
-  SetLength(LNew, ACols * ARows);
-  LBlank := BlankCell;
-  for R := 0 to High(LNew) do
-    LNew[R] := LBlank;
+  FCells := Reproject(FCells, FCols, FRows, ACols, ARows);
 
-  // Preserve the overlapping top-left region.
-  CopyCols := FCols; if ACols < CopyCols then CopyCols := ACols;
-  CopyRows := FRows; if ARows < CopyRows then CopyRows := ARows;
-  for R := 0 to CopyRows - 1 do
-    for C := 0 to CopyCols - 1 do
-      LNew[R * ACols + C] := FCells[IndexOf(C, R)];
+  // The saved main screen has to follow the new geometry too (#92). ExitAltScreen
+  // restores it wholesale, so leaving it at the old size hands back an array whose
+  // length and row stride no longer match FCols/FRows -- over-reading past its end
+  // when the screen grew, and shearing every row when it shrank.
+  if FAltActive then
+    FMainCells := Reproject(FMainCells, FCols, FRows, ACols, ARows);
 
-  FCells := LNew;
   FCols := ACols;
   FRows := ARows;
   FScrollTop := 0;

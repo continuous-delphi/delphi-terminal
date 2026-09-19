@@ -33,6 +33,9 @@ type
     [Test] procedure LineFeed_AtBottomScrolls;
     [Test] procedure AltScreen_SwapsAndRestores;
     [Test] procedure Resize_PreservesContentAndClampsCursor;
+    [Test] procedure Resize_OnAltScreen_GrowRestoresMainIntact;
+    [Test] procedure Resize_OnAltScreen_ShrinkRestoresMainUnsheared;
+    [Test] procedure Resize_OnAltScreen_PreservesAltContent;
     [Test] procedure Dirty_MarksAndResets;
     [Test] procedure IdleState_NoMarkers_NeverIdle;
     [Test] procedure IdleState_OnlyInputWindowIsIdle;
@@ -464,6 +467,90 @@ begin
     Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'W', 'top-left content preserved');
     Assert.IsTrue(LBuf.GetCell(1, 0).Ch = 'X', 'top-left content preserved (col 1)');
     Assert.IsTrue((LBuf.CursorCol = 1) and (LBuf.CursorRow = 1), 'cursor clamped to new bounds');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+// #92: resizing while the alternate screen is active used to leave the saved main
+// screen at the old geometry, so ExitAltScreen restored an array whose length and
+// row stride no longer matched Cols/Rows.
+procedure TScreenBufferTests.Resize_OnAltScreen_GrowRestoresMainIntact;
+var
+  LBuf: TScreenBuffer;
+  C, R: Integer;
+begin
+  LBuf := TScreenBuffer.Create(4, 2);
+  try
+    LBuf.WriteText('AB');
+    LBuf.SetCursor(0, 1);
+    LBuf.WriteText('CD');
+
+    LBuf.EnterAltScreen;
+    LBuf.Resize(8, 4);        // grow while on the alternate screen
+    LBuf.ExitAltScreen;
+
+    // Every cell of the new geometry must be addressable: before the fix the
+    // restored array was still 4x2, so this read ran off its end.
+    for R := 0 to LBuf.Rows - 1 do
+      for C := 0 to LBuf.Cols - 1 do
+        LBuf.GetCell(C, R);
+
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'main 0,0 should be A');
+    Assert.IsTrue(LBuf.GetCell(1, 0).Ch = 'B', 'main 1,0 should be B');
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = 'C', 'main 0,1 should be C');
+    Assert.IsTrue(LBuf.GetCell(1, 1).Ch = 'D', 'main 1,1 should be D');
+    Assert.IsTrue(LBuf.GetCell(7, 3).Ch = ' ', 'cells beyond the old grid should be blank');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.Resize_OnAltScreen_ShrinkRestoresMainUnsheared;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(6, 3);
+  try
+    LBuf.WriteText('ABCDEF');
+    LBuf.SetCursor(0, 1);
+    LBuf.WriteText('GHIJKL');
+    LBuf.SetCursor(0, 2);
+    LBuf.WriteText('MNOPQR');
+
+    LBuf.EnterAltScreen;
+    LBuf.Resize(3, 2);        // shrink while on the alternate screen
+    LBuf.ExitAltScreen;
+
+    Assert.IsTrue((LBuf.Cols = 3) and (LBuf.Rows = 2), 'dimensions updated');
+    // With the old stride the second row would start at the old index 3 ('D').
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'row 0 should start at A');
+    Assert.IsTrue(LBuf.GetCell(2, 0).Ch = 'C', 'row 0 should end at C');
+    Assert.IsTrue(LBuf.GetCell(0, 1).Ch = 'G', 'row 1 should start at G, not be sheared');
+    Assert.IsTrue(LBuf.GetCell(2, 1).Ch = 'I', 'row 1 should end at I');
+  finally
+    LBuf.Free;
+  end;
+end;
+
+procedure TScreenBufferTests.Resize_OnAltScreen_PreservesAltContent;
+var
+  LBuf: TScreenBuffer;
+begin
+  LBuf := TScreenBuffer.Create(4, 2);
+  try
+    LBuf.WriteText('MAIN');
+    LBuf.EnterAltScreen;
+    LBuf.WriteText('ALT');
+    LBuf.Resize(6, 3);
+
+    Assert.IsTrue(LBuf.AltActive, 'still on the alternate screen after a resize');
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'A', 'alt 0,0 preserved');
+    Assert.IsTrue(LBuf.GetCell(1, 0).Ch = 'L', 'alt 1,0 preserved');
+    Assert.IsTrue(LBuf.GetCell(2, 0).Ch = 'T', 'alt 2,0 preserved');
+
+    LBuf.ExitAltScreen;
+    Assert.IsTrue(LBuf.GetCell(0, 0).Ch = 'M', 'main content still restorable');
   finally
     LBuf.Free;
   end;

@@ -2,6 +2,10 @@
 Home repo: https://github.com/continuous-delphi/delphi-terminal
 
 ---
+## v2.0.118.0
+- Fixed display corruption after running a full-screen program. Resizing the terminal panel while vim, htop or a CLI like Claude Code was on screen left the saved main screen at its old size, so quitting that program restored a screen that was sheared (panel made smaller) or read past the end of its buffer (panel made larger). The saved screen now follows the resize.
+[#92](https://github.com/continuous-delphi/delphi-terminal/issues/92)
+
 ## v2.0.115.0
 - Idle-gate busy refusals now flash on the toolbar (auto-clearing after a few seconds) instead of being written into the terminal stream, so the message no longer lands mid-frame and overlaps a running full-screen program's display. Groundwork added so the refusal can distinguish "a program is running" (Busy) from "can't confirm the shell is at a prompt" (Unknown), though consumers still only refuse on Busy today. The stricter idle signal (treat a non-empty input line as not-idle) and a WSL foreground-process probe were evaluated and declined -- see the issue for rationale.
 [#90](https://github.com/continuous-delphi/delphi-terminal/issues/90)
