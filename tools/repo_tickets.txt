@@ -1946,3 +1946,214 @@ Acceptance criteria:
 - [ ] README/docs describe recommended WSL OSC 133 bash integration with a working snippet
 - [ ] The idle-gate benefit and its remaining limitation are stated
 - [ ] No code change required
+---
+Title: ConPTY: resizing while on the alternate screen corrupts the main screen on exit
+Issue: #92
+Labels: bug, conpty
+Body:
+`TScreenBuffer.Resize` rebuilds `FCells` for the new geometry but never touches
+`FMainCells`, the snapshot taken by `EnterAltScreen`. `ExitAltScreen` then does
+`FCells := Copy(FMainCells, ...)`, restoring an array sized for the OLD
+`FCols`/`FRows` while the buffer's current `FCols`/`FRows` are the new ones.
+`IndexOf(ACol, ARow) = ARow * FCols + ACol` is then computed against the new
+stride over an array built for the old one.
+
+Repro:
+1. ConPTY tab; run a full-screen app so it enters the alternate screen (`vim` or
+   `htop` under WSL, or Claude Code).
+2. Resize the dock panel or the IDE window while that app is on screen.
+3. Quit the app so it leaves the alternate screen.
+
+Result:
+- Growing the panel: the restored array is shorter than `FCols * FRows`, so
+  painting reads past its end (range error with range checks on, garbage or an
+  access violation without).
+- Shrinking the panel: no overflow, but the row stride changed, so the restored
+  main screen renders sheared/offset.
+
+Fix: rebuild `FMainCells` into the new geometry in `TScreenBuffer.Resize`,
+preserving the overlapping top-left region exactly as the active buffer is
+handled. When the alternate screen is not active `FMainCells` is empty and the
+work is skipped.
+
+Note, deliberately out of scope: `Resize` also resets the scroll region to the
+full screen. That matches xterm, which drops DECSTBM margins on resize, so it is
+intentional and should NOT be changed as part of this ticket.
+
+Acceptance criteria:
+- [ ] `TScreenBuffer.Resize` rebuilds `FMainCells` into the new geometry when the alternate screen is active
+- [ ] Unit test: enter alt screen, resize larger, exit -- `Length(FCells) = Cols * Rows` and preserved main content is intact
+- [ ] Unit test: same for a resize smaller, asserting rows are not sheared
+- [ ] Manual: resize the panel with a full-screen app running, quit it, main screen renders correctly
+
+---
+Title: ConPTY: reply to cursor-position (DSR) and device-attributes (DA) queries
+Issue: #93
+Labels: enhancement, conpty
+Body:
+`TVTParser` parses input only -- it has no path to write back to the shell, so
+terminal queries go unanswered. Two are common enough to matter:
+
+- `CSI 6 n` (DSR, Device Status Report) -- reply `CSI <row> ; <col> R`
+- `CSI c` (DA, primary Device Attributes) -- reply `CSI ? 1 ; 2 c`
+
+Programs that probe the terminal (readline/bash line editing, TUI frameworks
+measuring the cursor, progress renderers) either block waiting for a reply or
+fall back to degraded rendering.
+
+Implementation note: keep `TVTParser` VCL-free and process-free. Add a response
+callback on the parser (an event or `TProc<string>`) that the frame wires to
+`FProcess.WriteInput`. The parser must not reference the process directly -- that
+separation is what keeps the unit testable in the console test host.
+
+Report the cursor position 1-based from the parser's `FScreen`, reflecting the
+active screen when the alternate screen is in use.
+
+Acceptance criteria:
+- [ ] `TVTParser` exposes a response callback and gains no dependency on the process or the VCL
+- [ ] `CSI 6 n` emits `ESC[<row>;<col>R` with 1-based coordinates
+- [ ] `CSI c` emits `ESC[?1;2c`
+- [ ] The frame wires the callback to `FProcess.WriteInput` for the ConPTY backend
+- [ ] Unit tests in `Test.Delphi.Terminal.VTParser` assert both replies, including after cursor movement
+- [ ] Nothing is emitted when the callback is unassigned
+
+---
+Title: ConPTY: extend key-to-VT translation (function keys, modifiers, DECCKM)
+Issue: #94
+Labels: enhancement, conpty
+Body:
+`KeyToVT` in `Delphi.Terminal.KeyInput.pas` covers Enter, Backspace, Tab /
+Shift+Tab, Esc, the arrows, Home/End, Insert/Delete, PgUp/PgDn and Ctrl+letter.
+Keys an interactive program expects that we do not send today:
+
+- F1..F12. Conventional xterm encoding: F1-F4 as `ESC O P/Q/R/S`, F5-F12 as
+  `ESC [ 15/17/18/19/20/21/23/24 ~`.
+- Modifier-encoded cursor and navigation keys. xterm passes the modifier as a
+  parameter: `ESC [ 1 ; <m> <letter>` for arrows/Home/End and
+  `ESC [ <n> ; <m> ~` for the tilde keys, where
+  `m = 1 + 1*Shift + 2*Alt + 4*Ctrl`. Without this, Ctrl+Left, Shift+Arrow and
+  Ctrl+Delete -- word motion and selection in most line editors -- do nothing.
+- DECCKM, application cursor keys (DEC private mode 1). When the app sets it,
+  arrows must be sent as `ESC O A..D` rather than `ESC [ A..D`. The mode is not
+  tracked at all today: `DispatchPrivateMode` handles 25, 2004 and 47/1047/1049
+  only. Add an `ApplicationCursorKeys` flag to `TScreenBuffer`, set from mode 1.
+- Shift+Enter as `ESC CR`, and Ctrl/Alt+Backspace as `ESC DEL` (delete previous
+  word) -- both common in CLI input boxes.
+
+Keep `KeyInput.pas` pure: pass the DECCKM state in as a parameter rather than
+letting the translation reach into the screen buffer.
+
+Acceptance criteria:
+- [ ] F1..F12 translated with the xterm encodings above
+- [ ] Modifier-encoded arrows/Home/End and tilde keys, with `m = 1 + Shift + 2*Alt + 4*Ctrl`
+- [ ] DEC private mode 1 tracked on `TScreenBuffer` and honored for the arrows
+- [ ] Shift+Enter and Ctrl/Alt+Backspace translated
+- [ ] `KeyToVT` stays VCL-free; DECCKM state arrives as a parameter
+- [ ] Unit tests in `Test.Delphi.Terminal.KeyInput` cover each group in both cursor-key modes
+
+---
+Title: Terminal view: paste file paths, paste clipboard images, and accept dropped files
+Issue: #95
+Labels: enhancement, conpty
+Body:
+`TTerminalView` pastes plain text only. Three clipboard/drop behaviors that a
+command-line workflow -- especially an interactive CLI that takes file arguments
+-- leans on:
+
+1. `CF_HDROP` paste: files copied in Explorer. Paste types their paths,
+   space-separated, each quoted when it contains a space.
+2. Clipboard image paste: a screenshot or snip. Save it to a temp `.png` and type
+   that path. Tools that accept images take a path, not clipboard bytes, so this
+   turns Win+Shift+S into a usable input step.
+3. `WM_DROPFILES`: dragging files from Explorer onto the terminal types their
+   paths, formatted as in (1).
+
+All three should funnel through one "send these paths as text" helper and honor
+bracketed paste (`FScreen.BracketedPaste`) the same way `BuildPasteSequence`
+does, so the receiving program can distinguish paste from typing.
+
+Notes:
+- `DragAcceptFiles(Handle, True)` in `CreateWnd`, `False` in `DestroyWnd`.
+- Image encoding needs `Vcl.Imaging.pngimage`. Keep it in `TerminalView` (the VCL
+  layer) so the pure units stay VCL-free and headlessly testable.
+- Reading the clipboard can fail while another process holds it open -- guard and
+  no-op rather than letting an exception escape into the message loop.
+- Temp PNG files accumulate. Decide whether to clean them up (e.g. on shell
+  restart) or leave them to the OS temp sweep, and state the choice in the code.
+
+Acceptance criteria:
+- [ ] Pasting Explorer-copied files types their quoted, space-separated paths
+- [ ] Pasting an image writes a temp `.png` and types its path
+- [ ] Dropping files onto the terminal types their paths
+- [ ] All three paths respect bracketed-paste mode
+- [ ] Clipboard failures are swallowed, not raised
+- [ ] `DragAcceptFiles` registered in `CreateWnd` and released in `DestroyWnd`
+- [ ] No pure unit gains a VCL dependency
+
+---
+Title: ConPTY: report mouse events to the child (DEC modes 1000/1002/1003, SGR 1006)
+Issue: #96
+Labels: enhancement, conpty
+Body:
+The terminal never sends mouse input to the running program. `MouseDown` in
+`TTerminalView` starts a local selection anchor and nothing else, and
+`DispatchPrivateMode` handles only 25, 2004 and 47/1047/1049 -- the mouse
+tracking modes are not recognised, so clicking inside `vim` (`:set mouse=a`),
+`htop`, `nano -m` or any other mouse-aware TUI does nothing.
+
+Confirming the gap: in a WSL tab run `printf '\033[?1000h\033[?1006h'; cat -v`
+and click. A terminal that reports the mouse prints `^[[<0;12;5M` on press and
+`^[[<0;12;5m` on release; we print nothing.
+
+Modes to support:
+- `1000` normal tracking -- press and release only
+- `1002` button-event tracking -- adds motion while a button is held
+- `1003` any-event tracking -- adds all motion
+- `1006` SGR encoding (set/reset alongside the tracking mode)
+- `1015` urxvt encoding is optional; `1005` (UTF-8) can be skipped
+
+Encoding:
+- Legacy/X10: `ESC [ M Cb Cx Cy`, each byte written as `32 + value`, coordinates
+  1-based. Unrepresentable beyond column/row 223 -- drop the report rather than
+  emit a wrapped coordinate.
+- SGR (1006): `ESC [ < Cb ; Cx ; Cy M` for press and `... m` for release. No
+  coordinate limit; prefer this whenever the app enabled it.
+- Button codes: 0 left, 1 middle, 2 right; 3 is release in the legacy encoding
+  (SGR reports the real button and distinguishes press/release by the final
+  character). Wheel up 64, wheel down 65. Motion reports add 32.
+- Modifier bits added to the button code: Shift 4, Alt 8, Ctrl 16.
+
+Interaction with our local selection -- this is the part that needs care:
+- While tracking is active, a left drag belongs to the program, not to our
+  selection. Holding Shift must force local selection anyway, which is what
+  xterm and Windows Terminal do and what users will reach for to copy text out
+  of a TUI.
+- Wheel: only route the wheel to the program when the alternate screen is
+  active, and let Shift+wheel always scroll our scrollback. Programs that run on
+  the main screen and enable tracking only to catch clicks ignore buttons 64/65,
+  and forwarding the wheel to them makes our scrollback appear frozen.
+
+Implementation shape:
+- `TScreenBuffer` gains the tracking mode and an SGR-encoding flag; `TVTParser`
+  sets them from modes 1000/1002/1003/1006.
+- Put the encoding in a pure, VCL-free function (extend
+  `Delphi.Terminal.KeyInput.pas` or add `Delphi.Terminal.MouseInput.pas`) taking
+  button, modifiers, 1-based col/row, press/release and the encoding flag, and
+  returning the byte sequence. That is what makes it unit-testable.
+- `TTerminalView` does the pixel-to-cell hit test and surfaces the bytes through
+  an event, following the existing Paste/Clear/Stop pattern; the frame writes
+  them via `FProcess.WriteInput`.
+- Legacy pipe backend is unaffected -- mouse reporting is ConPTY only.
+
+Related: the same frame-side write-back wiring is needed for the DSR/DA reply
+ticket.
+
+Acceptance criteria:
+- [ ] DEC modes 1000, 1002, 1003 and 1006 tracked on `TScreenBuffer` via `TVTParser`
+- [ ] Press, release, drag and wheel reports emitted in both legacy and SGR encodings
+- [ ] Modifier bits (Shift 4, Alt 8, Ctrl 16) applied to the button code
+- [ ] Legacy encoding drops reports beyond column/row 223 rather than wrapping
+- [ ] Shift forces local selection while tracking is active
+- [ ] Wheel goes to the program only on the alternate screen; Shift+wheel always scrolls scrollback
+- [ ] Encoding lives in a pure unit with a DUnitX fixture covering each mode, button and modifier combination
+- [ ] Manual: `printf '\033[?1000h\033[?1006h'; cat -v` prints `^[[<...M`/`^[[<...m` on click; `vim` with `:set mouse=a` moves the cursor to the clicked line
